@@ -83,6 +83,8 @@ La app reconoce cada archivo por su nombre, su carpeta (mes, proveedor, H1/H2, K
 | Correos `.msg` de Outlook | Lee asunto, remitente, fecha y nombres de los adjuntos |
 | Cualquier otro archivo (PDF, Word…) | Solo se registra en el inventario |
 
+En pantalla muestra una **gráfica de cargos de proveedores por mes**: columnas apiladas por proveedor, con el total arriba de cada mes. Al pasar el mouse sobre un mes se ve el detalle por proveedor, y debajo hay una tabla con los datos. Si hay cargos en varias monedas, eliges la moneda: nunca se suman monedas distintas. La misma gráfica va como imagen en la hoja **Resumen** del Excel.
+
 Con eso arma el **Consolidado anual**, con estas hojas:
 - Resumen
 - Recobros por asignación (SC / Webi / JVU / Accrual por persona y semestre)

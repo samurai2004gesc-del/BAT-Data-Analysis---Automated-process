@@ -347,6 +347,31 @@
     return m;
   }
 
+  const MES_CORTO = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  /** Datos para la gráfica de cargos por mes: una serie por proveedor, en una sola moneda. */
+  function monthlyCharges(A, currency, palette, other) {
+    const withMonth = A.charges.filter((c) => c.month);
+    const curCount = {};
+    withMonth.forEach((c) => { const k = c.currency || '?'; curCount[k] = (curCount[k] || 0) + 1; });
+    const currencies = Object.keys(curCount).sort((a, b) => curCount[b] - curCount[a]);
+    const cur = currency && curCount[currency] ? currency : currencies[0] || '';
+    const rows = withMonth.filter((c) => (c.currency || '?') === cur);
+    const maxM = withMonth.reduce((m, c) => Math.max(m, c.month), 0);
+    const months = Array.from({ length: maxM }, (_, i) => i + 1);
+    const names = Array.from(new Set(rows.map((c) => c.provider || ''))).sort((a, b) => {
+      const ia = PROVIDERS.indexOf(a), ib = PROVIDERS.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+    });
+    let extra = PROVIDERS.length;
+    const series = names.map((n) => {
+      const idx = PROVIDERS.indexOf(n);
+      // El color sigue al proveedor (posición fija), no a su ranking: un filtro no repinta a los demás
+      const color = !n ? other : idx >= 0 && palette && idx < palette.length ? palette[idx] : (palette && extra < palette.length ? palette[extra++] : other);
+      return { name: n || 'Sin proveedor', color, values: months.map((m) => Core.round(rows.filter((c) => c.month === m && (c.provider || '') === n).reduce((a, c) => a + (c.amount || 0), 0), 2)) };
+    });
+    return { currency: cur, currencies, months, categories: months.map((m) => MES_CORTO[m - 1]), series, noMonth: A.charges.length - withMonth.length };
+  }
+
   async function buildWorkbook(A, opts) {
     opts = opts || {};
     const wb = Core.newWorkbook();
@@ -369,9 +394,15 @@
       ['Correos .msg', A.mails.length],
       ['Alertas', A.alerts.length]
     ];
-    Core.writeTable(ws, 4, [{ header: 'Indicador', width: 52 }, { header: 'Valor', width: 18, numFmt: '#,##0.##' }], kpis, { startCol: 4 });
+    const t2 = Core.writeTable(ws, 4, [{ header: 'Indicador', width: 52 }, { header: 'Valor', width: 18, numFmt: '#,##0.##' }], kpis, { startCol: 4 });
     ws.getColumn(3).width = 3;
-    void t1;
+    if (opts.chartPng) {
+      const r0 = Math.max(t1.lastRow, t2.lastRow) + 2;
+      const id = wb.addImage({ base64: Core.bytesToBase64(opts.chartPng), extension: 'png' });
+      ws.getCell(r0, 1).value = 'Cargos de proveedores por mes';
+      ws.getCell(r0, 1).font = { bold: true, size: 12, color: { argb: C.navy } };
+      ws.addImage(id, { tl: { col: 0, row: r0 }, ext: { width: opts.chartWidth || 720, height: opts.chartHeight || 300 } });
+    }
 
     const sheet = (name, title, cols, rows, o) => {
       const w = wb.addWorksheet(name, { views: [{ state: 'frozen', ySplit: 3 }] });
@@ -435,5 +466,5 @@
     return wb;
   }
 
-  return { TYPES, fingerprint, pathContext, parseMsg, classifyByName, classifyByContent, processFile, aggregate, buildWorkbook, totalsBy };
+  return { TYPES, MES_CORTO, monthlyCharges, fingerprint, pathContext, parseMsg, classifyByName, classifyByContent, processFile, aggregate, buildWorkbook, totalsBy };
 });

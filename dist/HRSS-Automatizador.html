@@ -141,11 +141,22 @@ table.t input { padding: 4px 6px; width: 100%; }
 table.t tr.gone td { color: #8a949e; font-style: italic; }
 .progress { height: 10px; background: #e3e8ee; border-radius: 99px; overflow: hidden; margin: 8px 0 4px; }
 .progress > div { height: 100%; width: 0; background: var(--accent); transition: width .15s; }
+.chart-card { margin: 14px 0; }
+.chart-wrap { position: relative; overflow-x: auto; }
+.chart-wrap svg { display: block; max-width: 100%; height: auto; }
+.chart-wrap .hit { cursor: default; outline: none; }
+.chart-wrap .hit.on, .chart-wrap .hit:focus { fill: rgba(31, 78, 121, .06); }
+.chart-tip { position: absolute; background: #fff; border: 1px solid rgba(11,11,11,.12); border-radius: 8px; padding: 8px 10px; box-shadow: 0 4px 14px rgba(0,0,0,.12); font-size: 12.5px; pointer-events: none; min-width: 150px; z-index: 3; }
+.chart-tip .tip-h { margin-bottom: 4px; color: #52514e; }
+.chart-tip .tip-h b { color: #0b0b0b; font-size: 13.5px; }
+.chart-tip .tip-row { display: flex; align-items: center; gap: 6px; color: #52514e; font-variant-numeric: tabular-nums; }
+.chart-tip .tip-row i { width: 12px; height: 3px; border-radius: 2px; display: inline-block; }
+.chart-tip .tip-row b { color: #0b0b0b; font-weight: 600; min-width: 80px; text-align: right; }
 </style>
 </head>
 <body>
 <header class="topbar">
-  <div class="brand"><span class="logo">HR</span><div><strong>HRSS Automatizador</strong><small>v1.2.0 · funciona sin internet · tus archivos no salen de esta computadora</small></div></div>
+  <div class="brand"><span class="logo">HR</span><div><strong>HRSS Automatizador</strong><small>v1.2.1 · funciona sin internet · tus archivos no salen de esta computadora</small></div></div>
   <div class="top-actions"><a id="folder-ind" class="folder-ind" data-goto="config" title="Dónde se guardan los resultados"></a><span id="who" class="muted"></span></div>
 </header>
 <div class="layout">
@@ -2547,6 +2558,125 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 });
 
 </script>
+<script>/* js/chart.js */
+/* Gráfica de columnas apiladas en SVG (sin librerías). Se usa en pantalla (con tooltip) y como imagen PNG
+ * dentro del Excel. Especificación: columnas <= 24px con punta redondeada de 4px y base recta, 2px de separación
+ * del color de fondo entre segmentos, rejilla en línea fina, total en la punta de cada columna, leyenda para
+ * 2+ series y texto siempre en tinta neutra (nunca del color de la serie). */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.Chart = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+  // Paleta categórica validada (orden fijo; el color sigue al proveedor, no a su posición en el ranking)
+  const SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948'];
+  const OTHER = '#898781';
+  const INK = { primary: '#0b0b0b', secondary: '#52514e', muted: '#898781', grid: '#e1e0d9', axis: '#c3c2b7', surface: '#ffffff' };
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  function niceStep(max, ticks) {
+    const raw = max / Math.max(1, ticks);
+    const p = Math.pow(10, Math.floor(Math.log10(raw || 1)));
+    const f = raw / p;
+    return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+  }
+  function compact(n) {
+    const a = Math.abs(n);
+    if (a >= 1e6) return (n / 1e6).toLocaleString('es-MX', { maximumFractionDigits: 1 }) + 'M';
+    if (a >= 1e4) return (n / 1e3).toLocaleString('es-MX', { maximumFractionDigits: a >= 1e5 ? 0 : 1 }) + 'K';
+    return Math.round(n).toLocaleString('es-MX');
+  }
+  /** Columna con punta redondeada (4px) y base recta. */
+  function colPath(x, y, w, h, r) {
+    r = Math.min(r, w / 2, h);
+    return 'M' + x + ',' + (y + h) + 'V' + (y + r) + 'Q' + x + ',' + y + ' ' + (x + r) + ',' + y + 'H' + (x + w - r) + 'Q' + (x + w) + ',' + y + ' ' + (x + w) + ',' + (y + r) + 'V' + (y + h) + 'Z';
+  }
+
+  /**
+   * opts: { categories: ['Ene', ...], series: [{ name, color, values: [..] }], width, height, unit: 'GBP', title?, fmt? }
+   * Devuelve el SVG como texto. Cada segmento lleva data-* para el tooltip (y es el área de hover).
+   */
+  function stackedColumns(opts) {
+    const W = opts.width || 720, H = opts.height || 300;
+    const fmt = opts.fmt || ((v) => v.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    const cats = opts.categories, series = opts.series.filter((s) => s.values.some((v) => v));
+    const top = opts.title ? 58 : 26, legendH = series.length > 1 ? 24 : 0, bottom = 30, left = 52, right = 12;
+    const plotTop = top + legendH, plotH = H - plotTop - bottom, plotW = W - left - right;
+    const totals = cats.map((_, i) => series.reduce((a, s) => a + (s.values[i] || 0), 0));
+    const maxT = Math.max(0, ...totals);
+    const step = niceStep(maxT || 1, 4);
+    const yMax = Math.max(step, Math.ceil(maxT / step) * step);
+    const y = (v) => plotTop + plotH - (v / yMax) * plotH;
+    const band = plotW / Math.max(1, cats.length);
+    const bw = Math.min(24, band * 0.6);
+    const font = 'font-family="Segoe UI, system-ui, -apple-system, Roboto, Arial, sans-serif"';
+    let s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="' + esc(opts.ariaLabel || opts.title || 'Gráfica') + '" ' + font + '>';
+    s += '<rect width="' + W + '" height="' + H + '" fill="' + INK.surface + '"/>';
+    if (opts.title) {
+      s += '<text x="' + left + '" y="22" font-size="15" font-weight="600" fill="' + INK.primary + '">' + esc(opts.title) + '</text>';
+      if (opts.subtitle) s += '<text x="' + left + '" y="40" font-size="12" fill="' + INK.secondary + '">' + esc(opts.subtitle) + '</text>';
+    }
+    // Leyenda (2+ series): cuadro del color de la serie + nombre en tinta neutra
+    if (series.length > 1) {
+      let lx = left;
+      series.forEach((ser) => {
+        s += '<rect x="' + lx + '" y="' + (top + 2) + '" width="10" height="10" rx="2" fill="' + ser.color + '"/>';
+        s += '<text x="' + (lx + 15) + '" y="' + (top + 11) + '" font-size="12" fill="' + INK.secondary + '">' + esc(ser.name) + '</text>';
+        lx += 15 + ser.name.length * 7 + 22;
+      });
+    }
+    // Rejilla y eje Y
+    for (let v = 0; v <= yMax + 1e-9; v += step) {
+      const yy = Math.round(y(v)) + 0.5;
+      s += '<line x1="' + left + '" x2="' + (W - right) + '" y1="' + yy + '" y2="' + yy + '" stroke="' + (v === 0 ? INK.axis : INK.grid) + '" stroke-width="1"/>';
+      s += '<text x="' + (left - 8) + '" y="' + (yy + 4) + '" font-size="11" text-anchor="end" fill="' + INK.muted + '" style="font-variant-numeric:tabular-nums">' + compact(v) + '</text>';
+    }
+    // Columnas apiladas
+    cats.forEach((c, i) => {
+      const cx = left + band * i + band / 2, x = cx - bw / 2;
+      let acc = 0;
+      const segs = series.map((ser) => ({ ser, v: ser.values[i] || 0 })).filter((g) => g.v > 0);
+      segs.forEach((g, k) => {
+        const y0 = y(acc), y1 = y(acc + g.v);
+        acc += g.v;
+        const gap = k > 0 ? 2 : 0; // separación de 2px del color de fondo entre segmentos
+        const h = Math.max(0, y0 - y1 - gap);
+        if (h <= 0) return;
+        const isTop = k === segs.length - 1;
+        const d = isTop ? colPath(x, y1, bw, h, 4) : 'M' + x + ',' + y1 + 'h' + bw + 'v' + h + 'h' + -bw + 'Z';
+        s += '<path d="' + d + '" fill="' + g.ser.color + '" data-cat="' + esc(c) + '" data-series="' + esc(g.ser.name) + '" data-value="' + g.v + '" data-total="' + totals[i] + '" class="seg"/>';
+      });
+      if (totals[i] > 0) s += '<text x="' + cx + '" y="' + (y(totals[i]) - 6) + '" font-size="11" text-anchor="middle" fill="' + INK.secondary + '" style="font-variant-numeric:tabular-nums">' + compact(totals[i]) + '</text>';
+      // Área de hover de toda la columna (más grande que la marca)
+      s += '<rect x="' + (left + band * i) + '" y="' + plotTop + '" width="' + band + '" height="' + plotH + '" fill="transparent" class="hit" data-idx="' + i + '"/>';
+      s += '<text x="' + cx + '" y="' + (H - bottom + 18) + '" font-size="11" text-anchor="middle" fill="' + INK.muted + '">' + esc(c) + '</text>';
+    });
+    s += '</svg>';
+    return { svg: s, totals, series, fmt, width: W, height: H };
+  }
+
+  /** Convierte un SVG en PNG (solo navegador). Devuelve Uint8Array. */
+  function svgToPng(svg, width, height, scale) {
+    scale = scale || 2;
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = width * scale; c.height = height * scale;
+        const ctx = c.getContext('2d');
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0, width, height);
+        c.toBlob((b) => (b ? b.arrayBuffer().then((ab) => resolve(new Uint8Array(ab)), reject) : reject(new Error('No se pudo generar la imagen'))), 'image/png');
+      };
+      img.onerror = () => reject(new Error('No se pudo dibujar la gráfica'));
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    });
+  }
+
+  return { SERIES, OTHER, stackedColumns, svgToPng, compact };
+});
+
+</script>
 <script>/* js/bulk.js */
 /* Archivo anual (Bulk): recibe cientos de archivos del año (Webis, JVUs, Accruals, Shopping Carts, archivos de
  * proveedores, Sent/Retrieved, Reclasificaciones, KSB1, All CeCos, HR Input, Trackers, correos .msg…),
@@ -2897,6 +3027,31 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return m;
   }
 
+  const MES_CORTO = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  /** Datos para la gráfica de cargos por mes: una serie por proveedor, en una sola moneda. */
+  function monthlyCharges(A, currency, palette, other) {
+    const withMonth = A.charges.filter((c) => c.month);
+    const curCount = {};
+    withMonth.forEach((c) => { const k = c.currency || '?'; curCount[k] = (curCount[k] || 0) + 1; });
+    const currencies = Object.keys(curCount).sort((a, b) => curCount[b] - curCount[a]);
+    const cur = currency && curCount[currency] ? currency : currencies[0] || '';
+    const rows = withMonth.filter((c) => (c.currency || '?') === cur);
+    const maxM = withMonth.reduce((m, c) => Math.max(m, c.month), 0);
+    const months = Array.from({ length: maxM }, (_, i) => i + 1);
+    const names = Array.from(new Set(rows.map((c) => c.provider || ''))).sort((a, b) => {
+      const ia = PROVIDERS.indexOf(a), ib = PROVIDERS.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+    });
+    let extra = PROVIDERS.length;
+    const series = names.map((n) => {
+      const idx = PROVIDERS.indexOf(n);
+      // El color sigue al proveedor (posición fija), no a su ranking: un filtro no repinta a los demás
+      const color = !n ? other : idx >= 0 && palette && idx < palette.length ? palette[idx] : (palette && extra < palette.length ? palette[extra++] : other);
+      return { name: n || 'Sin proveedor', color, values: months.map((m) => Core.round(rows.filter((c) => c.month === m && (c.provider || '') === n).reduce((a, c) => a + (c.amount || 0), 0), 2)) };
+    });
+    return { currency: cur, currencies, months, categories: months.map((m) => MES_CORTO[m - 1]), series, noMonth: A.charges.length - withMonth.length };
+  }
+
   async function buildWorkbook(A, opts) {
     opts = opts || {};
     const wb = Core.newWorkbook();
@@ -2919,9 +3074,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       ['Correos .msg', A.mails.length],
       ['Alertas', A.alerts.length]
     ];
-    Core.writeTable(ws, 4, [{ header: 'Indicador', width: 52 }, { header: 'Valor', width: 18, numFmt: '#,##0.##' }], kpis, { startCol: 4 });
+    const t2 = Core.writeTable(ws, 4, [{ header: 'Indicador', width: 52 }, { header: 'Valor', width: 18, numFmt: '#,##0.##' }], kpis, { startCol: 4 });
     ws.getColumn(3).width = 3;
-    void t1;
+    if (opts.chartPng) {
+      const r0 = Math.max(t1.lastRow, t2.lastRow) + 2;
+      const id = wb.addImage({ base64: Core.bytesToBase64(opts.chartPng), extension: 'png' });
+      ws.getCell(r0, 1).value = 'Cargos de proveedores por mes';
+      ws.getCell(r0, 1).font = { bold: true, size: 12, color: { argb: C.navy } };
+      ws.addImage(id, { tl: { col: 0, row: r0 }, ext: { width: opts.chartWidth || 720, height: opts.chartHeight || 300 } });
+    }
 
     const sheet = (name, title, cols, rows, o) => {
       const w = wb.addWorksheet(name, { views: [{ state: 'frozen', ySplit: 3 }] });
@@ -2985,7 +3146,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return wb;
   }
 
-  return { TYPES, fingerprint, pathContext, parseMsg, classifyByName, classifyByContent, processFile, aggregate, buildWorkbook, totalsBy };
+  return { TYPES, MES_CORTO, monthlyCharges, fingerprint, pathContext, parseMsg, classifyByName, classifyByContent, processFile, aggregate, buildWorkbook, totalsBy };
 });
 
 </script>
@@ -4179,7 +4340,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 /* Pantalla: Archivo anual (Bulk) */
 (function (root) {
   'use strict';
-  const { Core, Bulk, UI } = root;
+  const { Core, Bulk, UI, Chart } = root;
   const { $, esc } = UI;
   const S = { items: [], records: [], A: null, cancel: false, running: false };
   const MAX_MB = 40;
@@ -4272,6 +4433,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       kpi('Recobrado (JVU o Webi)', fmtTot(recTot)) +
       kpi('Cargos de proveedores', fmtTot(chTot), 'Reclasificado: ' + UI.num(A.reclass.reduce((a, r) => a + (r.mxn || 0), 0), 2) + ' MXN') +
       '</div>';
+    html += '<div class="block chart-card" id="bk-chart"></div>';
     html += '<div class="grid g2"><div><h3>Qué encontré</h3>' + UI.table([{ h: 'Tipo', k: 't' }, { h: 'Archivos', k: 'n', num: true }],
       Object.entries(A.counts).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ t: Bulk.TYPES[k] || k, n: v })), { total: true }) + '</div>';
     html += '<div><h3>Alertas (' + A.alerts.length + ')</h3>' + (A.alerts.length ? '<div class="scroll" style="max-height:360px">' + UI.table([{ h: 'Tipo', k: 'tipo' }, { h: 'Detalle', k: 'detalle' }], A.alerts, { limit: 300 }) + '</div>' : '<div class="msg ok">Sin alertas.</div>') + '</div></div>';
@@ -4283,11 +4445,83 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       { h: 'Mes', f: (e) => Core.pad(e.month) + '. ' + Core.MESES[e.month - 1] }, { h: 'Proveedor', k: 'provider' }, { h: 'Completas', f: (e) => e.ok + ' de 6', cls: (e) => (e.ok === 6 ? 'okc' : 'badc') }, { h: 'Falta', k: 'missing' }
     ], A.evidence);
     el.innerHTML = html;
+    renderChart();
     $('#bk-download').disabled = false;
+  }
+
+  // ---------- Gráfica: cargos por mes ----------
+  function chartData() { return Bulk.monthlyCharges(S.A, S.chartCur, Chart.SERIES, Chart.OTHER); }
+  function chartSvg(d, width) {
+    const sub = d.currency ? 'Monto en ' + d.currency + ' por mes, apilado por proveedor' : '';
+    return Chart.stackedColumns({ categories: d.categories, series: d.series, width: width || 760, height: 320, unit: d.currency, title: 'Cargos de proveedores por mes', subtitle: sub, ariaLabel: 'Cargos de proveedores por mes en ' + d.currency });
+  }
+  function renderChart() {
+    const box = $('#bk-chart');
+    const d = chartData();
+    if (!d.months.length || !d.series.length) { box.innerHTML = '<div class="muted">Sin cargos de proveedores con mes identificado: la gráfica aparece cuando hay archivos dentro de carpetas tipo Suppliers\\06. Junio\\K2.</div>'; return; }
+    S.chartCur = d.currency;
+    const width = Math.max(480, Math.min(1100, box.clientWidth - 28 || 760));
+    const ch = chartSvg(d, width);
+    box.innerHTML = (d.currencies.length > 1 ? '<div class="filters" style="margin:0 0 8px;padding:6px 0;border:0"><label>Moneda<select id="bk-cur"></select></label><span class="muted small">Cada moneda se grafica por separado (no se suman monedas distintas).</span></div>' : '') +
+      '<div class="chart-wrap">' + ch.svg + '<div class="chart-tip hidden" role="tooltip"></div></div>' +
+      (d.noMonth ? '<div class="muted small">' + d.noMonth + ' cargo(s) sin mes identificado no aparecen en la gráfica (están en la hoja “Cargos proveedores”).</div>' : '') +
+      '<details><summary>Ver tabla de datos</summary><div id="bk-chart-table" class="scroll"></div></details>';
+    if (d.currencies.length > 1) {
+      UI.options('#bk-cur', d.currencies, d.currency);
+      $('#bk-cur').addEventListener('change', () => { S.chartCur = $('#bk-cur').value; renderChart(); });
+    }
+    const rows = d.categories.map((c, i) => { const o = { mes: c }; d.series.forEach((s2) => { o[s2.name] = s2.values[i]; }); o.total = ch.totals[i]; return o; });
+    $('#bk-chart-table').innerHTML = UI.table([{ h: 'Mes', k: 'mes' }].concat(d.series.map((s2) => ({ h: s2.name, k: s2.name, num: true, d: 2 }))).concat([{ h: 'Total', k: 'total', num: true, d: 2 }]), rows, { total: true });
+    wireTooltip(box.querySelector('.chart-wrap'), d, ch);
+  }
+  function wireTooltip(wrap, d, ch) {
+    const tip = wrap.querySelector('.chart-tip');
+    const svg = wrap.querySelector('svg');
+    const fmt = (v) => UI.num(v, 2);
+    const show = (hit) => {
+      const i = Number(hit.dataset.idx);
+      if (!ch.totals[i]) { tip.classList.add('hidden'); return; }
+      tip.textContent = '';
+      const h = document.createElement('div'); h.className = 'tip-h';
+      const strong = document.createElement('b'); strong.textContent = fmt(ch.totals[i]) + ' ' + d.currency;
+      const span = document.createElement('span'); span.textContent = ' · ' + Core.MESES[d.months[i] - 1];
+      h.appendChild(strong); h.appendChild(span); tip.appendChild(h);
+      d.series.filter((s2) => s2.values[i]).slice().reverse().forEach((s2) => {
+        const row = document.createElement('div'); row.className = 'tip-row';
+        const key = document.createElement('i'); key.style.background = s2.color;
+        const v = document.createElement('b'); v.textContent = fmt(s2.values[i]);
+        const n = document.createElement('span'); n.textContent = s2.name;
+        row.appendChild(key); row.appendChild(v); row.appendChild(n); tip.appendChild(row);
+      });
+      tip.classList.remove('hidden');
+      svg.querySelectorAll('.hit').forEach((x) => x.classList.toggle('on', x === hit));
+      const r = hit.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
+      let left = r.left - wr.left + r.width / 2 + 12;
+      if (left + tip.offsetWidth > wr.width) left = r.left - wr.left + r.width / 2 - tip.offsetWidth - 12;
+      tip.style.left = Math.max(0, left) + 'px';
+      tip.style.top = '60px';
+    };
+    const hide = () => { tip.classList.add('hidden'); svg.querySelectorAll('.hit').forEach((x) => x.classList.remove('on')); };
+    svg.querySelectorAll('.hit').forEach((hit) => {
+      hit.setAttribute('tabindex', '0');
+      hit.addEventListener('pointerenter', () => show(hit));
+      hit.addEventListener('focus', () => show(hit));
+      hit.addEventListener('blur', hide);
+    });
+    svg.addEventListener('pointerleave', hide);
+  }
+  async function chartPng() {
+    const d = chartData();
+    if (!d.months.length || !d.series.length) return null;
+    const ch = chartSvg(d, 760);
+    try { return { png: await Chart.svgToPng(ch.svg, ch.width, ch.height, 2), width: ch.width, height: ch.height }; } catch (e) { console.error(e); return null; }
   }
   async function download() {
     const y = year();
-    await UI.save(y, async () => [await UI.wbFile('Consolidado anual HRSS ' + y + '.xlsx', await Bulk.buildWorkbook(S.A, { year: y }))]);
+    await UI.save(y, async () => {
+      const img = await chartPng();
+      return [await UI.wbFile('Consolidado anual HRSS ' + y + '.xlsx', await Bulk.buildWorkbook(S.A, { year: y, chartPng: img && img.png, chartWidth: img && img.width, chartHeight: img && img.height }))];
+    });
   }
   async function scanFolder() {
     const txt = $('#bk-progress-text');

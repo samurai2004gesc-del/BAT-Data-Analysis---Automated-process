@@ -7,7 +7,7 @@ const pkg = require('./package.json');
 const src = (p) => fs.readFileSync(path.join(__dirname, 'src', p), 'utf8');
 const scripts = [
   'vendor/xlsx.full.min.js', 'vendor/exceljs.min.js', 'vendor/jszip.min.js',
-  'js/core.js', 'js/hc.js', 'js/recharges.js', 'js/reclass.js', 'js/bulk.js', 'js/ui.js', 'js/ui-hc.js', 'js/ui-recharges.js', 'js/ui-reclass.js', 'js/ui-bulk.js', 'js/app.js'
+  'js/core.js', 'js/hc.js', 'js/recharges.js', 'js/reclass.js', 'js/chart.js', 'js/bulk.js', 'js/ui.js', 'js/ui-hc.js', 'js/ui-recharges.js', 'js/ui-reclass.js', 'js/ui-bulk.js', 'js/app.js'
 ];
 // Evita que un "</script>" dentro de una librería cierre la etiqueta antes de tiempo
 const safe = (code) => code.replace(/<\/script/gi, '<\\/script');

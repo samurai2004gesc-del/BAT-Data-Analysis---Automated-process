@@ -395,3 +395,29 @@ test('Bulk: reconoce archivos de todo el año y arma el consolidado con alertas'
   ['Resumen', 'Recobros por asignación', 'Cargos proveedores', 'Cargos por mes', 'CeCos asignados', 'Movimientos SAP', 'Evidencia por mes', 'Correos', 'Alertas', 'Inventario'].forEach((n) => assert.ok(names.includes(n), n));
   await wb.xlsx.writeBuffer();
 });
+
+test('Gráfica: cargos por mes apilados por proveedor (color fijo por proveedor, una moneda)', () => {
+  const B = require('../src/js/bulk.js');
+  const Chart = require('../src/js/chart.js');
+  const A = { charges: [
+    { month: 1, provider: 'EY', amount: 100, currency: 'GBP' }, { month: 1, provider: 'K2', amount: 300, currency: 'GBP' },
+    { month: 3, provider: 'K2', amount: 50.5, currency: 'GBP' }, { month: 3, provider: 'K2', amount: 9999, currency: 'MXN' },
+    { month: '', provider: 'K2', amount: 1, currency: 'GBP' }
+  ] };
+  const d = B.monthlyCharges(A, null, Chart.SERIES, Chart.OTHER);
+  assert.strictEqual(d.currency, 'GBP');
+  assert.deepStrictEqual(d.currencies, ['GBP', 'MXN']);
+  assert.deepStrictEqual(d.categories, ['Ene', 'Feb', 'Mar']);
+  assert.deepStrictEqual(d.series.map((s) => [s.name, s.color]), [['K2', Chart.SERIES[0]], ['EY', Chart.SERIES[1]]]);
+  assert.deepStrictEqual(d.series[0].values, [300, 0, 50.5]);
+  assert.strictEqual(d.noMonth, 1);
+  // Si solo queda EY (p. ej. al cambiar de moneda), conserva su color: no se repinta por posición
+  const onlyEY = B.monthlyCharges({ charges: [{ month: 2, provider: 'EY', amount: 5, currency: 'USD' }] }, null, Chart.SERIES, Chart.OTHER);
+  assert.strictEqual(onlyEY.series[0].color, Chart.SERIES[1]);
+  const ch = Chart.stackedColumns({ categories: d.categories, series: d.series, title: 'Cargos', width: 600, height: 300 });
+  assert.deepStrictEqual(ch.totals, [400, 0, 50.5]);
+  assert.match(ch.svg, /^<svg/);
+  assert.strictEqual((ch.svg.match(/class="seg"/g) || []).length, 3);
+  assert.strictEqual((ch.svg.match(/class="hit"/g) || []).length, 3);
+  assert.ok(ch.svg.includes('>400<'));
+});

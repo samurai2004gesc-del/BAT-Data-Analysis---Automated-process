@@ -1,7 +1,7 @@
 /* Pantalla: Archivo anual (Bulk) */
 (function (root) {
   'use strict';
-  const { Core, Bulk, UI } = root;
+  const { Core, Bulk, UI, Chart } = root;
   const { $, esc } = UI;
   const S = { items: [], records: [], A: null, cancel: false, running: false };
   const MAX_MB = 40;
@@ -94,6 +94,7 @@
       kpi('Recobrado (JVU o Webi)', fmtTot(recTot)) +
       kpi('Cargos de proveedores', fmtTot(chTot), 'Reclasificado: ' + UI.num(A.reclass.reduce((a, r) => a + (r.mxn || 0), 0), 2) + ' MXN') +
       '</div>';
+    html += '<div class="block chart-card" id="bk-chart"></div>';
     html += '<div class="grid g2"><div><h3>Qué encontré</h3>' + UI.table([{ h: 'Tipo', k: 't' }, { h: 'Archivos', k: 'n', num: true }],
       Object.entries(A.counts).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ t: Bulk.TYPES[k] || k, n: v })), { total: true }) + '</div>';
     html += '<div><h3>Alertas (' + A.alerts.length + ')</h3>' + (A.alerts.length ? '<div class="scroll" style="max-height:360px">' + UI.table([{ h: 'Tipo', k: 'tipo' }, { h: 'Detalle', k: 'detalle' }], A.alerts, { limit: 300 }) + '</div>' : '<div class="msg ok">Sin alertas.</div>') + '</div></div>';
@@ -105,11 +106,83 @@
       { h: 'Mes', f: (e) => Core.pad(e.month) + '. ' + Core.MESES[e.month - 1] }, { h: 'Proveedor', k: 'provider' }, { h: 'Completas', f: (e) => e.ok + ' de 6', cls: (e) => (e.ok === 6 ? 'okc' : 'badc') }, { h: 'Falta', k: 'missing' }
     ], A.evidence);
     el.innerHTML = html;
+    renderChart();
     $('#bk-download').disabled = false;
+  }
+
+  // ---------- Gráfica: cargos por mes ----------
+  function chartData() { return Bulk.monthlyCharges(S.A, S.chartCur, Chart.SERIES, Chart.OTHER); }
+  function chartSvg(d, width) {
+    const sub = d.currency ? 'Monto en ' + d.currency + ' por mes, apilado por proveedor' : '';
+    return Chart.stackedColumns({ categories: d.categories, series: d.series, width: width || 760, height: 320, unit: d.currency, title: 'Cargos de proveedores por mes', subtitle: sub, ariaLabel: 'Cargos de proveedores por mes en ' + d.currency });
+  }
+  function renderChart() {
+    const box = $('#bk-chart');
+    const d = chartData();
+    if (!d.months.length || !d.series.length) { box.innerHTML = '<div class="muted">Sin cargos de proveedores con mes identificado: la gráfica aparece cuando hay archivos dentro de carpetas tipo Suppliers\\06. Junio\\K2.</div>'; return; }
+    S.chartCur = d.currency;
+    const width = Math.max(480, Math.min(1100, box.clientWidth - 28 || 760));
+    const ch = chartSvg(d, width);
+    box.innerHTML = (d.currencies.length > 1 ? '<div class="filters" style="margin:0 0 8px;padding:6px 0;border:0"><label>Moneda<select id="bk-cur"></select></label><span class="muted small">Cada moneda se grafica por separado (no se suman monedas distintas).</span></div>' : '') +
+      '<div class="chart-wrap">' + ch.svg + '<div class="chart-tip hidden" role="tooltip"></div></div>' +
+      (d.noMonth ? '<div class="muted small">' + d.noMonth + ' cargo(s) sin mes identificado no aparecen en la gráfica (están en la hoja “Cargos proveedores”).</div>' : '') +
+      '<details><summary>Ver tabla de datos</summary><div id="bk-chart-table" class="scroll"></div></details>';
+    if (d.currencies.length > 1) {
+      UI.options('#bk-cur', d.currencies, d.currency);
+      $('#bk-cur').addEventListener('change', () => { S.chartCur = $('#bk-cur').value; renderChart(); });
+    }
+    const rows = d.categories.map((c, i) => { const o = { mes: c }; d.series.forEach((s2) => { o[s2.name] = s2.values[i]; }); o.total = ch.totals[i]; return o; });
+    $('#bk-chart-table').innerHTML = UI.table([{ h: 'Mes', k: 'mes' }].concat(d.series.map((s2) => ({ h: s2.name, k: s2.name, num: true, d: 2 }))).concat([{ h: 'Total', k: 'total', num: true, d: 2 }]), rows, { total: true });
+    wireTooltip(box.querySelector('.chart-wrap'), d, ch);
+  }
+  function wireTooltip(wrap, d, ch) {
+    const tip = wrap.querySelector('.chart-tip');
+    const svg = wrap.querySelector('svg');
+    const fmt = (v) => UI.num(v, 2);
+    const show = (hit) => {
+      const i = Number(hit.dataset.idx);
+      if (!ch.totals[i]) { tip.classList.add('hidden'); return; }
+      tip.textContent = '';
+      const h = document.createElement('div'); h.className = 'tip-h';
+      const strong = document.createElement('b'); strong.textContent = fmt(ch.totals[i]) + ' ' + d.currency;
+      const span = document.createElement('span'); span.textContent = ' · ' + Core.MESES[d.months[i] - 1];
+      h.appendChild(strong); h.appendChild(span); tip.appendChild(h);
+      d.series.filter((s2) => s2.values[i]).slice().reverse().forEach((s2) => {
+        const row = document.createElement('div'); row.className = 'tip-row';
+        const key = document.createElement('i'); key.style.background = s2.color;
+        const v = document.createElement('b'); v.textContent = fmt(s2.values[i]);
+        const n = document.createElement('span'); n.textContent = s2.name;
+        row.appendChild(key); row.appendChild(v); row.appendChild(n); tip.appendChild(row);
+      });
+      tip.classList.remove('hidden');
+      svg.querySelectorAll('.hit').forEach((x) => x.classList.toggle('on', x === hit));
+      const r = hit.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
+      let left = r.left - wr.left + r.width / 2 + 12;
+      if (left + tip.offsetWidth > wr.width) left = r.left - wr.left + r.width / 2 - tip.offsetWidth - 12;
+      tip.style.left = Math.max(0, left) + 'px';
+      tip.style.top = '60px';
+    };
+    const hide = () => { tip.classList.add('hidden'); svg.querySelectorAll('.hit').forEach((x) => x.classList.remove('on')); };
+    svg.querySelectorAll('.hit').forEach((hit) => {
+      hit.setAttribute('tabindex', '0');
+      hit.addEventListener('pointerenter', () => show(hit));
+      hit.addEventListener('focus', () => show(hit));
+      hit.addEventListener('blur', hide);
+    });
+    svg.addEventListener('pointerleave', hide);
+  }
+  async function chartPng() {
+    const d = chartData();
+    if (!d.months.length || !d.series.length) return null;
+    const ch = chartSvg(d, 760);
+    try { return { png: await Chart.svgToPng(ch.svg, ch.width, ch.height, 2), width: ch.width, height: ch.height }; } catch (e) { console.error(e); return null; }
   }
   async function download() {
     const y = year();
-    await UI.save(y, async () => [await UI.wbFile('Consolidado anual HRSS ' + y + '.xlsx', await Bulk.buildWorkbook(S.A, { year: y }))]);
+    await UI.save(y, async () => {
+      const img = await chartPng();
+      return [await UI.wbFile('Consolidado anual HRSS ' + y + '.xlsx', await Bulk.buildWorkbook(S.A, { year: y, chartPng: img && img.png, chartWidth: img && img.width, chartHeight: img && img.height }))];
+    });
   }
   async function scanFolder() {
     const txt = $('#bk-progress-text');

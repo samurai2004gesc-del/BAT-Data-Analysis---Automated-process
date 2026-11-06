@@ -135,3 +135,14 @@ table.t input { padding: 4px 6px; width: 100%; }
 table.t tr.gone td { color: #8a949e; font-style: italic; }
 .progress { height: 10px; background: #e3e8ee; border-radius: 99px; overflow: hidden; margin: 8px 0 4px; }
 .progress > div { height: 100%; width: 0; background: var(--accent); transition: width .15s; }
+.chart-card { margin: 14px 0; }
+.chart-wrap { position: relative; overflow-x: auto; }
+.chart-wrap svg { display: block; max-width: 100%; height: auto; }
+.chart-wrap .hit { cursor: default; outline: none; }
+.chart-wrap .hit.on, .chart-wrap .hit:focus { fill: rgba(31, 78, 121, .06); }
+.chart-tip { position: absolute; background: #fff; border: 1px solid rgba(11,11,11,.12); border-radius: 8px; padding: 8px 10px; box-shadow: 0 4px 14px rgba(0,0,0,.12); font-size: 12.5px; pointer-events: none; min-width: 150px; z-index: 3; }
+.chart-tip .tip-h { margin-bottom: 4px; color: #52514e; }
+.chart-tip .tip-h b { color: #0b0b0b; font-size: 13.5px; }
+.chart-tip .tip-row { display: flex; align-items: center; gap: 6px; color: #52514e; font-variant-numeric: tabular-nums; }
+.chart-tip .tip-row i { width: 12px; height: 3px; border-radius: 2px; display: inline-block; }
+.chart-tip .tip-row b { color: #0b0b0b; font-weight: 600; min-width: 80px; text-align: right; }

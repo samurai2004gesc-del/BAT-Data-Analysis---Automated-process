@@ -175,6 +175,7 @@ const shots = process.argv[2];
   await page.waitForSelector('#bk-results .block');
   await shot('11-bulk');
   const bkText = await page.textContent('#bk-results');
+  check(/Cargos de proveedores por mes|Sin cargos de proveedores con mes/.test(bkText), 'Bulk: sección de gráfica presente');
   check(/Correo de Global/.test(bkText) && /Export KSB1/.test(bkText) && /HR Input Report/.test(bkText), 'Bulk: reconoce correo, KSB1 y HR Input de la carpeta de ejemplos');
   const bk = await download('#bk-download');
   check(XLSX.readFile(bk.path).SheetNames.includes('Inventario'), 'Bulk: consolidado anual (' + bk.name + ')');
