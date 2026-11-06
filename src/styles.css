@@ -133,3 +133,5 @@ table.t input { padding: 4px 6px; width: 100%; }
 .save-where { margin-left: 4px; }
 .filecard label.check { margin: 4px 0; }
 table.t tr.gone td { color: #8a949e; font-style: italic; }
+.progress { height: 10px; background: #e3e8ee; border-radius: 99px; overflow: hidden; margin: 8px 0 4px; }
+.progress > div { height: 100%; width: 0; background: var(--accent); transition: width .15s; }

@@ -21,6 +21,8 @@
     <a data-page="sap">📤 Formatos SAP (SC / Webi / JVU / Accrual)</a>
     <div class="nav-title">Costos de movilidad</div>
     <a data-page="reclass">💱 Reclasificación K2 / EY / Deloitte</a>
+    <div class="nav-title">Archivo anual</div>
+    <a data-page="bulk">📚 Bulk: todo el año</a>
     <div class="nav-title">General</div>
     <a data-page="config">⚙️ Configuración</a>
     <a data-page="help">❓ Ayuda</a>
@@ -35,6 +37,7 @@
         <a class="card link" data-goto="hc"><h3>📊 HC BPC vs Aprobado</h3><p>Reemplaza los 6 archivos con macros: lee el HR Input Report de BPC, aplica la regla de conteo SOP / COPLAN y compara contra el HC aprobado por grado, función y entidad.</p><span class="tag">HR Input + Catálogo aprobado → Reporte de variaciones</span></a>
         <a class="card link" data-goto="tracker"><h3>🗂️ Tracker de Recobros</h3><p>Arma el Tracker del semestre con Note Title / Note Text para SAP, nombres de archivo, rutas, datos faltantes y columnas de seguimiento de aprobaciones.</p><span class="tag">Lista de asignaciones → Tracker H1/H2</span></a>
         <a class="card link" data-goto="sap"><h3>📤 Formatos SAP</h3><p>De Estimate Benefits saca el Shopping Cart, Webi, JVU y Accrual en Excel y TXT (tabulado), sin filas vacías, con la nomenclatura <code>{KEY}. Webi {Nombre}</code> y en sus carpetas.</p><span class="tag">Estimate Benefits → ZIP listo para SAP NEO</span></a>
+        <a class="card link" data-goto="bulk"><h3>📚 Bulk: todo el año</h3><p>Mete cientos de archivos mezclados del año (Webis, JVUs, proveedores, KSB1, correos .msg…). La app reconoce cada uno y arma un consolidado anual con alertas de lo que falta o no cuadra.</p><span class="tag">Carpeta del año → Consolidado + alertas</span></a>
         <a class="card link" data-goto="reclass"><h3>💱 Reclasificación de movilidad</h3><p>Completa HRBP / función / CeCo desde el histórico, valida que los CeCos sean de MX15, calcula el tipo de cambio con KSB1 y genera la Reclasificación por CeCo.</p><span class="tag">Archivo del proveedor → Sent to HRBPs → Reclasificación</span></a>
       </div>
       <div class="note"><strong>Primera vez:</strong> ve a <a data-goto="config">Configuración</a>, captura tu OneID y guarda la configuración en el USB (botón “Exportar configuración”) para no perder las equivalencias si cambias de computadora.</div>
@@ -263,6 +266,34 @@
       </div>
     </section>
 
+    <!-- ================= BULK ================= -->
+    <section class="page" id="page-bulk">
+      <h1>Archivo anual (Bulk)</h1>
+      <p class="lead">Mete aquí todo lo que tengas del año, cientos de archivos mezclados: Webis, JVUs, Accruals, Shopping Carts, archivos de K2 / EY / Deloitte, Sent y Retrieved, Reclasificaciones, exports de KSB1, All CeCos, HR Inputs, Trackers y correos .msg. La app reconoce cada uno por su nombre, su carpeta y su contenido, y arma un consolidado del año con alertas de lo que falta o no cuadra.</p>
+      <div class="step">
+        <div class="step-h"><span class="stepnum">1</span><h2>Agrega los archivos</h2><span class="muted">puedes combinar las tres formas</span></div>
+        <div class="grid g4"><label>Año<input id="bk-year" type="number"></label></div>
+        <div class="grid g2">
+          <div class="drop" id="bk-drop"><b>Arrastra aquí archivos o carpetas completas</b><span>Se respetan las subcarpetas (Suppliers\06. Junio\K2, Recharges\H2'26\Webis…) para saber mes, proveedor y empleado</span></div>
+          <div class="actions" style="margin:0;flex-direction:column;align-items:stretch">
+            <button id="bk-scan">🔎 Escanear mi carpeta</button>
+            <label class="btnlike" style="justify-content:center">📁 Elegir una carpeta…<input type="file" id="bk-folder" webkitdirectory multiple hidden></label>
+          </div>
+        </div>
+        <div class="info" id="bk-queue"></div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="bk-run" disabled>▶ Analizar archivos</button>
+        <button id="bk-cancel" class="hidden danger">■ Detener</button>
+        <button id="bk-clear" disabled>Vaciar lista</button>
+        <button id="bk-reset">Empezar de nuevo</button>
+      </div>
+      <div id="bk-progress" class="hidden"><div class="progress"><div id="bk-bar"></div></div><div id="bk-progress-text" class="muted small"></div></div>
+      <div id="bk-results"></div>
+      <div class="actions"><button class="primary" id="bk-download" disabled>⬇ Descargar consolidado anual</button><span class="muted small" id="bk-where"></span></div>
+      <p class="muted small">El consolidado trae: Resumen, Recobros por asignación, Documentos de recobro, Cargos de proveedores (detalle y por mes), CeCos asignados validados, Reclasificaciones, Movimientos SAP sin duplicados, Evidencia por mes, Headcount, Trackers, Correos, Alertas e Inventario de todos los archivos. Los archivos de más de 40 MB solo se inventarían.</p>
+    </section>
+
     <!-- ================= CONFIGURACIÓN ================= -->
     <section class="page" id="page-config">
       <h1>Configuración</h1>
@@ -327,6 +358,7 @@
           <li><b>Borradores de correo (.eml):</b> se abren en Outlook con destinatarios, asunto, texto y adjunto listos.</li>
           <li><b>Tracker que se actualiza:</b> arrastra el Tracker anterior y se conserva lo capturado; la columna “Siguiente paso” dice qué falta.</li>
           <li><b>Headcount:</b> varios mercados a la vez y comparación contra la corrida anterior.</li>
+          <li><b>Bulk:</b> analiza todos los archivos del año de una vez y genera el consolidado anual con alertas.</li>
         </ul>
         <h3>Privacidad</h3>
         <p>La app no se conecta a internet: todo se procesa en la memoria del navegador de tu laptop. No sube archivos a ningún lado.</p>

@@ -258,6 +258,27 @@
     for await (const [name, h] of dir.entries()) if (h.kind === 'file') names.push(name);
     return names;
   }
+  /** Carpeta del año ({Año}) a partir de lo elegido; si eligieron Tracker, se usa esa misma. */
+  async function yearDir(year) {
+    const n = Core.norm(folder.name);
+    if (n === String(year) || n === 'tracker') return folder;
+    try { return await subdir(folder, [String(year)], false); } catch (e) { return folder; }
+  }
+  /** Recorre la carpeta del año y devuelve [{path, getFile}] de todos los archivos (recursivo). */
+  async function walkYear(year, onProgress) {
+    await ensureFolderPermission();
+    const root = await yearDir(year);
+    const out = [];
+    const walk = async (dir, prefix) => {
+      for await (const [name, h] of dir.entries()) {
+        if (/^[~.]|^(thumbs\.db|desktop\.ini)$/i.test(name)) continue;
+        if (h.kind === 'directory') await walk(h, prefix + name + '/');
+        else { out.push({ path: prefix + name, getFile: () => h.getFile() }); if (onProgress && out.length % 50 === 0) onProgress(out.length); }
+      }
+    };
+    await walk(root, root.name + '/');
+    return out;
+  }
   /** Texto corto que indica dónde se guardará (junto a los botones). */
   function whereText(rel) {
     return saveMode() === 'folder' ? '📁 Se guarda en ' + folder.name + '\\' + String(rel || '').replace(/\//g, '\\') : '⬇ Se guarda en Descargas';
@@ -293,6 +314,6 @@
 
   root.UI = {
     $, $$, esc, num, toast, msg, clear, table, dropZone, withBusy, copy, copyable, options, readFile, loadConfig, saveConfig, config, profile, exportConfig, importConfig, resetConfig,
-    folderSupported, folderName, onFolderChange, loadFolder, pickFolder, forgetFolder, saveMode, save, listFolder, wbFile, whereText, contacts, emailsFor, downloadEml
+    folderSupported, folderName, onFolderChange, loadFolder, pickFolder, forgetFolder, saveMode, save, listFolder, walkYear, wbFile, whereText, contacts, emailsFor, downloadEml
   };
 })(typeof self !== 'undefined' ? self : this);

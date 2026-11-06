@@ -188,6 +188,7 @@ function writeAll(dir, dateStr) {
   save(consolidado(), '06 ConsolidadoCharges (ejemplo).xlsx');
   save(one(allCecos(), 'Sheet1'), '07 All CeCos - Approvers (ejemplo).xlsx');
   save(one(ksb1(), 'Sheet1'), '08 KSB1 EXPORT (ejemplo).xlsx');
+  fs.writeFileSync(path.join(dir, '09 K2 costs - Non-PO billing MX15 (ejemplo).msg'), msgFile('K2 costs - Non-PO billing MX15 — June 2026', 'Global Mobility (ejemplo)', Date.UTC(2026, 5, 24, 13), ['K2 MX15.xlsx']));
 }
 
 module.exports = { hrInput, masterWorkbook, assignmentsWorkbook, estimateBenefits, supplierK2, consolidado, allCecos, ksb1, writeAll, d };
@@ -199,3 +200,19 @@ if (require.main === module) {
   writeAll(out, ds);
   console.log('Ejemplos generados en', out);
 }
+
+/** Correo .msg de Outlook (formato CFB) con asunto, remitente, fecha y adjuntos. */
+function msgFile(subject, from, dateUtcMs, attachments) {
+  const CFB = XLSX.CFB;
+  const cfb = CFB.utils.cfb_new();
+  const u16 = (s) => Buffer.from(s, 'utf16le');
+  CFB.utils.cfb_add(cfb, '/__substg1.0_0037001F', u16(subject));
+  CFB.utils.cfb_add(cfb, '/__substg1.0_0C1A001F', u16(from));
+  const props = Buffer.alloc(48);
+  props.writeUInt16LE(0x0040, 32); props.writeUInt16LE(0x0E06, 34);
+  props.writeBigUInt64LE((BigInt(dateUtcMs) + 11644473600000n) * 10000n, 40);
+  CFB.utils.cfb_add(cfb, '/__properties_version1.0', props);
+  (attachments || []).forEach((a, i) => CFB.utils.cfb_add(cfb, '/__attach_version1.0_#' + String(i).padStart(8, '0') + '/__substg1.0_3707001F', u16(a)));
+  return CFB.write(cfb, { type: 'buffer' });
+}
+module.exports.msgFile = msgFile;

@@ -64,6 +64,52 @@ En Estimate Benefits elige el KEY y el tipo, guarda el archivo y arrástralo a l
 - **D.** Checklist de las 6 evidencias. Si elegiste la carpeta Tracker, revisa directo `Suppliers\06. Junio\K2`.
 - Borradores de correo con el archivo adjunto: a los HRBPs (A), a cada HRBP con CeCos por corregir (B) y a Planning con la reclasificación (C).
 
+### 📚 Bulk: archivo anual
+Aquí metes **todo lo del año de una vez**, aunque sean cientos de archivos mezclados. Hay tres formas de cargarlos, y se pueden combinar:
+- arrastrar archivos o carpetas completas;
+- elegir una carpeta;
+- o, si ya elegiste la carpeta Tracker, el botón **Escanear mi carpeta**, que recorre `{Año}\…` con todas sus subcarpetas.
+
+La app reconoce cada archivo por su nombre, su carpeta (mes, proveedor, H1/H2, KEY y empleado) y su contenido:
+
+| Tipo de archivo | Cómo lo reconoce |
+|---|---|
+| Webi, JVU, Accrual, Shopping Cart (.xlsx y .txt) | Por la nomenclatura `{KEY}. {Tipo} {Nombre}` o por sus columnas |
+| Archivos de K2 / EY / Deloitte | Por la carpeta `Suppliers\MM. Mes\Proveedor` y por tener nombre + monto |
+| Sent / Retrieved from HRBPs, Reclasificación por CeCo | Por el nombre del archivo |
+| Export de KSB1 | Por el nombre `mm-dd-aaaa EXPORT` o por sus columnas de importe |
+| All CeCos - Approvers | Por el nombre o por sus columnas de CeCo y sociedad |
+| HR Input, maestros de HC, Estimate Benefits, Trackers, ConsolidadoCharges | Por sus hojas y encabezados |
+| Correos `.msg` de Outlook | Lee asunto, remitente, fecha y nombres de los adjuntos |
+| Cualquier otro archivo (PDF, Word…) | Solo se registra en el inventario |
+
+Con eso arma el **Consolidado anual**, con estas hojas:
+- Resumen
+- Recobros por asignación (SC / Webi / JVU / Accrual por persona y semestre)
+- Documentos de recobro
+- Cargos de proveedores (detalle y matriz por mes)
+- CeCos asignados, validados contra el All CeCos más reciente
+- Reclasificaciones
+- Movimientos SAP, sin duplicar movimientos que aparecen en varias descargas
+- Evidencia por mes y proveedor
+- Headcount
+- Trackers
+- Correos
+- Alertas
+- Inventario de todos los archivos
+
+**Alertas que detecta:**
+- Webi sin JVU ni Accrual, o JVU sin Webi.
+- Monto del Webi distinto al del JVU.
+- Webi, JVU o Accrual sin su TXT para SAP.
+- CeCos fuera de MX15.
+- Meses con cargos de proveedor pero sin reclasificación.
+- Evidencia incompleta.
+- Archivos duplicados (mismo contenido aunque tengan otro nombre).
+- Archivos que no se pudieron leer.
+
+Con 800 archivos de prueba tardó 2 segundos. Con archivos reales, que pesan más, calcula de 1 a 3 minutos. Los archivos de más de 40 MB solo se registran en el inventario.
+
 ## Guardar directo en OneDrive (opcional)
 En **Configuración › Dónde guardar los resultados**, elige "Directo en mi carpeta Tracker" y selecciona la carpeta `…\Gerencia HRSS-Organización - General\2026\Tracker`. También sirve la carpeta "General": la app entra sola a `{Año}\Tracker`.
 

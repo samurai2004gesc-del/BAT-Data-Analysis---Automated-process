@@ -166,6 +166,19 @@ const shots = process.argv[2];
   await page.waitForSelector('#rc-ev-result .checklist');
   await shot('08-reclas-d');
 
+  // ---- Bulk: todo el año ----
+  await page.click('#nav a[data-page=bulk]');
+  await page.fill('#bk-year', '2026');
+  await page.setInputFiles('#bk-folder', path.join(ROOT, 'ejemplos'));
+  await page.waitForFunction(() => /\d+<\/b> archivo/.test(document.querySelector('#bk-queue').innerHTML));
+  await page.click('#bk-run');
+  await page.waitForSelector('#bk-results .block');
+  await shot('11-bulk');
+  const bkText = await page.textContent('#bk-results');
+  check(/Correo de Global/.test(bkText) && /Export KSB1/.test(bkText) && /HR Input Report/.test(bkText), 'Bulk: reconoce correo, KSB1 y HR Input de la carpeta de ejemplos');
+  const bk = await download('#bk-download');
+  check(XLSX.readFile(bk.path).SheetNames.includes('Inventario'), 'Bulk: consolidado anual (' + bk.name + ')');
+
   // ---- Guardar directo en la carpeta Tracker (OneDrive simulado) ----
   await page.click('#nav a[data-page=config]');
   await page.click('#cfg-folder-pick');
@@ -208,6 +221,14 @@ const shots = process.argv[2];
     '2026/Tracker/Suppliers/06. Junio/K2/Reclasificacion por CeCo.xlsx'
   ];
   check(expect.every((e) => mem.includes(e)), 'Archivos guardados en sus carpetas (' + mem.length + '): ' + expect.filter((e) => !mem.includes(e)).join(' | '));
+  // Bulk escaneando la carpeta elegida
+  await page.click('#nav a[data-page=bulk]');
+  await page.click('#bk-reset');
+  await page.click('#bk-scan');
+  await page.waitForFunction(() => /\d+<\/b> archivo/.test(document.querySelector('#bk-queue').innerHTML));
+  await page.click('#bk-run');
+  await page.waitForSelector('#bk-results .block');
+  check(/Sent to HRBPs/.test(await page.textContent('#bk-results')), 'Bulk: escanea la carpeta del año (' + (await page.textContent('#bk-progress-text')) + ')');
   // Volver a guardar pregunta antes de reemplazar (el diálogo se acepta)
   await page.click('#nav a[data-page=sap]');
   await page.click('#sap-zip');

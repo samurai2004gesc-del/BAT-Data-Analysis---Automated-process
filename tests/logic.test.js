@@ -319,3 +319,79 @@ test('Reclasificación: correo para Planning y ruta de la carpeta del proveedor'
   assert.match(m.body, /1,500\.50/);
   assert.strictEqual(RC.supplierRelPath(6, 'K2'), 'Suppliers/06. Junio/K2');
 });
+
+test('Bulk: reconoce archivos de todo el año y arma el consolidado con alertas', async () => {
+  const B = require('../src/js/bulk.js');
+  const xbuf = (wb) => new Uint8Array(XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }));
+  const oneWb = (ws, name) => { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, name || 'Sheet1'); return wb; };
+  const files = [];
+  const add = (path, data) => files.push({ path, size: data.length, lastModified: Date.UTC(2026, 5, 1), data });
+  // Proveedor junio (completo salvo Reclasificación) y julio (solo el reporte)
+  add('2026/Tracker/Suppliers/06. Junio/K2/K2 MX15.xlsx', xbuf(oneWb(F.supplierK2(), 'MX15')));
+  const sup = RC.detectSupplier(Core.sheetRows(one(F.supplierK2()).Sheets.S));
+  const cons = roundtrip(F.consolidado());
+  const en = RC.enrich(sup, RC.readSource(Core.sheetRows(cons.Sheets[cons.SheetNames[0]]), 'H'), []);
+  const sentWb = await RC.buildSentToHRBP(sup, en, { sociedad: 'MX15' });
+  const sentBuf = new Uint8Array(await sentWb.xlsx.writeBuffer());
+  add('2026/Tracker/Suppliers/06. Junio/K2/Sent to HRBPs - MX15 K2.xlsx', sentBuf);
+  add('2026/Tracker/Suppliers/06. Junio/K2/Retrieved From HRBPs - MX15 K2.xlsx', sentBuf);
+  add('2026/Tracker/Suppliers/06. Junio/K2/K2 costs - Non-PO billing MX15 — June 2026.msg', new Uint8Array(F.msgFile('K2 costs - Non-PO billing MX15 — June 2026', 'Global Mobility', Date.UTC(2026, 5, 24, 13), ['K2 MX15.xlsx'])));
+  add('2026/Tracker/Suppliers/07. Julio/K2/K2 MX15.xlsx', xbuf(oneWb(F.supplierK2(), 'MX15')));
+  // Recobros generados por la app
+  const today = Core.serialToYMD(Core.todaySerial());
+  const ebBuf = XLSX.write(F.estimateBenefits(String(today.y) + Core.pad(today.m) + Core.pad(today.d)), { type: 'buffer', bookType: 'xlsx' });
+  const pr = await R.processWorkbook({ name: 'EB.xlsx', buffer: ebBuf, wb: XLSX.read(ebBuf, { type: 'buffer' }) });
+  const { files: rf } = await R.buildFiles([pr], { half: 'H2', year: 2026 });
+  rf.filter((f) => !/Accrual/.test(f.path)).forEach((f) => add('2026/Tracker/' + f.path, f.data));
+  // Webi sin JVU de otra persona
+  add("2026/Tracker/Recharges/H2'26/Webis/2. Garcia Ruiz Ana/2. Webi Garcia Ruiz Ana.xlsx", rf.find((f) => /Webi .*xlsx$/.test(f.path)).data);
+  // Catálogos y SAP (KSB1 repetido en dos descargas)
+  add('2026/Tracker/All CeCos - Approvers.xlsx', xbuf(oneWb(F.allCecos())));
+  add('2026/Tracker/Reportes SAP 2026 K2/06-24-2026 EXPORT.XLSX', xbuf(oneWb(F.ksb1())));
+  add('2026/Tracker/Reportes SAP 2026 K2/06-29-2026 EXPORT.XLSX', xbuf(oneWb(F.ksb1())));
+  add('2026/HC/HR Input CAR.xlsx', xbuf(oneWb(F.hrInput(), 'HR Input')));
+  add('2026/Varios/Notas.pdf', new Uint8Array([37, 80, 68, 70]));
+  add('2026/Varios/Basura.xlsx', new Uint8Array([1, 2, 3, 4, 5]));
+
+  const recs = files.map((f) => B.processFile(f, { year: 2026 }));
+  const type = (p) => recs.find((r) => r.path.endsWith(p)).type;
+  assert.strictEqual(type('06. Junio/K2/K2 MX15.xlsx'), 'supplier');
+  assert.strictEqual(type('Sent to HRBPs - MX15 K2.xlsx'), 'sent');
+  assert.strictEqual(type('Retrieved From HRBPs - MX15 K2.xlsx'), 'retrieved');
+  assert.strictEqual(type('June 2026.msg'), 'msg-global');
+  assert.strictEqual(type('1. Webi Perez Lopez Juan Carlos.txt'), 'webi');
+  assert.strictEqual(type('1. JVU Perez Lopez Juan Carlos.xlsx'), 'jvu');
+  assert.strictEqual(type('1. SC Perez Lopez Juan Carlos.xlsx'), 'sc');
+  assert.strictEqual(type('All CeCos - Approvers.xlsx'), 'cecos');
+  assert.strictEqual(type('06-24-2026 EXPORT.XLSX'), 'ksb1');
+  assert.strictEqual(type('HR Input CAR.xlsx'), 'hrinput');
+  assert.strictEqual(type('Notas.pdf'), 'otro');
+  const msg = recs.find((r) => r.type === 'msg-global').data;
+  assert.strictEqual(msg.from, 'Global Mobility');
+  assert.deepStrictEqual(msg.attachments, ['K2 MX15.xlsx']);
+  assert.strictEqual(Core.fmtDate(msg.date), '24/06/2026');
+  const ctx = recs.find((r) => r.path.endsWith('June 2026.msg')).ctx;
+  assert.deepStrictEqual([ctx.month, ctx.provider], [6, 'K2']);
+
+  const A = B.aggregate(recs, { sociedad: 'MX15' });
+  const perez = A.recharges.find((e) => e.key === '1');
+  assert.strictEqual(perez.jvu, 22586.23);
+  assert.strictEqual(perez.webi, 22586.23);
+  assert.strictEqual(perez.half, 'H2');
+  assert.strictEqual(A.docs.find((d) => d.type === 'webi' && d.key === '1').hasTxt, true);
+  const tipos = A.alerts.map((a) => a.tipo);
+  assert.ok(tipos.includes('Webi sin JVU ni Accrual')); // Garcia Ruiz Ana
+  assert.ok(tipos.includes('CeCo fuera de MX15'));
+  assert.ok(tipos.includes('Archivo duplicado')); // las dos descargas idénticas de KSB1
+  assert.ok(tipos.includes('Cargos sin reclasificación'));
+  assert.ok(tipos.includes('Evidencia incompleta'));
+  assert.ok(tipos.includes('No se pudo leer') || tipos.includes('Excel no reconocido'));
+  assert.strictEqual(A.sap.length, 3); // las dos descargas de KSB1 no se duplican
+  assert.strictEqual(A.charges.filter((c) => c.month === 6).length, 4);
+  assert.strictEqual(A.evidence.find((e) => e.month === 6).ok, 4);
+  assert.strictEqual(A.hc[0].market, 'CAR');
+  const wb = await B.buildWorkbook(A, { year: 2026 });
+  const names = wb.worksheets.map((w) => w.name);
+  ['Resumen', 'Recobros por asignación', 'Cargos proveedores', 'Cargos por mes', 'CeCos asignados', 'Movimientos SAP', 'Evidencia por mes', 'Correos', 'Alertas', 'Inventario'].forEach((n) => assert.ok(names.includes(n), n));
+  await wb.xlsx.writeBuffer();
+});

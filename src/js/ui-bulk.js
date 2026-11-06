@@ -1,0 +1,160 @@
+/* Pantalla: Archivo anual (Bulk) */
+(function (root) {
+  'use strict';
+  const { Core, Bulk, UI } = root;
+  const { $, esc } = UI;
+  const S = { items: [], records: [], A: null, cancel: false, running: false };
+  const MAX_MB = 40;
+  const SKIP = /(^|\/)(~\$|\.)|(^|\/)(thumbs\.db|desktop\.ini)$/i;
+
+  function year() { return Number($('#bk-year').value) || new Date().getFullYear(); }
+  function addItems(list) {
+    const known = new Set(S.items.map((i) => i.path));
+    let n = 0;
+    list.forEach((it) => { if (!SKIP.test(it.path) && !known.has(it.path)) { S.items.push(it); known.add(it.path); n++; } });
+    renderQueue();
+    if (n) UI.toast(n + ' archivo(s) agregados', 'ok', 2500);
+  }
+  function renderQueue() {
+    $('#bk-queue').innerHTML = S.items.length ? '<b>' + S.items.length + '</b> archivo(s) listos para analizar' + (S.records.length ? ' · ' + S.records.length + ' ya analizados' : '') : '<span class="muted">Aún no hay archivos.</span>';
+    $('#bk-run').disabled = !S.items.length || S.running;
+    $('#bk-clear').disabled = !S.items.length || S.running;
+  }
+
+  // Carpetas arrastradas: recorre las entradas (readEntries devuelve lotes de 100)
+  async function entriesToItems(entries) {
+    const out = [];
+    const walk = async (entry) => {
+      if (entry.isFile) {
+        out.push({ path: entry.fullPath.replace(/^\//, ''), getFile: () => new Promise((res, rej) => entry.file(res, rej)) });
+      } else if (entry.isDirectory) {
+        const reader = entry.createReader();
+        let batch;
+        do {
+          batch = await new Promise((res, rej) => reader.readEntries(res, rej));
+          for (const e of batch) await walk(e);
+        } while (batch.length);
+      }
+    };
+    for (const e of entries) if (e) await walk(e);
+    return out;
+  }
+  function filesToItems(files) {
+    return Array.from(files).map((f) => ({ path: f.webkitRelativePath || f.name, getFile: async () => f }));
+  }
+
+  async function run() {
+    S.running = true; S.cancel = false;
+    $('#bk-cancel').classList.remove('hidden');
+    renderQueue();
+    const bar = $('#bk-bar'), txt = $('#bk-progress-text');
+    $('#bk-progress').classList.remove('hidden');
+    const pending = S.items.slice();
+    const t0 = Date.now();
+    let i = 0;
+    for (const it of pending) {
+      if (S.cancel) break;
+      i++;
+      bar.style.width = Math.round((i / pending.length) * 100) + '%';
+      txt.textContent = 'Leyendo ' + i + ' de ' + pending.length + ' · ' + it.path;
+      try {
+        const f = await it.getFile();
+        if (f.size > MAX_MB * 1024 * 1024) {
+          S.records.push({ path: it.path, name: f.name, folder: it.path.split('/').slice(0, -1).join('/'), size: f.size, modified: f.lastModified, ctx: Bulk.pathContext(it.path), type: 'otro', note: 'Más de ' + MAX_MB + ' MB: no se leyó' });
+        } else {
+          const data = new Uint8Array(await f.arrayBuffer());
+          S.records.push(Bulk.processFile({ path: it.path, size: f.size, lastModified: f.lastModified, data }, { year: year() }));
+        }
+      } catch (e) {
+        S.records.push({ path: it.path, name: it.path.split('/').pop(), folder: '', size: 0, ctx: Bulk.pathContext(it.path), type: 'error', note: e.message || String(e) });
+      }
+      S.items.splice(S.items.indexOf(it), 1);
+      if (i % 3 === 0) await new Promise((r) => setTimeout(r, 0)); // deja respirar a la pantalla
+    }
+    S.running = false;
+    $('#bk-cancel').classList.add('hidden');
+    txt.textContent = (S.cancel ? 'Detenido. ' : 'Listo. ') + S.records.length + ' archivo(s) analizados en ' + Math.round((Date.now() - t0) / 1000) + ' s.';
+    renderQueue();
+    S.A = Bulk.aggregate(S.records, { sociedad: UI.config().sociedad || 'MX15' });
+    renderResults();
+  }
+
+  function kpi(label, value, sub) { return '<div class="block"><div class="muted small">' + esc(label) + '</div><h2>' + value + '</h2>' + (sub ? '<span class="muted small">' + sub + '</span>' : '') + '</div>'; }
+  function renderResults() {
+    const A = S.A;
+    if (!A) return;
+    const el = $('#bk-results');
+    const recog = A.records.filter((r) => !['otro', 'excel', 'error'].includes(r.type)).length;
+    const recTot = Bulk.totalsBy(A.recharges.filter((e) => e.jvu !== null || e.webi !== null), (e) => e.currency || '?', (e) => (e.jvu !== null ? e.jvu : e.webi));
+    const chTot = Bulk.totalsBy(A.charges, (c) => c.currency || '?', (c) => c.amount);
+    const fmtTot = (o) => Object.entries(o).map(([k, v]) => UI.num(v, 2) + ' ' + esc(k)).join('<br>') || '—';
+    let html = '<div class="grid g4">' +
+      kpi('Archivos analizados', UI.num(A.records.length), recog + ' reconocidos · ' + (A.records.length - recog) + ' otros') +
+      kpi('Asignaciones con recobro', UI.num(A.recharges.length), A.recharges.filter((e) => e.jvu !== null || e.accrual !== null).length + ' con JVU / Accrual') +
+      kpi('Recobrado (JVU o Webi)', fmtTot(recTot)) +
+      kpi('Cargos de proveedores', fmtTot(chTot), 'Reclasificado: ' + UI.num(A.reclass.reduce((a, r) => a + (r.mxn || 0), 0), 2) + ' MXN') +
+      '</div>';
+    html += '<div class="grid g2"><div><h3>Qué encontré</h3>' + UI.table([{ h: 'Tipo', k: 't' }, { h: 'Archivos', k: 'n', num: true }],
+      Object.entries(A.counts).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ t: Bulk.TYPES[k] || k, n: v })), { total: true }) + '</div>';
+    html += '<div><h3>Alertas (' + A.alerts.length + ')</h3>' + (A.alerts.length ? '<div class="scroll" style="max-height:360px">' + UI.table([{ h: 'Tipo', k: 'tipo' }, { h: 'Detalle', k: 'detalle' }], A.alerts, { limit: 300 }) + '</div>' : '<div class="msg ok">Sin alertas.</div>') + '</div></div>';
+    if (A.recharges.length) html += '<h3>Recobros por asignación</h3><div class="scroll" style="max-height:360px">' + UI.table([
+      { h: 'Periodo', k: 'half' }, { h: 'KEY', k: 'key' }, { h: 'Empleado', k: 'employee' }, { h: 'SC', k: 'sc', num: true, d: 2 }, { h: 'Webi', k: 'webi', num: true, d: 2 },
+      { h: 'JVU', k: 'jvu', num: true, d: 2 }, { h: 'Accrual', k: 'accrual', num: true, d: 2 }, { h: 'Moneda', k: 'currency' }, { h: 'Estatus', k: 'status', cls: (e) => (/generado/.test(e.status) ? 'okc' : 'empty') }
+    ], A.recharges) + '</div>';
+    if (A.evidence.length) html += '<h3>Evidencia por mes y proveedor</h3>' + UI.table([
+      { h: 'Mes', f: (e) => Core.pad(e.month) + '. ' + Core.MESES[e.month - 1] }, { h: 'Proveedor', k: 'provider' }, { h: 'Completas', f: (e) => e.ok + ' de 6', cls: (e) => (e.ok === 6 ? 'okc' : 'badc') }, { h: 'Falta', k: 'missing' }
+    ], A.evidence);
+    el.innerHTML = html;
+    $('#bk-download').disabled = false;
+  }
+  async function download() {
+    const y = year();
+    await UI.save(y, async () => [await UI.wbFile('Consolidado anual HRSS ' + y + '.xlsx', await Bulk.buildWorkbook(S.A, { year: y }))]);
+  }
+  async function scanFolder() {
+    const txt = $('#bk-progress-text');
+    $('#bk-progress').classList.remove('hidden');
+    txt.textContent = 'Buscando archivos en la carpeta…';
+    const list = await UI.walkYear(year(), (n) => { txt.textContent = 'Buscando archivos en la carpeta… ' + n; });
+    txt.textContent = list.length + ' archivo(s) encontrados en la carpeta.';
+    addItems(list);
+  }
+  function updateFolderBtn() {
+    const on = UI.saveMode() === 'folder';
+    $('#bk-scan').disabled = !on;
+    $('#bk-scan').textContent = on ? '🔎 Escanear mi carpeta ' + year() + ' (' + UI.folderName() + ')' : '🔎 Escanear mi carpeta (elígela en Configuración)';
+    $('#bk-where').textContent = UI.whereText('Consolidado anual HRSS ' + year() + '.xlsx');
+  }
+
+  function init() {
+    $('#bk-year').value = new Date().getFullYear();
+    const drop = $('#bk-drop');
+    const input = document.createElement('input');
+    input.type = 'file'; input.multiple = true; input.hidden = true;
+    drop.appendChild(input);
+    drop.addEventListener('click', (e) => { if (e.target !== input) input.click(); });
+    input.addEventListener('change', () => { addItems(filesToItems(input.files)); input.value = ''; });
+    drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+    drop.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      drop.classList.remove('over');
+      const items = Array.from(e.dataTransfer.items || []);
+      const entries = items.map((it) => (it.webkitGetAsEntry ? it.webkitGetAsEntry() : null)).filter(Boolean);
+      if (entries.length) addItems(await entriesToItems(entries));
+      else addItems(filesToItems(e.dataTransfer.files));
+    });
+    $('#bk-folder').addEventListener('change', (e) => { addItems(filesToItems(e.target.files)); e.target.value = ''; });
+    $('#bk-scan').addEventListener('click', (e) => UI.withBusy(e.currentTarget, scanFolder));
+    $('#bk-run').addEventListener('click', () => run().catch((e) => { S.running = false; UI.toast(e.message, 'bad', 8000); renderQueue(); }));
+    $('#bk-cancel').addEventListener('click', () => { S.cancel = true; });
+    $('#bk-clear').addEventListener('click', () => { S.items = []; renderQueue(); });
+    $('#bk-reset').addEventListener('click', () => { S.items = []; S.records = []; S.A = null; $('#bk-results').innerHTML = ''; $('#bk-download').disabled = true; $('#bk-progress').classList.add('hidden'); renderQueue(); });
+    $('#bk-download').addEventListener('click', (e) => UI.withBusy(e.currentTarget, download));
+    $('#bk-year').addEventListener('change', updateFolderBtn);
+    document.addEventListener('hrss-folder', updateFolderBtn);
+    updateFolderBtn();
+    renderQueue();
+  }
+  root.PageBulk = { init, S };
+})(typeof self !== 'undefined' ? self : this);
