@@ -112,6 +112,28 @@ Con eso arma el **Consolidado anual**, con estas hojas:
 
 Con 800 archivos de prueba tardó 2 segundos. Con archivos reales, que pesan más, calcula de 1 a 3 minutos. Los archivos de más de 40 MB solo se registran en el inventario.
 
+### 📈 Power BI
+Convierte información en un **proyecto de Power BI** (`.pbip`) que abre directo en Power BI Desktop. Puedes partir de dos fuentes:
+- **Lo que ya analizaste en la app** (Bulk y Headcount). Genera cinco páginas diseñadas: *Resumen*, *Recobros*, *CeCos y SAP*, *Calidad de datos* y *Headcount*.
+- **Cualquier Excel o CSV.** Cada hoja con encabezados se vuelve una tabla. La app detecta el tipo de cada columna (y puedes corregirlo), relaciona las tablas que comparten una columna clave, arma el calendario si hay fechas y crea una página por tabla.
+
+Qué trae el proyecto:
+- **Modelo en estrella:** relaciones muchos-a-uno, tabla Calendario y medidas DAX (por ejemplo *Total cargos*, *Reclasificado MXN*, *% con JVU o Accrual* o *Diferencia SOP9'26*).
+- **Datos incrustados en el modelo**, igual que “Escribir datos”: abre y actualiza sin configurar rutas.
+- **Diseño en rejilla de 1280×720:** título y filtros arriba, fila de tarjetas, gráficas y tabla de detalle. Tema propio con colores validados para daltonismo.
+- **Archivos sueltos:** `Tema HRSS.json` (aplicable a cualquier reporte desde Vista › Temas), `Medidas DAX y relaciones.txt`, los datos en Excel y un `LEEME.txt`.
+
+Antes de generar, la app muestra una vista previa con la maqueta de cada página.
+
+**Cómo se validó.** No es posible abrir Power BI Desktop en el entorno de desarrollo, así que cada proyecto se revisa por tres vías independientes:
+1. Cada archivo del reporte y el tema se validan contra los **esquemas oficiales de Microsoft** (`npm test`).
+2. El modelo se carga con **Microsoft TOM** (`Microsoft.AnalysisServices`, el motor de Power BI) y se convierte a TMDL de ida y vuelta.
+3. Las expresiones de Power Query se analizan con el **analizador oficial de Microsoft** (`tools/validar-powerbi`).
+
+Además se revisa que cada campo usado en una gráfica, cada relación y cada referencia DAX exista en el modelo. Las versiones de esquema son las de la plantilla oficial de Microsoft de 2024, para que abra también en Desktop no tan recientes. Aun así, la prueba final es abrirlo en tu Power BI Desktop: si algo falla, mándame el mensaje de error.
+
+**Mantenimiento de reportes existentes.** Para regenerar uno de los reportes de la app con datos nuevos, vuelve a generarlo. La app no edita archivos `.pbix` que ya existan. Si conviertes uno a proyecto (Archivo › Guardar como › `.pbip`), se puede trabajar con control de versiones.
+
 ## Guardar directo en OneDrive (opcional)
 En **Configuración › Dónde guardar los resultados**, elige "Directo en mi carpeta Tracker" y selecciona la carpeta `…\Gerencia HRSS-Organización - General\2026\Tracker`. También sirve la carpeta "General": la app entra sola a `{Año}\Tracker`.
 
@@ -152,4 +174,5 @@ npm test
 - El código fuente está en `src/`: `index.html`, `styles.css` y `js/`. La lógica (`core.js`, `hc.js`, `recharges.js`, `reclass.js`) funciona igual en el navegador y en Node.
 - `npm run build` genera `dist/HRSS-Automatizador.html`, que lleva todo incrustado.
 - `npm test` corre las pruebas de lógica. `tests/e2e.js` prueba la app completa en Chromium con Playwright.
-- Librerías incluidas: SheetJS 0.18.5 (lectura), ExcelJS 4.4.0 (escritura con formato) y JSZip 3.10.1.
+- Librerías incluidas: SheetJS 0.18.5 (lectura), ExcelJS 4.4.0 (escritura con formato) y JSZip 3.10.1. También el tema base de Power BI `CY24SU06` (de microsoft/semantic-link-labs, licencia MIT).
+- `tests/pbir-schemas`: esquemas oficiales de Power BI (de microsoft/json-schemas y microsoft/powerbi-desktop-samples, licencia MIT), usados solo en las pruebas.

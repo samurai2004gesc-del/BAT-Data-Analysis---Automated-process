@@ -64,6 +64,7 @@
     root.PageRecharges.init();
     root.PageReclass.init();
     root.PageBulk.init();
+    root.PagePBI.init();
     $('#cfg-oneid').addEventListener('change', () => { UI.config().oneId = $('#cfg-oneid').value.trim(); UI.saveConfig(); $('#tr-oneid').value = UI.config().oneId; showWho(); });
     $('#cfg-soc').addEventListener('change', () => { UI.config().sociedad = $('#cfg-soc').value.trim().toUpperCase(); UI.saveConfig(); });
     $('#cfg-dateorder').addEventListener('change', () => { UI.config().dateOrder = $('#cfg-dateorder').value; UI.saveConfig(); });

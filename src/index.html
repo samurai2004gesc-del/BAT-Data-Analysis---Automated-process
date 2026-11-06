@@ -23,6 +23,8 @@
     <a data-page="reclass">💱 Reclasificación K2 / EY / Deloitte</a>
     <div class="nav-title">Archivo anual</div>
     <a data-page="bulk">📚 Bulk: todo el año</a>
+    <div class="nav-title">Reportes</div>
+    <a data-page="pbi">📈 Power BI</a>
     <div class="nav-title">General</div>
     <a data-page="config">⚙️ Configuración</a>
     <a data-page="help">❓ Ayuda</a>
@@ -38,6 +40,7 @@
         <a class="card link" data-goto="tracker"><h3>🗂️ Tracker de Recobros</h3><p>Arma el Tracker del semestre con Note Title / Note Text para SAP, nombres de archivo, rutas, datos faltantes y columnas de seguimiento de aprobaciones.</p><span class="tag">Lista de asignaciones → Tracker H1/H2</span></a>
         <a class="card link" data-goto="sap"><h3>📤 Formatos SAP</h3><p>De Estimate Benefits saca el Shopping Cart, Webi, JVU y Accrual en Excel y TXT (tabulado), sin filas vacías, con la nomenclatura <code>{KEY}. Webi {Nombre}</code> y en sus carpetas.</p><span class="tag">Estimate Benefits → ZIP listo para SAP NEO</span></a>
         <a class="card link" data-goto="bulk"><h3>📚 Bulk: todo el año</h3><p>Mete cientos de archivos mezclados del año (Webis, JVUs, proveedores, KSB1, correos .msg…). La app reconoce cada uno y arma un consolidado anual con alertas de lo que falta o no cuadra.</p><span class="tag">Carpeta del año → Consolidado + alertas</span></a>
+        <a class="card link" data-goto="pbi"><h3>📈 Power BI</h3><p>Convierte lo que analizaste (o cualquier Excel) en un proyecto de Power BI con páginas diseñadas, modelo, medidas DAX y tema.</p><span class="tag">Datos → proyecto .pbip listo para abrir</span></a>
         <a class="card link" data-goto="reclass"><h3>💱 Reclasificación de movilidad</h3><p>Completa HRBP / función / CeCo desde el histórico, valida que los CeCos sean de MX15, calcula el tipo de cambio con KSB1 y genera la Reclasificación por CeCo.</p><span class="tag">Archivo del proveedor → Sent to HRBPs → Reclasificación</span></a>
       </div>
       <div class="note"><strong>Primera vez:</strong> ve a <a data-goto="config">Configuración</a>, captura tu OneID y guarda la configuración en el USB (botón “Exportar configuración”) para no perder las equivalencias si cambias de computadora.</div>
@@ -294,6 +297,38 @@
       <p class="muted small">El consolidado trae: Resumen, Recobros por asignación, Documentos de recobro, Cargos de proveedores (detalle y por mes), CeCos asignados validados, Reclasificaciones, Movimientos SAP sin duplicados, Evidencia por mes, Headcount, Trackers, Correos, Alertas e Inventario de todos los archivos. Los archivos de más de 40 MB solo se inventarían.</p>
     </section>
 
+    <!-- ================= POWER BI ================= -->
+    <section class="page" id="page-pbi">
+      <h1>Power BI</h1>
+      <p class="lead">Convierte información en un proyecto de Power BI listo para abrir. Incluye páginas diseñadas, modelo en estrella con relaciones y calendario, medidas DAX y un tema con colores validados para daltonismo. Los datos van dentro del modelo, así que no hay rutas que configurar.</p>
+      <div class="step">
+        <div class="step-h"><span class="stepnum">1</span><h2>¿Qué información?</h2></div>
+        <div class="tabs" id="pbi-tabs"><button data-tab="app" class="active">Lo que ya analicé en la app</button><button data-tab="files">Mis archivos (cualquier Excel / CSV)</button></div>
+        <div class="tab active" id="pbi-tab-app"><div id="pbi-app-status"></div></div>
+        <div class="tab" id="pbi-tab-files">
+          <p class="muted">Cada hoja con una fila de encabezados se vuelve una tabla. La app detecta el tipo de cada columna (puedes cambiarlo), relaciona las tablas que comparten una columna clave, arma el calendario si hay fechas y crea una página por tabla.</p>
+          <div class="drop" id="pbi-drop"><b>Arrastra aquí tus archivos</b><span>.xlsx / .xlsm / .xls / .csv — puedes soltar varios</span></div>
+          <div id="pbi-files-list" class="scroll"></div>
+          <div class="actions"><button id="pbi-clear" class="mini">Quitar todos</button></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-h"><span class="stepnum">2</span><h2>Nombre y vista previa</h2></div>
+        <div class="grid g4"><label>Nombre del reporte<input id="pbi-name" placeholder="HRSS 2026"></label><label>Año<input id="pbi-year" type="number"></label></div>
+        <div id="pbi-preview"></div>
+      </div>
+      <div class="actions"><button class="primary" id="pbi-generate" disabled>⬇ Generar proyecto Power BI</button><span class="muted small" id="pbi-where"></span></div>
+      <div id="pbi-done"></div>
+      <details><summary>Requisitos y cómo abrirlo</summary>
+        <ul class="small">
+          <li>Power BI Desktop de 2024 o más reciente. Abre el archivo <code>.pbip</code> con doble clic.</li>
+          <li>Si Power BI pide una función de vista previa: Archivo › Opciones › Características en versión preliminar › activa “Power BI Project (.pbip) save option” y “Store reports using enhanced metadata format (PBIR)”.</li>
+          <li>Pulsa <b>Actualizar</b> para cargar los datos. Para entregar un solo archivo: Archivo › Guardar como › <code>.pbix</code>.</li>
+          <li>El proyecto también trae los datos en Excel, el tema (<code>Tema HRSS.json</code>, aplicable a cualquier reporte desde Vista › Temas) y las medidas DAX documentadas.</li>
+        </ul>
+      </details>
+    </section>
+
     <!-- ================= CONFIGURACIÓN ================= -->
     <section class="page" id="page-config">
       <h1>Configuración</h1>
@@ -359,6 +394,7 @@
           <li><b>Tracker que se actualiza:</b> arrastra el Tracker anterior y se conserva lo capturado; la columna “Siguiente paso” dice qué falta.</li>
           <li><b>Headcount:</b> varios mercados a la vez y comparación contra la corrida anterior.</li>
           <li><b>Bulk:</b> analiza todos los archivos del año de una vez y genera el consolidado anual con alertas.</li>
+          <li><b>Power BI:</b> convierte lo analizado (o cualquier Excel) en un proyecto de Power BI con páginas diseñadas, modelo y medidas DAX.</li>
         </ul>
         <h3>Privacidad</h3>
         <p>La app no se conecta a internet: todo se procesa en la memoria del navegador de tu laptop. No sube archivos a ningún lado.</p>

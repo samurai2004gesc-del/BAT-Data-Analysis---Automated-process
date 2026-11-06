@@ -6,6 +6,7 @@ const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
 const XLSX = require('xlsx');
+const JSZip = require('jszip');
 
 const ROOT = path.join(__dirname, '..');
 const EX = (n) => path.join(ROOT, 'ejemplos', n);
@@ -127,7 +128,6 @@ const shots = process.argv[2];
   await shot('04-formatos-sap');
   check((await page.textContent('#sap-list')).includes("Recharge H2'26 Perez J.") || (await page.textContent('#sap-list')).includes("Recharge H1'26 Perez J."), 'SAP: Note Title generado');
   const zip = await download('#sap-zip');
-  const JSZip = require('jszip');
   const z = await JSZip.loadAsync(fs.readFileSync(zip.path));
   const files = Object.keys(z.files).filter((n) => !n.endsWith('/'));
   check(files.length === 7 && files.some((f) => f.endsWith('1. Webi Perez Lopez Juan Carlos.txt')), 'SAP: ZIP con 7 archivos (' + zip.name + ')');
@@ -179,6 +179,30 @@ const shots = process.argv[2];
   check(/Correo de Global/.test(bkText) && /Export KSB1/.test(bkText) && /HR Input Report/.test(bkText), 'Bulk: reconoce correo, KSB1 y HR Input de la carpeta de ejemplos');
   const bk = await download('#bk-download');
   check(XLSX.readFile(bk.path).SheetNames.includes('Inventario'), 'Bulk: consolidado anual (' + bk.name + ')');
+
+  // ---- Power BI ----
+  await page.click('#nav a[data-page=pbi]');
+  await page.waitForSelector('#pbi-preview svg.pbi-page');
+  check((await page.textContent('#pbi-app-status')).includes('archivos analizados'), 'Power BI: detecta datos de Bulk y Headcount');
+  await page.fill('#pbi-name', 'HRSS Prueba');
+  await page.dispatchEvent('#pbi-name', 'change');
+  await shot('12-powerbi');
+  const pbiZip = await download('#pbi-generate');
+  const pz = await JSZip.loadAsync(fs.readFileSync(pbiZip.path));
+  const pfiles = [];
+  for (const n of Object.keys(pz.files).filter((n) => !n.endsWith('/'))) pfiles.push({ path: n.replace(/^Power BI\/HRSS Prueba\//, ''), data: await pz.file(n).async('uint8array') });
+  const res = require('./pbi-check.js').check({ name: 'HRSS Prueba', files: pfiles });
+  check(res.errors.length === 0 && pfiles.some((f) => f.path === 'HRSS Prueba.pbip'), 'Power BI: proyecto del navegador válido (' + pfiles.length + ' archivos)' + (res.errors.length ? ' ' + res.errors.slice(0, 3).join(' | ') : ''));
+  await page.click('#pbi-tabs button[data-tab=files]');
+  await page.setInputFiles('#pbi-drop input[type=file]', [EX('08 KSB1 EXPORT (ejemplo).xlsx'), EX('07 All CeCos - Approvers (ejemplo).xlsx')]);
+  await page.waitForSelector('#pbi-files-list table');
+  const gZip = await download('#pbi-generate');
+  const gz = await JSZip.loadAsync(fs.readFileSync(gZip.path));
+  const gname = Object.keys(gz.files).find((n) => n.endsWith('.pbip')).split('/').pop().replace('.pbip', '');
+  const gfiles = [];
+  for (const n of Object.keys(gz.files).filter((n) => !n.endsWith('/'))) gfiles.push({ path: n.split('/').slice(2).join('/'), data: await gz.file(n).async('uint8array') });
+  const gres = require('./pbi-check.js').check({ name: gname, files: gfiles });
+  check(gres.errors.length === 0, 'Power BI: proyecto genérico desde archivos válido' + (gres.errors.length ? ' ' + gres.errors.slice(0, 3).join(' | ') : ''));
 
   // ---- Guardar directo en la carpeta Tracker (OneDrive simulado) ----
   await page.click('#nav a[data-page=config]');

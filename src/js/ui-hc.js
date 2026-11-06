@@ -377,5 +377,5 @@
     $('#hcb-download').addEventListener('click', (e) => UI.withBusy(e.currentTarget, downloadBatch));
     $('#hc-f-func').addEventListener('change', renderResults);
   }
-  root.PageHC = { init, state: S };
+  root.PageHC = { init, state: S, batch: B };
 })(typeof self !== 'undefined' ? self : this);

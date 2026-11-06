@@ -146,3 +146,6 @@ table.t tr.gone td { color: #8a949e; font-style: italic; }
 .chart-tip .tip-row { display: flex; align-items: center; gap: 6px; color: #52514e; font-variant-numeric: tabular-nums; }
 .chart-tip .tip-row i { width: 12px; height: 3px; border-radius: 2px; display: inline-block; }
 .chart-tip .tip-row b { color: #0b0b0b; font-weight: 600; min-width: 80px; text-align: right; }
+.pbi-page { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; margin: 4px 0 12px; background: #F4F6F9; }
+#pbi-files-list select { padding: 1px 2px; font-size: 11px; }
+#pbi-files-list .pill { margin: 2px; }
