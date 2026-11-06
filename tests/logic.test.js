@@ -167,20 +167,20 @@ test('Recobros: formatos SAP desde Estimate Benefits → ZIP con TXT y nomenclat
   const zip = await JSZip.loadAsync(blob);
   const names = Object.keys(zip.files).filter((n) => !n.endsWith('/')).sort();
   assert.deepStrictEqual(names, [
-    'Recharges H226/Accruals/1. Perez Lopez Juan Carlos/1. Accrual Perez Lopez Juan Carlos.txt',
-    'Recharges H226/Accruals/1. Perez Lopez Juan Carlos/1. Accrual Perez Lopez Juan Carlos.xlsx',
-    'Recharges H226/JVUs/1. Perez Lopez Juan Carlos/1. JVU Perez Lopez Juan Carlos.txt',
-    'Recharges H226/JVUs/1. Perez Lopez Juan Carlos/1. JVU Perez Lopez Juan Carlos.xlsx',
-    'Recharges H226/Webis/1. Perez Lopez Juan Carlos/1. SC Perez Lopez Juan Carlos.xlsx',
-    'Recharges H226/Webis/1. Perez Lopez Juan Carlos/1. Webi Perez Lopez Juan Carlos.txt',
-    'Recharges H226/Webis/1. Perez Lopez Juan Carlos/1. Webi Perez Lopez Juan Carlos.xlsx'
+    'Recharges/H2\'26/Accruals/1. Perez Lopez Juan Carlos/1. Accrual Perez Lopez Juan Carlos.txt',
+    'Recharges/H2\'26/Accruals/1. Perez Lopez Juan Carlos/1. Accrual Perez Lopez Juan Carlos.xlsx',
+    'Recharges/H2\'26/JVUs/1. Perez Lopez Juan Carlos/1. JVU Perez Lopez Juan Carlos.txt',
+    'Recharges/H2\'26/JVUs/1. Perez Lopez Juan Carlos/1. JVU Perez Lopez Juan Carlos.xlsx',
+    'Recharges/H2\'26/Webis/1. Perez Lopez Juan Carlos/1. SC Perez Lopez Juan Carlos.xlsx',
+    'Recharges/H2\'26/Webis/1. Perez Lopez Juan Carlos/1. Webi Perez Lopez Juan Carlos.txt',
+    'Recharges/H2\'26/Webis/1. Perez Lopez Juan Carlos/1. Webi Perez Lopez Juan Carlos.xlsx'
   ]);
-  const txt = await zip.file('Recharges H226/Webis/1. Perez Lopez Juan Carlos/1. Webi Perez Lopez Juan Carlos.txt').async('string');
+  const txt = await zip.file('Recharges/H2\'26/Webis/1. Perez Lopez Juan Carlos/1. Webi Perez Lopez Juan Carlos.txt').async('string');
   const lines = txt.split('\r\n');
   assert.strictEqual(lines.length, 5); // 4 líneas + final vacío
   assert.strictEqual(lines[1].split('\t')[2], '9057.03');
   // El xlsx copiado conserva los valores
-  const x = XLSX.read(await zip.file('Recharges H226/JVUs/1. Perez Lopez Juan Carlos/1. JVU Perez Lopez Juan Carlos.xlsx').async('nodebuffer'));
+  const x = XLSX.read(await zip.file('Recharges/H2\'26/JVUs/1. Perez Lopez Juan Carlos/1. JVU Perez Lopez Juan Carlos.xlsx').async('nodebuffer'));
   assert.strictEqual(Core.sheetRows(x.Sheets[x.SheetNames[0]])[5][6], 9057.03);
 });
 
@@ -201,7 +201,7 @@ test('Reclasificación: completa desde histórico, valida MX15 y arma la reclasi
   const hist = RC.readSource(Core.sheetRows(cons.Sheets[cons.SheetNames[0]]), 'Histórico');
   const en = RC.enrich(sup, hist, []);
   assert.strictEqual(en[0].ceco, 'MXCB2H2011'); // el más reciente (mes 5)
-  assert.strictEqual(en[0].hrbp, 'HRBP Ficticio A');
+  assert.strictEqual(en[0].hrbp, 'Laura Mendez Ruiz');
   assert.strictEqual(en[1].func, 'Exec & Corp Services');
   assert.strictEqual(en[3].ceco, ''); // sin histórico
   const cecos = RC.readCecos(Core.sheetRows(one(F.allCecos()).Sheets.S));
@@ -229,4 +229,93 @@ test('Reclasificación: completa desde histórico, valida MX15 y arma la reclasi
 test('Reclasificación: checklist de evidencia', () => {
   const items = RC.evidenceChecklist(['01. K2 costs - Non-PO billing MX15 — June 2026.msg', '02. K2 MX15.xlsx', '03. Sent to HRBPs - MX15 K2.xlsx', 'RE_ K2 Expats Junio MX15.msg'], 'K2', 'MX15');
   assert.deepStrictEqual(items.map((i) => i.ok), [true, true, true, false, true, false]);
+});
+
+test('Correo: .eml como borrador con adjunto', () => {
+  const eml = Core.buildEml({ to: 'a@x.com; b@x.com', cc: 'c@x.com', subject: 'K2 Expats Junio MX15', text: 'Hola\n\nLínea', attachments: [{ name: 'Sent to HRBPs - MX15 K2.xlsx', data: new Uint8Array([80, 75, 3, 4]), type: Core.XLSX_MIME }] });
+  assert.match(eml, /^X-Unsent: 1/);
+  assert.match(eml, /To: a@x.com, b@x.com/);
+  assert.match(eml, /Cc: c@x.com/);
+  assert.match(eml, /filename="Sent to HRBPs - MX15 K2.xlsx"/);
+  assert.match(eml, /UEsDBA==/); // base64 del adjunto
+});
+
+test('Tracker: conserva lo capturado, agrega nuevos y marca los que ya no vienen', async () => {
+  const wb = roundtrip(F.assignmentsWorkbook());
+  const { assignments } = R.readAssignments(wb);
+  // Tracker "anterior" con datos capturados a mano
+  const first = R.mergeTracker(assignments, []);
+  first.assignments[0].manual = { rid: '000002052572', ap1: 'Coder Uno', estatus: 'En aprobación (1/3)' };
+  first.assignments[1].manual = { rid: '000002052573', po: 'RRBP.MX15GB51/6001116082', jvu: '1234', estatus: 'JVU cargado' };
+  const trWb = await R.buildTracker(first.assignments, { half: 'H2', year: 2026 });
+  const prevBook = XLSX.read(await trWb.xlsx.writeBuffer(), { type: 'buffer' });
+  const prev = R.readPreviousTracker(prevBook);
+  assert.strictEqual(prev.rows.length, 4);
+  assert.strictEqual(prev.rows[0].rid, '000002052572');
+  // Lista nueva: se va Garcia Ruiz Ana, entra una persona nueva, y cambia el orden
+  const nueva = [assignments[3], assignments[0], assignments[2], { nombre: 'Nueva Persona Ejemplo', payroll: '90000009', host: 'Brasil', key: '1', _autoKey: true }];
+  nueva[1] = Object.assign({}, nueva[1], { key: '2', _autoKey: true }); // el KEY automático cambiaría por el orden
+  const m = R.mergeTracker(nueva, prev.rows);
+  assert.deepStrictEqual(m.stats, { kept: 3, nuevos: 1, soloAnterior: 1 });
+  const perez = m.assignments.find((a) => a.nombre === 'Perez Lopez Juan Carlos');
+  assert.strictEqual(perez.key, '1'); // conserva su KEY
+  assert.strictEqual(perez.manual.rid, '000002052572');
+  assert.strictEqual(perez.manual.ap1, 'Coder Uno');
+  const nuevo = m.assignments.find((a) => a.nombre === 'Nueva Persona Ejemplo');
+  assert.ok(nuevo._new && !['1', '3', '4', '2'].includes(nuevo.key));
+  const ida = m.assignments.find((a) => a.nombre === 'Garcia Ruiz Ana');
+  assert.ok(ida._onlyPrev && /No viene/.test(ida.manual.com));
+  assert.strictEqual(R.nextStep(Object.assign({}, ida.manual)), 'Esperar BATCH ID');
+  assert.strictEqual(R.nextStep({}), 'Crear y cargar Webi');
+  assert.strictEqual(R.nextStep({ rid: '1' }), 'Seguir aprobaciones (RRB PO Dashboard)');
+  assert.strictEqual(R.nextStep({ rid: '1', po: 'x' }), 'Generar y cargar JVU (mismo día)');
+  assert.strictEqual(R.nextStep({ rid: '1', po: 'x', jvu: 'j', batch: 'b' }), 'Validar en FBL5N');
+  assert.strictEqual(R.nextStep({ fbl: 'OK' }), '✔ Terminado');
+  // Regenerar no duplica la marca "[No viene…]"
+  const again = R.readPreviousTracker(XLSX.read(await (await R.buildTracker(m.assignments, { half: 'H2', year: 2026 })).xlsx.writeBuffer(), { type: 'buffer' }));
+  const ida2 = again.rows.find((r) => r.nombre === 'Garcia Ruiz Ana');
+  assert.ok(!/^\[No viene/.test(ida2.com));
+});
+
+test('HC: detecta el mercado, toma columnas solas y compara contra la corrida anterior', async () => {
+  const rows = Core.sheetRows(one(F.hrInput()).Sheets.S);
+  const parsed = HC.parseHRInput(rows);
+  assert.strictEqual(HC.detectMarket(parsed), 'CAR');
+  assert.strictEqual(HC.marketOfUnit('MXO02L_X'), 'México Operaciones');
+  assert.strictEqual(HC.marketOfUnit('C00MVE'), 'Venezuela');
+  assert.strictEqual(HC.marketOfUnit('CTC03L_PA13'), 'CAM');
+  assert.strictEqual(HC.detectMarketFromName('HC in BPC vs HC Approved - Mexico Operaciones.xlsm'), 'México Operaciones');
+  const master = roundtrip(F.masterWorkbook());
+  const eq = HC.readEquivalences(master);
+  assert.strictEqual(eq.funcMapBPC.Finance, 'FIN');
+  assert.strictEqual(eq.entityMapBPC.GYC00L_GY10, 'Guyana');
+  const app = HC.autoApproved(master, {}, "COPLAN'26", "COPLAN'27");
+  assert.strictEqual(app.cols.coplan, 7);
+  const app2 = HC.autoApproved(master, {}, "SOP9'26", "COPLAN'27");
+  assert.strictEqual(app2.cols.sop, 6);
+  const cfg = hcConfig();
+  const res1 = HC.run(rows, app2, cfg);
+  const snap = HC.snapshot(res1, cfg);
+  // Segunda corrida: se corrigió la posición de Marketing que terminaba en junio
+  const rows2 = rows.map((r) => (r ? r.slice() : r));
+  rows2[36][30] = F.d(9999, 12, 31);
+  const res2 = HC.run(rows2, app2, cfg);
+  const ch = HC.changes(res2, snap);
+  const g31 = ch.rows.find((r) => r.grade === 'Grade 31');
+  assert.strictEqual(g31.chSOP, '✔ Corregido');
+  assert.strictEqual(ch.fixed, 1);
+  const wb = await HC.buildReport(res2, cfg, {}, ch);
+  assert.ok(wb.worksheets.some((w) => w.name === 'Cambios vs anterior'));
+  const batch = await HC.buildBatchReport([{ market: 'CAR', res: res2, changes: ch }, { market: 'Colombia', res: res1 }], cfg);
+  assert.deepStrictEqual(batch.worksheets.map((w) => w.name), ['Resumen mercados', 'CAR', 'Colombia', 'Alertas']);
+  const mail = HC.emailText(res2, cfg, { entity: 'Guyana' });
+  assert.match(mail.subject, /CAR \(Guyana\)/);
+});
+
+test('Reclasificación: correo para Planning y ruta de la carpeta del proveedor', () => {
+  const res = { ok: [{ ceco: 'MXCB2H2011', mxn: 1000, gbp: 43.3 }, { ceco: 'MXCB8D0045', mxn: 500.5, gbp: 21.7 }] };
+  const m = RC.emailReclass(res, { provider: 'K2', month: 6, year: 2026, sociedad: 'MX15', exRate: 23.1 });
+  assert.match(m.subject, /K2 Junio 2026 MX15/);
+  assert.match(m.body, /1,500\.50/);
+  assert.strictEqual(RC.supplierRelPath(6, 'K2'), 'Suppliers/06. Junio/K2');
 });

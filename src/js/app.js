@@ -12,8 +12,26 @@
     window.scrollTo(0, 0);
   }
 
+  function renderFolder() {
+    const c = UI.config();
+    const name = UI.folderName();
+    const mode = UI.saveMode();
+    const ind = $('#folder-ind');
+    ind.textContent = mode === 'folder' ? '📁 Guardando en: ' + name : '⬇ Guardando en: Descargas';
+    ind.classList.toggle('on', mode === 'folder');
+    if (c.saveMode === 'folder' && !name) ind.textContent = '⚠ Elige la carpeta Tracker';
+    const fn = $('#cfg-folder-name');
+    fn.textContent = name ? 'Carpeta elegida: ' + name : (UI.folderSupported() ? 'Sin carpeta elegida' : 'Este navegador no permite guardar en carpetas; usa Edge o Chrome.');
+    $$('input[name=cfg-save]').forEach((r) => { r.checked = r.value === (c.saveMode || 'download'); });
+    document.dispatchEvent(new CustomEvent('hrss-folder'));
+  }
   function renderConfig() {
     const c = UI.config();
+    $('#cfg-cc').value = c.ccDefault || '';
+    $('#cfg-planning').value = c.planningTo || '';
+    $('#cfg-reclass-cc').value = c.reclassCc || '';
+    $('#cfg-contacts').value = c.contacts || '';
+    renderFolder();
     $('#cfg-oneid').value = c.oneId || '';
     $('#cfg-soc').value = c.sociedad || 'MX15';
     $('#cfg-dateorder').value = c.dateOrder || 'dmy';
@@ -54,6 +72,32 @@
       e.target.value = '';
     });
     $('#cfg-reset').addEventListener('click', () => { if (confirm('¿Borrar toda la configuración y equivalencias guardadas en este navegador?')) { UI.resetConfig(); location.reload(); } });
+    [['#cfg-cc', 'ccDefault'], ['#cfg-planning', 'planningTo'], ['#cfg-reclass-cc', 'reclassCc'], ['#cfg-contacts', 'contacts']].forEach(([sel, key]) => {
+      $(sel).addEventListener('change', () => { UI.config()[key] = $(sel).value.trim(); UI.saveConfig(); UI.toast('Guardado', 'ok', 1500); });
+    });
+    $$('input[name=cfg-save]').forEach((r) => r.addEventListener('change', () => {
+      UI.config().saveMode = r.value;
+      UI.saveConfig();
+      if (r.value === 'folder' && !UI.folderName()) UI.toast('Ahora elige la carpeta Tracker.', 'warn');
+      renderFolder();
+    }));
+    $('#cfg-folder-pick').addEventListener('click', async () => {
+      try {
+        await UI.pickFolder();
+        UI.config().saveMode = 'folder';
+        UI.saveConfig();
+        renderFolder();
+        UI.toast('Carpeta elegida: ' + UI.folderName(), 'ok');
+      } catch (e) { if (e.name !== 'AbortError') UI.toast(e.message, 'bad', 7000); }
+    });
+    $('#cfg-folder-forget').addEventListener('click', async () => { await UI.forgetFolder(); UI.config().saveMode = 'download'; UI.saveConfig(); renderFolder(); });
+    UI.onFolderChange(renderFolder);
+    if (!UI.folderSupported()) {
+      $('#cfg-folder-pick').disabled = true;
+      $$('input[name=cfg-save]').forEach((r) => { if (r.value === 'folder') r.disabled = true; });
+    }
+    renderConfig();
+    UI.loadFolder();
     showWho();
     let start = 'home';
     try { start = sessionStorage.getItem('hrss-page') || 'home'; } catch (e) { /* sin almacenamiento */ }

@@ -134,12 +134,17 @@ table.t input { padding: 4px 6px; width: 100%; }
 
 #toast { position: fixed; right: 18px; bottom: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 50; }
 #toast .msg { box-shadow: 0 4px 14px rgba(0, 0, 0, .12); max-width: 420px; }
+.folder-ind { color: #cfe3f3; margin-right: 14px; font-size: 12.5px; text-decoration: none; }
+.folder-ind.on { color: #9be7b0; }
+.save-where { margin-left: 4px; }
+.filecard label.check { margin: 4px 0; }
+table.t tr.gone td { color: #8a949e; font-style: italic; }
 </style>
 </head>
 <body>
 <header class="topbar">
-  <div class="brand"><span class="logo">HR</span><div><strong>HRSS Automatizador</strong><small>v1.0.0 · funciona sin internet · tus archivos no salen de esta computadora</small></div></div>
-  <div class="top-actions"><span id="who" class="muted"></span></div>
+  <div class="brand"><span class="logo">HR</span><div><strong>HRSS Automatizador</strong><small>v1.1.0 · funciona sin internet · tus archivos no salen de esta computadora</small></div></div>
+  <div class="top-actions"><a id="folder-ind" class="folder-ind" data-goto="config" title="Dónde se guardan los resultados"></a><span id="who" class="muted"></span></div>
 </header>
 <div class="layout">
   <nav class="sidebar" id="nav">
@@ -174,6 +179,15 @@ table.t input { padding: 4px 6px; width: 100%; }
     <section class="page" id="page-hc">
       <h1>HC in BPC vs HC Approved</h1>
       <p class="lead">Compara el headcount capturado en SAP BPC contra el headcount aprobado. No necesitas pegar nada: arrastra el HR Input Report tal como lo descargaste.</p>
+      <div class="tabs" id="hc-tabs"><button data-tab="one" class="active">Un mercado</button><button data-tab="many">Varios mercados a la vez</button></div>
+      <div class="tab" id="hc-tab-many">
+        <p class="muted">Arrastra juntos los HR Input y los archivos maestros de todos los mercados. La app reconoce de qué mercado es cada uno y usa las equivalencias y columnas que guardaste al configurar cada mercado en “Un mercado” (hazlo una vez por mercado). Usa el año y las etiquetas SOP / COPLAN de la pestaña “Un mercado”.</p>
+        <div class="drop" id="hcb-drop"><b>Arrastra aquí todos los archivos</b><span>HR Input Reports + maestros (.xlsm / .xlsx), de uno o varios mercados</span></div>
+        <div id="hcb-files"></div>
+        <div class="actions"><button class="primary" id="hcb-run" disabled>▶ Comparar todos</button><button id="hcb-download" disabled>⬇ Descargar reporte consolidado</button></div>
+        <div id="hcb-results"></div>
+      </div>
+      <div class="tab active" id="hc-tab-one">
 
       <div class="step">
         <div class="step-h"><span class="stepnum">1</span><h2>Mercado y ejercicio</h2></div>
@@ -247,6 +261,15 @@ table.t input { padding: 4px 6px; width: 100%; }
         <h3>Alertas</h3>
         <div id="hc-alerts"></div>
         <details><summary>Ver posiciones que NO cuentan (motivo)</summary><div id="hc-nocount" class="scroll"></div></details>
+        <div id="hc-changes"></div>
+        <h3>Enviar al HRBP</h3>
+        <div class="grid g3">
+          <label>Para (correos o nombres del directorio; se guarda por mercado)<input id="hc-mail-to" placeholder="hrbp@empresa.com; otro@empresa.com"></label>
+          <label>CC<input id="hc-mail-cc"></label>
+          <div class="actions" style="margin:auto 0 0"><button id="hc-mail">✉ Borrador con el reporte (.eml)</button></div>
+        </div>
+        <p class="muted small">El borrador incluye las diferencias del filtro actual (entidad / función) y el reporte de Excel adjunto. Ábrelo con doble clic: Outlook lo muestra listo para enviar.</p>
+      </div>
       </div>
     </section>
 
@@ -267,9 +290,15 @@ table.t input { padding: 4px 6px; width: 100%; }
         <div class="step-h"><span class="stepnum">2</span><h2>Lista de asignaciones</h2></div>
         <div class="drop" id="tr-drop"><b>Arrastra aquí la lista de asignaciones</b><span>Una o varias hojas (p. ej. una por área: OPERACIONES, MARKETING, FINANCE, HR…). Columnas: Nombre, Payroll, Sociedad, CeCo, Grade, Host Country, Tipo, Desde, Hasta, IC code, Coder.</span></div>
         <div id="tr-info" class="info"></div>
-        <div id="tr-preview" class="scroll"></div>
       </div>
-      <div class="actions"><button class="primary" id="tr-download" disabled>⬇ Descargar Tracker</button></div>
+      <div class="step">
+        <div class="step-h"><span class="stepnum">3</span><h2>Tracker anterior <span class="muted">(opcional)</span></h2></div>
+        <p class="muted">Si ya tienes un Tracker de este semestre generado con la app, arrástralo: se conservan los IDs, aprobadores, PO, JVU, estatus y comentarios que capturaste; se agregan las asignaciones nuevas y se marcan las que ya no vienen.</p>
+        <div class="drop small" id="tr-drop-prev"><b>Arrastra aquí el Tracker anterior</b><span>Tracker Recharges H226.xlsx</span></div>
+        <div id="tr-prev-info" class="info"></div>
+      </div>
+      <div id="tr-preview" class="scroll"></div>
+      <div class="actions"><button class="primary" id="tr-download" disabled>⬇ Descargar Tracker</button><span class="muted small save-where" id="tr-where"></span></div>
     </section>
 
     <!-- ================= FORMATOS SAP ================= -->
@@ -287,6 +316,7 @@ table.t input { padding: 4px 6px; width: 100%; }
       <div class="actions">
         <button class="primary" id="sap-zip" disabled>⬇ Descargar ZIP con carpetas</button>
         <button id="sap-clear">Limpiar lista</button>
+        <span class="muted small save-where" id="sap-where"></span>
       </div>
       <div id="sap-log" class="info"></div>
     </section>
@@ -320,8 +350,11 @@ table.t input { padding: 4px 6px; width: 100%; }
         <div id="rc-a-preview" class="scroll"></div>
         <div class="actions">
           <button class="primary" id="rc-a-download" disabled>⬇ Descargar “Sent to HRBPs”</button>
-          <button id="rc-a-email" disabled>✉ Ver correo para HRBPs</button>
+          <button id="rc-a-eml" disabled>✉ Borrador con adjunto (.eml)</button>
+          <button id="rc-a-email" disabled>Ver texto del correo</button>
+          <span class="muted small save-where rc-where"></span>
         </div>
+        <div id="rc-a-mailinfo"></div>
         <div id="rc-a-email-box"></div>
       </div>
 
@@ -330,7 +363,7 @@ table.t input { padding: 4px 6px; width: 100%; }
         <div class="drop" id="rc-drop-ret"><b>Retrieved From HRBPs - MX15 …xlsx</b><span>El archivo con los CeCos confirmados</span></div>
         <div id="rc-b-info" class="info"></div>
         <div id="rc-b-preview" class="scroll"></div>
-        <div class="actions"><button class="primary" id="rc-b-download" disabled>⬇ Descargar validación</button></div>
+        <div class="actions"><button class="primary" id="rc-b-download" disabled>⬇ Descargar validación</button><span class="muted small save-where rc-where"></span></div>
         <div id="rc-b-emails"></div>
       </div>
 
@@ -349,14 +382,17 @@ table.t input { padding: 4px 6px; width: 100%; }
         <div class="actions">
           <button class="primary" id="rc-c-download" disabled>⬇ Descargar “Reclasificacion por CeCo”</button>
           <button id="rc-c-hist" disabled>⬇ Filas para “Histórico K2”</button>
+          <button id="rc-c-eml" disabled>✉ Borrador para Planning (.eml)</button>
+          <span class="muted small save-where rc-where"></span>
         </div>
+        <div id="rc-c-mailinfo"></div>
       </div>
 
       <div class="tab" id="rc-tab-d">
         <p class="muted">Selecciona la carpeta del mes y proveedor (p. ej. <code>Suppliers\06. Junio\K2</code>) o arrastra sus archivos para verificar que estén las 6 evidencias.</p>
         <div class="grid g2">
           <div class="drop" id="rc-drop-ev"><b>Arrastra aquí los archivos de la carpeta</b><span>.msg / .xlsx</span></div>
-          <div><label class="btnlike">📁 Elegir carpeta…<input type="file" id="rc-ev-folder" webkitdirectory multiple hidden></label></div>
+          <div class="actions" style="margin:0;align-items:start"><button class="primary" id="rc-ev-check">📁 Revisar la carpeta del periodo</button><label class="btnlike">Elegir otra carpeta…<input type="file" id="rc-ev-folder" webkitdirectory multiple hidden></label></div>
         </div>
         <div id="rc-ev-result"></div>
       </div>
@@ -370,6 +406,21 @@ table.t input { padding: 4px 6px; width: 100%; }
         <label>Sociedad por defecto<input id="cfg-soc" value="MX15"></label>
         <label>Fechas ambiguas como<select id="cfg-dateorder"><option value="dmy">día/mes/año</option><option value="mdy">mes/día/año</option></select></label>
       </div>
+      <h3>Dónde guardar los resultados</h3>
+      <div class="filecard">
+        <label class="check"><input type="radio" name="cfg-save" value="download"> En la carpeta de <b>Descargas</b> (los Webis/JVUs salen en un ZIP)</label>
+        <label class="check"><input type="radio" name="cfg-save" value="folder"> Directo en mi carpeta <b>Tracker</b> de OneDrive / SharePoint, cada archivo en su subcarpeta</label>
+        <div class="actions"><button id="cfg-folder-pick">📁 Elegir carpeta Tracker…</button><button id="cfg-folder-forget" class="mini">Olvidar carpeta</button><span id="cfg-folder-name" class="muted"></span></div>
+        <p class="muted small">Elige la carpeta <code>…\Gerencia HRSS-Organización - General\2026\Tracker</code> (también sirve la carpeta “General”: la app entra sola a <code>{Año}\Tracker</code>). Los archivos se guardan en <code>Recharges\H2'26\Webis|JVUs|Accruals\{KEY}. {Nombre}</code> y <code>Suppliers\06. Junio\K2</code>. Si un archivo ya existe, la app pregunta antes de reemplazarlo. El navegador puede pedirte permiso una vez por sesión.</p>
+      </div>
+      <h3>Correos</h3>
+      <div class="grid g3">
+        <label>CC por defecto (p. ej. tu Line Manager)<input id="cfg-cc"></label>
+        <label>Para: Intern de Planning (reclasificación)<input id="cfg-planning"></label>
+        <label>CC de la reclasificación<input id="cfg-reclass-cc" placeholder="Line Manager de Planning; HR Data Analyst LM"></label>
+      </div>
+      <label><span>Directorio de correos (una persona por renglón: <code>Nombre; correo</code>). Se usa para llenar “Para” a partir de los nombres de HRBP.</span>
+        <textarea id="cfg-contacts" style="min-height:140px" placeholder="Camila Iglesias; camila_iglesias@empresa.com&#10;Eugenia Juarez; eugenia_juarez@empresa.com"></textarea></label>
       <h3>Equivalencias guardadas por mercado (Headcount)</h3>
       <div id="cfg-profiles"></div>
       <div class="actions">
@@ -404,6 +455,13 @@ table.t input { padding: 4px 6px; width: 100%; }
           <li>Un solo filtro de Entidad/Función para SOP y COPLAN (antes podían quedar distintos sin aviso).</li>
           <li>Aparecen todos los grados (antes la lista era fija) y avisa de funciones/entidades sin equivalencia.</li>
           <li>Sin límite de filas (antes 473 en CAR y 4,893 en Colombia).</li>
+        </ul>
+        <h3>Lo más nuevo</h3>
+        <ul>
+          <li><b>Guardar directo en OneDrive:</b> en Configuración elige tu carpeta Tracker y cada archivo se guarda en su subcarpeta (Webis, JVUs, Accruals, Suppliers), sin ZIP.</li>
+          <li><b>Borradores de correo (.eml):</b> se abren en Outlook con destinatarios, asunto, texto y adjunto listos.</li>
+          <li><b>Tracker que se actualiza:</b> arrastra el Tracker anterior y se conserva lo capturado; la columna “Siguiente paso” dice qué falta.</li>
+          <li><b>Headcount:</b> varios mercados a la vez y comparación contra la corrida anterior.</li>
         </ul>
         <h3>Privacidad</h3>
         <p>La app no se conecta a internet: todo se procesa en la memoria del navegador de tu laptop. No sube archivos a ningún lado.</p>
@@ -824,6 +882,45 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
   async function workbookToBuffer(wb) { return wb.xlsx.writeBuffer(); }
 
+  // ---------- Correo (.eml que Outlook abre como borrador) ----------
+  function toBytes(data) {
+    if (data instanceof Uint8Array) return data;
+    if (data instanceof ArrayBuffer) return new Uint8Array(data);
+    if (data && data.buffer instanceof ArrayBuffer) return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+    return new TextEncoder().encode(String(data));
+  }
+  function bytesToBase64(data) {
+    const u8 = toBytes(data);
+    let bin = '';
+    for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+    return btoa(bin);
+  }
+  function wrap76(s) { return s.replace(/(.{76})/g, '$1\r\n'); }
+  function encHeader(s) { return /^[\x20-\x7e]*$/.test(s) ? s : '=?UTF-8?B?' + bytesToBase64(new TextEncoder().encode(s)) + '?='; }
+  function textToHtml(text) {
+    const e = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return '<html><body><div style="font-family:Calibri,Arial,sans-serif;font-size:11pt">' +
+      String(text).split(/\n{2,}/).map((p) => '<p>' + e(p).replace(/\n/g, '<br>') + '</p>').join('') + '</div></body></html>';
+  }
+  /** Arma un .eml con X-Unsent: 1 (Outlook lo abre como borrador editable, con los adjuntos ya puestos). */
+  function buildEml(m) {
+    const B = '=_hrss_' + Math.random().toString(36).slice(2);
+    const list = (v) => (Array.isArray(v) ? v : String(v || '').split(/[;,]/)).map((x) => x.trim()).filter(Boolean).join(', ');
+    const h = ['X-Unsent: 1', 'MIME-Version: 1.0'];
+    if (list(m.to)) h.push('To: ' + encHeader(list(m.to)));
+    if (list(m.cc)) h.push('Cc: ' + encHeader(list(m.cc)));
+    h.push('Subject: ' + encHeader(m.subject || ''));
+    h.push('Content-Type: multipart/mixed; boundary="' + B + '"');
+    const parts = [];
+    parts.push('Content-Type: text/html; charset="utf-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n' + wrap76(bytesToBase64(new TextEncoder().encode(m.html || textToHtml(m.text || '')))));
+    (m.attachments || []).forEach((a) => {
+      const n = encHeader(a.name);
+      parts.push('Content-Type: ' + (a.type || 'application/octet-stream') + '; name="' + n + '"\r\nContent-Disposition: attachment; filename="' + n + '"\r\nContent-Transfer-Encoding: base64\r\n\r\n' + wrap76(bytesToBase64(a.data)));
+    });
+    return h.join('\r\n') + '\r\n\r\nEste es un mensaje MIME.\r\n' + parts.map((p) => '--' + B + '\r\n' + p + '\r\n').join('') + '--' + B + '--\r\n';
+  }
+  const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
   // ---------- Navegador ----------
   function downloadBlob(blob, filename) {
     const a = document.createElement('a');
@@ -859,6 +956,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     findHeaderRow, findCol, headerLabels, colLetter, rowIsEmpty,
     nameTokens, nameScore,
     encodeCP1252, toTabText, cleanGrid,
+    bytesToBase64, textToHtml, buildEml, XLSX_MIME,
     COLORS, BORDER, fill, newWorkbook, styleHeader, writeTable, title, workbookToBuffer,
     downloadBlob, downloadWorkbook, readFileAsArrayBuffer, loadFile, safeFileName
   };
@@ -1156,7 +1254,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   // ---------- Reporte Excel ----------
-  async function buildReport(res, cfg, filter) {
+  async function buildReport(res, cfg, filter, ch) {
     const wb = Core.newWorkbook();
     const C = Core.COLORS;
     const sopL = cfg.sopLabel || 'SOP', copL = cfg.coplanLabel || 'COPLAN';
@@ -1280,10 +1378,199 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       ['Agrupa grados ≤', cfg.gradeGroupMax || 'No'], ['Encabezado HR Input', res.parsed.headerCell], ['Posiciones leídas', res.positions.length],
       ['Filas de HC Aprobado', res.approved.length]
     ]);
+    addChangesSheet(wb, ch, cfg);
     return wb;
   }
 
+  // ---------- Detección de mercado ----------
+  const COUNTRY_MARKET = { CO: 'Colombia', VE: 'Venezuela', GY: 'CAR', JM: 'CAR', TT: 'CAR', HN: 'CAM', CR: 'CAM', PA: 'CAM', CT: 'CAM' };
+  function marketOfUnit(code) {
+    const c = str(code).toUpperCase();
+    if (!c) return null;
+    let m = c.match(/^C00M([A-Z]{2})/);
+    const cc = m ? m[1] : c.slice(0, 2);
+    if (cc === 'MX') return c[2] === 'O' ? 'México Operaciones' : 'México Comercial';
+    return COUNTRY_MARKET[cc] || null;
+  }
+  /** Mercado más probable de un HR Input (por el Planning Reporting Unit de sus posiciones). */
+  function detectMarket(parsed) {
+    const count = {};
+    parsed.positions.forEach((p) => { const m = marketOfUnit(p.pru); if (m) count[m] = (count[m] || 0) + 1; });
+    const best = Object.entries(count).sort((a, b) => b[1] - a[1])[0];
+    return best ? best[0] : null;
+  }
+  function detectMarketFromName(name) {
+    const n = norm(name);
+    if (/colombia|\bcol\b/.test(n)) return 'Colombia';
+    if (/venezuela|\bven?\b/.test(n)) return 'Venezuela';
+    if (/\bcar\b|caribe|caribbean/.test(n)) return 'CAR';
+    if (/\bcam\b|centroam|central america/.test(n)) return 'CAM';
+    if (/(mexico|\bmx\b).*(oper|ops)/.test(n)) return 'México Operaciones';
+    if (/(mexico|\bmx\b).*(comer|commer|com\b)/.test(n)) return 'México Comercial';
+    return null;
+  }
+
+  // ---------- Catálogo aprobado y equivalencias desde el archivo maestro ----------
+  /** Lee las hojas "For Filters" y "Entidades" del maestro. */
+  function readEquivalences(wb) {
+    const out = { funcMapBPC: {}, funcMapApp: {}, entityMapBPC: {} };
+    const ff = Core.getSheet(wb, ['For Filters']);
+    if (ff) {
+      Core.sheetRows(ff.ws).forEach((r) => {
+        if (!r) return;
+        [[0, 1, 'funcMapBPC'], [3, 4, 'funcMapApp']].forEach(([a, b, key]) => {
+          const ka = str(r[a]), vb = str(r[b]);
+          if (!ka || !vb || norm(vb) === 'function' || /slicer$/.test(norm(ka))) return;
+          if (!out[key][ka]) out[key][ka] = vb;
+        });
+      });
+    }
+    const en = Core.getSheet(wb, ['Entidades']);
+    if (en) {
+      const rows = Core.sheetRows(en.ws);
+      const h = Core.findHeaderRow(rows, ['Codigo Entidad', 'Entidad'], 10);
+      if (h >= 0) {
+        const ci = Core.findCol(rows[h], ['Codigo Entidad', 'Código Entidad', 'Codigo', 'Code']);
+        const ei = Core.findCol(rows[h], ['Entidad', 'Entity'], ['codigo', 'code']);
+        if (ci >= 0 && ei >= 0) rows.slice(h + 1).forEach((r) => { const k = str(r && r[ci]), v = str(r && r[ei]); if (k && v && !out.entityMapBPC[k]) out.entityMapBPC[k] = v; });
+      }
+    }
+    return out;
+  }
+  function findApprovedSheet(wb, savedSheet) {
+    if (savedSheet && wb.SheetNames.includes(savedSheet)) return savedSheet;
+    const s = Core.getSheet(wb, ['HC_YTD (Grade) (HC Tool Approv)', 'hc_ytd', 'aprobado', 'approved', 'approv']);
+    return s ? s.name : wb.SheetNames[0];
+  }
+  function findApprovedHeader(rows) {
+    const h = Core.findHeaderRow(rows, [/grad[eo]/, /^sop/, /coplan/, /function|funcion/, /entidad|country|pais/], 40);
+    return h < 0 ? 0 : h;
+  }
+  /** Elige columnas: las guardadas por nombre, las etiquetas del ejercicio, o las que adivina. */
+  function pickApprovedColumns(headerRow, saved, sopLabel, coplanLabel) {
+    const headers = Core.headerLabels(headerRow || []);
+    const guess = guessApprovedColumns(headerRow || []);
+    const byName = (name) => (name ? headers.findIndex((x) => norm(x) === norm(name)) : -1);
+    const byLabel = (lbl) => (lbl ? headers.findIndex((x) => norm(x).includes(norm(lbl))) : -1);
+    const cols = {};
+    ['grade', 'func', 'entity'].forEach((k) => { const i = byName(saved && saved[k]); cols[k] = i >= 0 ? i : guess[k]; });
+    const s = byLabel(sopLabel), c = byLabel(coplanLabel);
+    cols.sop = s >= 0 ? s : guess.sop;
+    cols.coplan = c >= 0 ? c : guess.coplan;
+    return cols;
+  }
+  /** Prepara la entrada de HC Aprobado de un libro maestro sin intervención (modo varios mercados). */
+  function autoApproved(wb, profile, sopLabel, coplanLabel) {
+    const saved = (profile && profile.appCols) || {};
+    const sheet = findApprovedSheet(wb, saved.sheet);
+    const rows = Core.sheetRows(wb.Sheets[sheet]);
+    const headerIdx = findApprovedHeader(rows);
+    const cols = pickApprovedColumns(rows[headerIdx], saved, sopLabel, coplanLabel);
+    return { sheet, rows, headerIdx, cols };
+  }
+
+  // ---------- Cambios contra la corrida anterior ----------
+  function snapshot(res, cfg) {
+    const o = res.overall;
+    return {
+      date: Core.stamp(), sopLabel: cfg.sopLabel, coplanLabel: cfg.coplanLabel, source: cfg.sourceName || '',
+      rows: o.rows.map((r) => ({ grade: r.grade, bpcSOP: r.bpcSOP, appSOP: r.appSOP, diffSOP: r.diffSOP, bpcCOPLAN: r.bpcCOPLAN, appCOPLAN: r.appCOPLAN, diffCOPLAN: r.diffCOPLAN })),
+      total: { bpcSOP: o.total.bpcSOP, diffSOP: o.total.diffSOP, bpcCOPLAN: o.total.bpcCOPLAN, diffCOPLAN: o.total.diffCOPLAN },
+      positions: res.positions.length
+    };
+  }
+  /** Compara la corrida actual (sin filtros) contra una foto anterior. */
+  function changes(res, snap) {
+    if (!snap) return null;
+    const prev = {};
+    snap.rows.forEach((r) => { prev[r.grade] = r; });
+    const grades = sortGrades(Array.from(new Set(res.overall.rows.map((r) => r.grade).concat(snap.rows.map((r) => r.grade)))));
+    const cur = {};
+    res.overall.rows.forEach((r) => { cur[r.grade] = r; });
+    const label = (a, b) => {
+      if (a === b) return a === 0 ? '' : 'Sin cambio';
+      if (b === 0) return '✔ Corregido';
+      if (a === 0) return '⚠ Nueva diferencia';
+      return Math.abs(b) < Math.abs(a) ? '↓ Mejoró' : '↑ Empeoró';
+    };
+    const rows = grades.map((g) => {
+      const p = prev[g] || { bpcSOP: 0, diffSOP: 0, bpcCOPLAN: 0, diffCOPLAN: 0 }, c = cur[g] || { bpcSOP: 0, diffSOP: 0, bpcCOPLAN: 0, diffCOPLAN: 0 };
+      return {
+        grade: g, prevDiffSOP: p.diffSOP, diffSOP: c.diffSOP, prevBpcSOP: p.bpcSOP, bpcSOP: c.bpcSOP, chSOP: label(p.diffSOP, c.diffSOP),
+        prevDiffCOPLAN: p.diffCOPLAN, diffCOPLAN: c.diffCOPLAN, prevBpcCOPLAN: p.bpcCOPLAN, bpcCOPLAN: c.bpcCOPLAN, chCOPLAN: label(p.diffCOPLAN, c.diffCOPLAN)
+      };
+    }).filter((r) => r.chSOP || r.chCOPLAN);
+    const fixed = rows.filter((r) => r.chSOP === '✔ Corregido' || r.chCOPLAN === '✔ Corregido').length;
+    const worse = rows.filter((r) => /Nueva|Empeor/.test(r.chSOP + r.chCOPLAN)).length;
+    return { date: snap.date, source: snap.source, rows, fixed, worse, prevPositions: snap.positions, positions: res.positions.length };
+  }
+  function addChangesSheet(wb, ch, cfg) {
+    if (!ch) return;
+    const ws = wb.addWorksheet('Cambios vs anterior');
+    Core.title(ws, 1, 'Cambios contra la corrida del ' + ch.date, ch.fixed + ' grado(s) corregidos · ' + ch.worse + ' con diferencia nueva o mayor · Posiciones: ' + ch.prevPositions + ' → ' + ch.positions);
+    const st = (cell) => { const v = String(cell.value || ''); if (/Corregido|Mejor/.test(v)) cell.fill = Core.fill(Core.COLORS.green); else if (/Nueva|Empeor/.test(v)) cell.fill = Core.fill(Core.COLORS.red); };
+    Core.writeTable(ws, 4, [
+      { header: 'Pay Grade', width: 20 }, { header: 'Dif ' + cfg.sopLabel + ' antes', width: 13 }, { header: 'Dif ' + cfg.sopLabel + ' ahora', width: 13 }, { header: 'Cambio ' + cfg.sopLabel, width: 18, style: st },
+      { header: 'Dif ' + cfg.coplanLabel + ' antes', width: 15 }, { header: 'Dif ' + cfg.coplanLabel + ' ahora', width: 15 }, { header: 'Cambio ' + cfg.coplanLabel, width: 18, style: st }
+    ], ch.rows.map((r) => [r.grade, r.prevDiffSOP, r.diffSOP, r.chSOP, r.prevDiffCOPLAN, r.diffCOPLAN, r.chCOPLAN]));
+  }
+
+  // ---------- Varios mercados ----------
+  async function buildBatchReport(items, cfgBase) {
+    const wb = Core.newWorkbook();
+    const C = Core.COLORS;
+    const ws = wb.addWorksheet('Resumen mercados', { views: [{ showGridLines: false }] });
+    Core.title(ws, 1, 'HC in BPC vs HC Approved — todos los mercados', 'Generado: ' + Core.stamp() + ' · ' + (cfgBase.sopLabel || 'SOP') + ' / ' + (cfgBase.coplanLabel || 'COPLAN'));
+    const stStyle = (cell) => { const ok = /ALIGNED/.test(String(cell.value)); cell.fill = Core.fill(ok ? C.green : C.red); cell.font = { bold: true, color: { argb: ok ? C.greenTx : C.redTx } }; };
+    const sopL = cfgBase.sopLabel || 'SOP', copL = cfgBase.coplanLabel || 'COPLAN';
+    Core.writeTable(ws, 4, [
+      { header: 'Mercado', width: 22 }, { header: 'Posiciones', width: 11 },
+      { header: 'BPC ' + sopL, width: 11 }, { header: 'Aprobado ' + sopL, width: 13 }, { header: 'Dif ' + sopL, width: 10 }, { header: 'Grados con dif. ' + sopL, width: 14 }, { header: 'Estatus ' + sopL, width: 28, style: stStyle },
+      { header: 'BPC ' + copL, width: 12 }, { header: 'Aprobado ' + copL, width: 14 }, { header: 'Dif ' + copL, width: 11 }, { header: 'Grados con dif. ' + copL, width: 15 }, { header: 'Estatus ' + copL, width: 28, style: stStyle },
+      { header: 'Alertas', width: 9 }, { header: 'Cambios vs anterior', width: 30 }
+    ], items.map((it) => {
+      const o = it.res.overall;
+      return [it.market, it.res.positions.length, o.total.bpcSOP, o.total.appSOP, o.total.diffSOP, o.rows.filter((r) => r.diffSOP !== 0).length, o.statusSOP.text,
+        o.total.bpcCOPLAN, o.total.appCOPLAN, o.total.diffCOPLAN, o.rows.filter((r) => r.diffCOPLAN !== 0).length, o.statusCOPLAN.text, it.res.alerts.length,
+        it.changes ? (it.changes.fixed + ' corregidos · ' + it.changes.worse + ' nuevos/peores') : 'Primera corrida'];
+    }));
+    items.forEach((it) => {
+      const w = wb.addWorksheet(Core.safeFileName(it.market).slice(0, 31));
+      Core.title(w, 1, it.market, (it.sourceName || '') + ' · ' + it.res.positions.length + ' posiciones');
+      const o = it.res.overall;
+      const dst = (cell) => { const v = Number(cell.value) || 0; cell.fill = Core.fill(v === 0 ? C.green : C.red); };
+      Core.writeTable(w, 4, [
+        { header: 'Pay Grade', width: 22 }, { header: 'BPC ' + sopL, width: 11, total: true }, { header: 'Aprobado ' + sopL, width: 13, total: true }, { header: 'Dif ' + sopL, width: 10, total: true, style: dst }, { header: 'Acción ' + sopL, width: 40 },
+        { header: 'BPC ' + copL, width: 12, total: true }, { header: 'Aprobado ' + copL, width: 14, total: true }, { header: 'Dif ' + copL, width: 11, total: true, style: dst }, { header: 'Acción ' + copL, width: 40 }
+      ], o.rows.map((r) => [r.grade, r.bpcSOP, r.appSOP, r.diffSOP, r.actionSOP, r.bpcCOPLAN, r.appCOPLAN, r.diffCOPLAN, r.actionCOPLAN]), { totals: true, totalsLabel: 'Grand Total' });
+    });
+    const wa = wb.addWorksheet('Alertas');
+    const al = [];
+    items.forEach((it) => it.res.alerts.forEach((a) => al.push([it.market, a.tipo, a.detalle, a.accion])));
+    Core.writeTable(wa, 1, [{ header: 'Mercado', width: 20 }, { header: 'Tipo', width: 32 }, { header: 'Detalle', width: 80 }, { header: 'Acción', width: 60 }], al, { autoFilter: true });
+    return wb;
+  }
+
+  /** Texto del correo para el HRBP con las diferencias que debe corregir. */
+  function emailText(res, cfg, filter) {
+    const cmp = compare(res.positions, res.approved, filter || {});
+    const lines = (key, label) => {
+      const bad = cmp.rows.filter((r) => r['diff' + key] !== 0);
+      if (!bad.length) return label + ': HC alineado, sin acciones.';
+      return label + ':\n' + bad.map((r) => '• ' + r.grade + ': BPC ' + r['bpc' + key] + ' vs aprobado ' + r['app' + key] + ' (' + (r['diff' + key] > 0 ? '+' : '') + r['diff' + key] + ') → ' + r['action' + key]).join('\n');
+    };
+    const scope = [filter && filter.entity, filter && filter.func].filter(Boolean).join(' / ');
+    return {
+      subject: 'HC in BPC vs HC Approved - ' + (cfg.market || '') + (scope ? ' (' + scope + ')' : '') + ' - ' + cfg.sopLabel + ' / ' + cfg.coplanLabel,
+      body: 'Hola,\n\nTe comparto la comparación entre el headcount capturado en BPC y el headcount aprobado' + (scope ? ' para ' + scope : '') + '. El detalle por posición viene en el archivo adjunto (hoja "Posiciones BPC").\n\n' +
+        lines('SOP', cfg.sopLabel) + '\n\n' + lines('COPLAN', cfg.coplanLabel) +
+        '\n\n¿Me apoyas por favor con los ajustes en BPC? En cuanto los tengas, vuelvo a correr la validación.\n\nSaludos.'
+    };
+  }
+
   return {
+    COUNTRY_MARKET, marketOfUnit, detectMarket, detectMarketFromName, readEquivalences, findApprovedSheet, findApprovedHeader, pickApprovedColumns, autoApproved,
+    snapshot, changes, addChangesSheet, buildBatchReport, emailText,
     HR_COLUMNS, MARKETS, defaultCutoffs, parseHRInput, computePositions, gradeKey, sortGrades,
     guessApprovedColumns, parseApproved, compare, alerts, run, buildReport, lookup
   };
@@ -1375,7 +1662,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       dedup.push(a);
     });
     let next = dedup.reduce((m, a) => Math.max(m, parseInt(a.key, 10) || 0), 0) + 1;
-    dedup.forEach((a) => { if (!a.key) a.key = String(next++); });
+    dedup.forEach((a) => { if (!a.key) { a.key = String(next++); a._autoKey = true; } });
     return { assignments: dedup, sheets };
   }
 
@@ -1415,53 +1702,159 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   const STATUSES = ['Pendiente de información', 'Webi cargado', 'En aprobación (1/3)', 'En aprobación (2/3)', 'En aprobación (3/3)', 'Aprobado - PO generada', 'JVU cargado', 'JVU contabilizado (Batch ID)', 'Accrual cargado', 'Validado en FBL5N', 'Rechazado', 'Cancelado'];
 
+  const TRACKER_COLS = [
+    { header: 'Key', key: 'key', width: 6 }, { header: 'Nombre (Apellidos Nombre)', key: 'nombre', width: 34 },
+    { header: 'Payroll Num.', key: 'payroll', width: 12 }, { header: 'Área', key: 'area', width: 16 },
+    { header: 'Sociedad', key: 'sociedad', width: 9 }, { header: 'SE Company Code', key: 'se', width: 13 },
+    { header: 'CeCo', key: 'ceco', width: 13 }, { header: 'Grade', key: 'grade', width: 7 },
+    { header: 'Host Country', key: 'host', width: 14 }, { header: 'Tipo asignación', key: 'tipo', width: 12 },
+    { header: 'Desde', key: 'desde', width: 9 }, { header: 'Hasta', key: 'hasta', width: 9 },
+    { header: 'Receiving IC code', key: 'ic', width: 13 }, { header: 'Coder (aprobador Host)', key: 'coder', width: 20 },
+    { header: 'Coder email', key: 'coderEmail', width: 26 },
+    { header: 'Note Title (SAP)', key: 'noteTitle', width: 28 }, { header: 'Note Text (SAP)', key: 'noteText', width: 50 },
+    { header: 'Estatus', key: 'estatus', width: 24 }, { header: 'Siguiente paso', key: 'next', width: 34 },
+    { header: 'Recharge ID (Webi)', key: 'rid', width: 16 }, { header: 'Fecha carga Webi', key: 'f1', width: 12 },
+    { header: 'Aprobador 1', key: 'ap1', width: 18 }, { header: 'Aprobador 2', key: 'ap2', width: 18 }, { header: 'Aprobador 3', key: 'ap3', width: 18 },
+    { header: 'RRB WBS / PO', key: 'po', width: 26 }, { header: 'Monto Webi', key: 'mw', width: 12 }, { header: 'Monto PO (ME23N)', key: 'mp', width: 13 },
+    { header: 'JVU ID', key: 'jvu', width: 14 }, { header: 'Fecha carga JVU', key: 'f2', width: 12 }, { header: 'BATCH ID', key: 'batch', width: 14 },
+    { header: '¿Accrual?', key: 'acc', width: 9 }, { header: 'Accrual ID', key: 'accid', width: 14 }, { header: 'Validación FBL5N', key: 'fbl', width: 14 },
+    { header: 'Comentarios', key: 'com', width: 40 },
+    { header: 'Archivo Shopping Cart', key: 'fsc', width: 36 }, { header: 'Archivo Webi', key: 'fwebi', width: 36 },
+    { header: 'Archivo JVU', key: 'fjvu', width: 36 }, { header: 'Archivo Accrual', key: 'facc', width: 36 },
+    { header: 'Carpeta del empleado', key: 'folder', width: 36 }
+  ];
+  /** Columnas que se capturan a mano durante el semestre (se conservan al regenerar el Tracker). */
+  const MANUAL_KEYS = ['estatus', 'rid', 'f1', 'ap1', 'ap2', 'ap3', 'po', 'mw', 'mp', 'jvu', 'f2', 'batch', 'acc', 'accid', 'fbl', 'com'];
+  const DATA_KEYS = ['payroll', 'area', 'sociedad', 'ceco', 'grade', 'host', 'tipo', 'desde', 'hasta', 'ic', 'coder', 'coderEmail'];
+  const colIdx = (k) => TRACKER_COLS.findIndex((c) => c.key === k);
+
+  /** Siguiente paso del proceso según lo capturado (misma lógica que la fórmula del Excel). */
+  function nextStep(m) {
+    const v = (k) => !isBlank(m[k]);
+    const st = norm(m.estatus);
+    if (st === 'cancelado' || st === 'rechazado') return '—';
+    if (v('fbl')) return '✔ Terminado';
+    if (norm(m.acc) === 'si' && !v('accid')) return 'Crear y cargar Accrual (mismo día)';
+    if (!v('rid')) return 'Crear y cargar Webi';
+    if (!v('po')) return 'Seguir aprobaciones (RRB PO Dashboard)';
+    if (!v('jvu') && !v('accid')) return 'Generar y cargar JVU (mismo día)';
+    if (v('jvu') && !v('batch')) return 'Esperar BATCH ID';
+    return 'Validar en FBL5N';
+  }
+  function nextStepFormula(r) {
+    const L = (k) => Core.colLetter(colIdx(k)) + r;
+    return 'IF(OR(' + L('estatus') + '="Cancelado",' + L('estatus') + '="Rechazado"),"—",IF(' + L('fbl') + '<>"","✔ Terminado",IF(AND(' + L('acc') + '="Sí",' + L('accid') + '=""),"Crear y cargar Accrual (mismo día)",' +
+      'IF(' + L('rid') + '="","Crear y cargar Webi",IF(' + L('po') + '="","Seguir aprobaciones (RRB PO Dashboard)",IF(AND(' + L('jvu') + '="",' + L('accid') + '=""),"Generar y cargar JVU (mismo día)",' +
+      'IF(AND(' + L('jvu') + '<>"",' + L('batch') + '=""),"Esperar BATCH ID","Validar en FBL5N")))))))';
+  }
+
+  /** Lee un Tracker generado antes por la app (para conservar lo capturado). */
+  function readPreviousTracker(wb) {
+    let best = null;
+    wb.SheetNames.forEach((sn) => {
+      if (best) return;
+      const rows = Core.sheetRows(wb.Sheets[sn]);
+      const h = Core.findHeaderRow(rows, ['Key', 'Estatus', 'Recharge ID (Webi)', 'RRB WBS / PO', 'Nombre (Apellidos Nombre)'], 10);
+      if (h < 0) return;
+      const hd = (rows[h] || []).map(norm);
+      if (!hd.includes(norm('Recharge ID (Webi)')) && !hd.includes('estatus')) return;
+      const map = {};
+      TRACKER_COLS.forEach((c) => { const i = hd.indexOf(norm(c.header)); if (i >= 0) map[c.key] = i; });
+      if (map.nombre === undefined) return;
+      const out = [];
+      rows.slice(h + 1).forEach((r) => {
+        if (!r || isBlank(r[map.nombre])) return;
+        const o = {};
+        Object.keys(map).forEach((k) => { const v = r[map[k]]; o[k] = isBlank(v) ? '' : v; });
+        ['key', 'nombre'].concat(DATA_KEYS).forEach((k) => { o[k] = str(o[k]); });
+        if (o.com) o.com = String(o.com).replace(/^\[No viene en la lista nueva\]\s*/, '');
+        out.push(o);
+      });
+      best = { sheet: sn, rows: out };
+    });
+    return best;
+  }
+  /** Combina la lista nueva con el Tracker anterior: conserva lo capturado, agrega nuevos y marca los que ya no vienen. */
+  function mergeTracker(assignments, prevRows) {
+    const prev = (prevRows || []).map((p) => Object.assign({ _used: false }, p));
+    const match = (a) => {
+      let m = prev.find((p) => !p._used && a.payroll && p.payroll && norm(a.payroll) === norm(p.payroll));
+      if (!m) {
+        let bs = 0;
+        prev.forEach((p) => { if (p._used) return; const sc = Core.nameScore(a.nombre, p.nombre); if (sc >= 0.9 && sc > bs) { bs = sc; m = p; } });
+      }
+      return m;
+    };
+    const out = [];
+    let kept = 0, nuevos = 0;
+    assignments.forEach((a0) => {
+      const a = Object.assign({}, a0);
+      const m = match(a);
+      if (m) {
+        m._used = true; kept++;
+        a.manual = {};
+        MANUAL_KEYS.forEach((k) => { if (!isBlank(m[k])) a.manual[k] = m[k]; });
+        DATA_KEYS.forEach((k) => { if (isBlank(a[k]) && !isBlank(m[k])) a[k] = m[k]; });
+        if (a._autoKey && m.key) { a.key = m.key; a._autoKey = false; }
+      } else { a._new = true; nuevos++; }
+      out.push(a);
+    });
+    const only = prev.filter((p) => !p._used).map((p) => {
+      const a = { key: p.key, nombre: p.nombre, _onlyPrev: true, manual: {} };
+      DATA_KEYS.forEach((k) => { a[k] = p[k] || ''; });
+      MANUAL_KEYS.forEach((k) => { if (!isBlank(p[k])) a.manual[k] = p[k]; });
+      a.manual.com = '[No viene en la lista nueva] ' + (a.manual.com || '');
+      return a;
+    });
+    // KEY consecutivo para los nuevos sin KEY propio, sin chocar con los existentes
+    const used = new Set(out.concat(only).filter((a) => !a._autoKey).map((a) => String(a.key)));
+    let next = Array.from(used).reduce((mx, k) => Math.max(mx, parseInt(k, 10) || 0), 0) + 1;
+    out.forEach((a) => { if (a._autoKey) { while (used.has(String(next))) next++; a.key = String(next); used.add(a.key); a._autoKey = false; } });
+    return { assignments: out.concat(only), stats: { kept, nuevos, soloAnterior: only.length } };
+  }
+
   async function buildTracker(assignments, p) {
     const wb = Core.newWorkbook();
     const C = Core.COLORS;
     const ps = periodShort(p.half, p.year);
     const pth = paths(p.oneId, p.year, p.half);
     const ws = wb.addWorksheet('Tracker ' + ps.replace("'", ''), { views: [{ state: 'frozen', xSplit: 2, ySplit: 3 }] });
-    Core.title(ws, 1, 'Tracker de Recobros ' + ps, 'Generado: ' + Core.stamp() + ' · ' + assignments.length + ' asignaciones · Mes a marcar con "X" en SAP si se crea hoy: ' + monthToMark(Core.todaySerial()));
-    const cols = [
-      { header: 'Key', key: 'key', width: 6 }, { header: 'Nombre (Apellidos Nombre)', key: 'nombre', width: 34 },
-      { header: 'Payroll Num.', key: 'payroll', width: 12 }, { header: 'Área', key: 'area', width: 16 },
-      { header: 'Sociedad', key: 'sociedad', width: 9 }, { header: 'SE Company Code', key: 'se', width: 13 },
-      { header: 'CeCo', key: 'ceco', width: 13 }, { header: 'Grade', key: 'grade', width: 7 },
-      { header: 'Host Country', key: 'host', width: 14 }, { header: 'Tipo asignación', key: 'tipo', width: 12 },
-      { header: 'Desde', key: 'desde', width: 9 }, { header: 'Hasta', key: 'hasta', width: 9 },
-      { header: 'Receiving IC code', key: 'ic', width: 13 }, { header: 'Coder (aprobador Host)', key: 'coder', width: 20 },
-      { header: 'Coder email', key: 'coderEmail', width: 26 },
-      { header: 'Note Title (SAP)', key: 'noteTitle', width: 28 }, { header: 'Note Text (SAP)', key: 'noteText', width: 50 },
-      { header: 'Estatus', key: 'estatus', width: 24 },
-      { header: 'Recharge ID (Webi)', key: 'rid', width: 16 }, { header: 'Fecha carga Webi', key: 'f1', width: 12 },
-      { header: 'Aprobador 1', key: 'ap1', width: 18 }, { header: 'Aprobador 2', key: 'ap2', width: 18 }, { header: 'Aprobador 3', key: 'ap3', width: 18 },
-      { header: 'RRB WBS / PO', key: 'po', width: 26 }, { header: 'Monto Webi', key: 'mw', width: 12 }, { header: 'Monto PO (ME23N)', key: 'mp', width: 13 },
-      { header: 'JVU ID', key: 'jvu', width: 14 }, { header: 'Fecha carga JVU', key: 'f2', width: 12 }, { header: 'BATCH ID', key: 'batch', width: 14 },
-      { header: '¿Accrual?', key: 'acc', width: 9 }, { header: 'Accrual ID', key: 'accid', width: 14 }, { header: 'Validación FBL5N', key: 'fbl', width: 14 },
-      { header: 'Comentarios', key: 'com', width: 40 },
-      { header: 'Archivo Shopping Cart', key: 'fsc', width: 36 }, { header: 'Archivo Webi', key: 'fwebi', width: 36 },
-      { header: 'Archivo JVU', key: 'fjvu', width: 36 }, { header: 'Archivo Accrual', key: 'facc', width: 36 },
-      { header: 'Carpeta del empleado', key: 'folder', width: 36 }
-    ];
-    const rows = assignments.map((a) => Object.assign({}, a, {
-      se: seCompanyCode(a.sociedad),
-      noteTitle: noteTitle(a, p.half, p.year, p.nameOrder), noteText: noteText(a, p.half, p.year),
-      estatus: STATUSES[0], acc: 'No',
-      fsc: fileName(a.key, 'SC', a.nombre), fwebi: fileName(a.key, 'Webi', a.nombre),
-      fjvu: fileName(a.key, 'JVU', a.nombre), facc: fileName(a.key, 'Accrual', a.nombre), folder: folderName(a.key, a.nombre)
-    }));
+    Core.title(ws, 1, 'Tracker de Recobros ' + ps, 'Generado: ' + Core.stamp() + ' · ' + assignments.length + ' asignaciones · Mes a marcar con "X" en SAP si se crea hoy: ' + monthToMark(Core.todaySerial()) + ' · Key en amarillo = asignación nueva · "Siguiente paso" se actualiza solo al capturar');
+    const cols = TRACKER_COLS;
+    const rows = assignments.map((a) => {
+      const m = a.manual || {};
+      const o = Object.assign({}, a, {
+        se: seCompanyCode(a.sociedad),
+        noteTitle: noteTitle(a, p.half, p.year, p.nameOrder), noteText: noteText(a, p.half, p.year),
+        fsc: fileName(a.key, 'SC', a.nombre), fwebi: fileName(a.key, 'Webi', a.nombre),
+        fjvu: fileName(a.key, 'JVU', a.nombre), facc: fileName(a.key, 'Accrual', a.nombre), folder: folderName(a.key, a.nombre)
+      });
+      MANUAL_KEYS.forEach((k) => { o[k] = isBlank(m[k]) ? null : m[k]; });
+      ['f1', 'f2'].forEach((k) => { if (typeof o[k] === 'number') o[k] = Core.serialToJSDate(o[k]); });
+      if (!o.estatus) o.estatus = STATUSES[0];
+      if (!o.acc) o.acc = 'No';
+      o.next = nextStep(o);
+      return o;
+    });
     const t = Core.writeTable(ws, 3, cols, rows, { autoFilter: true });
     // Colores por bloque de información
-    const groups = [[1, 15, C.head], [16, 17, 'FF7F6000'], [18, 33, 'FF375623'], [34, 38, 'FF595959']];
+    const groups = [[1, colIdx('coderEmail') + 1, C.head], [colIdx('noteTitle') + 1, colIdx('noteText') + 1, 'FF7F6000'], [colIdx('estatus') + 1, colIdx('com') + 1, 'FF375623'], [colIdx('fsc') + 1, cols.length, 'FF595959']];
     groups.forEach(([a, b, color]) => { for (let c = a; c <= b; c++) { const cell = ws.getCell(3, c); cell.fill = Core.fill(color); } });
+    const cE = colIdx('estatus') + 1, cA = colIdx('acc') + 1, cN = colIdx('next') + 1;
     for (let r = 4; r <= t.lastRow; r++) {
-      ws.getCell(r, 18).dataValidation = { type: 'list', allowBlank: true, formulae: ['"' + STATUSES.join(',') + '"'] };
-      ws.getCell(r, 30).dataValidation = { type: 'list', allowBlank: true, formulae: ['"Sí,No"'] };
-      for (let c = 18; c <= 33; c++) ws.getCell(r, c).fill = Core.fill('FFF4F9EF');
-      ['f1', 'f2'].forEach((k) => { ws.getCell(r, cols.findIndex((x) => x.key === k) + 1).numFmt = 'dd/mm/yyyy'; });
+      const a = rows[r - 4];
+      ws.getCell(r, cE).dataValidation = { type: 'list', allowBlank: true, formulae: ['"' + STATUSES.join(',') + '"'] };
+      ws.getCell(r, cA).dataValidation = { type: 'list', allowBlank: true, formulae: ['"Sí,No"'] };
+      for (let c = cE; c <= colIdx('com') + 1; c++) ws.getCell(r, c).fill = Core.fill('FFF4F9EF');
+      const nc = ws.getCell(r, cN);
+      nc.value = { formula: nextStepFormula(r), result: a.next };
+      nc.font = { bold: true, color: { argb: 'FF1F4E79' } };
+      ['f1', 'f2'].forEach((k) => { ws.getCell(r, colIdx(k) + 1).numFmt = 'dd/mm/yyyy'; });
+      if (a._new) ws.getCell(r, 1).fill = Core.fill(C.yellow);
+      if (a._onlyPrev) ws.getRow(r).eachCell((c) => { c.font = { color: { argb: 'FF808080' }, italic: true }; });
     }
     ws.addConditionalFormatting({
-      ref: 'R4:R' + Math.max(4, t.lastRow),
+      ref: Core.colLetter(cE - 1) + '4:' + Core.colLetter(cE - 1) + Math.max(4, t.lastRow),
       rules: [
         { type: 'containsText', operator: 'containsText', text: 'Validado', style: { fill: Core.fill(C.green), font: { color: { argb: C.greenTx } } }, priority: 1 },
         { type: 'containsText', operator: 'containsText', text: 'Rechazado', style: { fill: Core.fill(C.red), font: { color: { argb: C.redTx } } }, priority: 2 },
@@ -1703,13 +2096,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return { file: file.name, ctx, items, buffer: file.buffer, opts };
   }
 
-  /** Arma el ZIP con la estructura de carpetas y nomenclatura del proceso. */
-  async function buildZip(processed, p) {
-    const JSZip = Core.lib('JSZip');
-    const zip = new JSZip();
-    const ps = periodShort(p.half, p.year);
-    const root = zip.folder('Recharges ' + ps.replace("'", ''));
-    const log = [];
+  /** Lista de archivos a generar, con rutas relativas a la carpeta "{Año}\\Tracker":
+   *  Recharges/H2'26/{Webis|JVUs|Accruals}/{KEY}. {Nombre}/{KEY}. {Tipo} {Nombre}.xlsx|.txt */
+  async function buildFiles(processed, p) {
+    const base0 = 'Recharges/' + periodShort(p.half, p.year);
+    const files = [], log = [];
     for (const pr of processed) {
       const key = str(pr.ctx.key), nombre = str(pr.ctx.nombre);
       if (!key || !nombre) { log.push({ file: pr.file, ok: false, msg: 'Falta KEY o Nombre' }); continue; }
@@ -1718,23 +2109,32 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (it.include === false) continue;
         const info = kindInfo(it.kind);
         const base = fileName(key, it.kind, nombre);
-        const dir = root.folder(info.folder === 'webis' ? 'Webis' : info.folder === 'jvus' ? 'JVUs' : 'Accruals').folder(folder);
+        const sub = info.folder === 'webis' ? 'Webis' : info.folder === 'jvus' ? 'JVUs' : 'Accruals';
+        const dir = base0 + '/' + sub + '/' + folder + '/';
         let xbuf = await copySheetWithFormats(pr.buffer, it.sheet);
         const styled = !!xbuf;
         if (!xbuf) xbuf = await valuesWorkbook(it.grid, it.sheet);
-        dir.file(base + '.xlsx', xbuf);
-        if (info.txt) dir.file(base + '.txt', Core.encodeCP1252(Core.toTabText(it.grid)));
-        log.push({ file: pr.file, ok: true, msg: (info.folder === 'webis' ? 'Webis' : info.folder === 'jvus' ? 'JVUs' : 'Accruals') + '/' + folder + '/' + base + (info.txt ? ' (.xlsx + .txt)' : ' (.xlsx)') + (styled ? '' : ' · solo valores') });
+        files.push({ path: dir + base + '.xlsx', data: new Uint8Array(xbuf), type: Core.XLSX_MIME });
+        if (info.txt) files.push({ path: dir + base + '.txt', data: Core.encodeCP1252(Core.toTabText(it.grid)), type: 'text/plain' });
+        log.push({ file: pr.file, ok: true, msg: sub + '/' + folder + '/' + base + (info.txt ? ' (.xlsx + .txt)' : ' (.xlsx)') + (styled ? '' : ' · solo valores') });
       }
     }
+    return { files, log };
+  }
+  /** ZIP con la misma estructura (para descargar y descomprimir dentro de Tracker). */
+  async function buildZip(processed, p) {
+    const JSZip = Core.lib('JSZip');
+    const zip = new JSZip();
+    const { files, log } = await buildFiles(processed, p);
+    files.forEach((f) => zip.file(f.path, f.data));
     const blob = await zip.generateAsync({ type: typeof window !== 'undefined' ? 'blob' : 'nodebuffer' });
-    return { blob, log };
+    return { blob, log, files };
   }
 
   return {
     ASSIGN_FIELDS, STATUSES, KINDS, guessAssignmentColumns, readAssignments, nameParts, periodShort, noteTitle, noteText,
-    fileName, folderName, monthToMark, paths, seCompanyCode, buildTracker,
-    detectFormats, detectContext, analyze, amountForCompare, copySheetWithFormats, processWorkbook, buildZip, kindInfo
+    fileName, folderName, monthToMark, paths, seCompanyCode, buildTracker, TRACKER_COLS, MANUAL_KEYS, nextStep, readPreviousTracker, mergeTracker,
+    detectFormats, detectContext, analyze, amountForCompare, copySheetWithFormats, processWorkbook, buildFiles, buildZip, kindInfo
   };
 });
 
@@ -2066,6 +2466,21 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     };
   }
 
+  function emailReclass(result, p) {
+    const mes = Core.MESES[Number(p.month) - 1];
+    const piv = pivotByCeco(result.ok);
+    const tot = piv.reduce((a, r) => a + r.mxn, 0);
+    const fmt = (n) => Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return {
+      subject: 'Reclasificación por CeCo - ' + p.provider + ' ' + mes + ' ' + p.year + ' ' + p.sociedad,
+      body: 'Hola,\n\nAdjunto la reclasificación por CeCo de los cargos de ' + p.provider + ' correspondientes a ' + mes + ' ' + p.year + ', ya validados por los HRBPs (todos los CeCos pertenecen a la sociedad ' + p.sociedad + ').\n\n' +
+        '• Sociedad: ' + p.sociedad + '\n• Cuenta: ' + (p.account || '5001208100 Other Staff Costs - Expat Recharge Exp') + '\n• CeCo origen: ' + (p.sourceCeco || 'MXCB7B0016 HR Recharges') + '\n' +
+        '• Tipo de cambio: ' + (p.exRate ? Core.round(p.exRate, 4) : 'N/D') + '\n• Total a reclasificar: $' + fmt(tot) + ' MXN en ' + piv.length + ' CeCo(s)\n\n' +
+        piv.map((r) => r.ceco + ': $' + fmt(r.mxn) + ' MXN').join('\n') +
+        '\n\n¿Me apoyas por favor con la reclasificación y me confirmas cuando quede registrada?\n\nSaludos.'
+    };
+  }
+
   // ---------- Checklist de evidencia ----------
   function evidenceChecklist(fileNames, provider, sociedad) {
     const prov = norm(provider), soc = norm(sociedad || 'MX15');
@@ -2082,6 +2497,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     items.forEach((i) => { i.ok = i.files.length > 0; });
     return items;
   }
+  /** Ruta relativa a "{Año}\\Tracker": Suppliers/06. Junio/K2 */
+  function supplierRelPath(month, provider) {
+    return 'Suppliers/' + Core.pad(Number(month)) + '. ' + Core.MESES[Number(month) - 1] + '/' + Core.safeFileName(provider);
+  }
   function supplierFolder(oneId, year, month, provider) {
     return 'C:\\Users\\' + (oneId || '{OneID}') + '\\BAT\\Gerencia HRSS-Organización - General\\' + year + '\\Tracker\\Suppliers\\' + Core.pad(Number(month)) + '. ' + Core.MESES[Number(month) - 1] + '\\' + provider;
   }
@@ -2089,7 +2508,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   return {
     detectSupplier, readSource, findPerson, enrich, readCecos, validateCeco, buildSentToHRBP, buildValidated,
     readKSB1, exRateFrom, buildHistoricRows, pivotByCeco, buildReclassWorkbook, buildHistoricPaste,
-    emailToHRBPs, emailInvalidCecos, evidenceChecklist, supplierFolder
+    emailToHRBPs, emailInvalidCecos, emailReclass, evidenceChecklist, supplierFolder, supplierRelPath
   };
 });
 
@@ -2239,7 +2658,159 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
   function resetConfig() { cfg = DEFAULTS(); saveConfig(); }
 
-  root.UI = { $, $$, esc, num, toast, msg, clear, table, dropZone, withBusy, copy, copyable, options, readFile, loadConfig, saveConfig, config, profile, exportConfig, importConfig, resetConfig };
+  // ---------- Carpeta "Tracker" (guardar directo en OneDrive / SharePoint sincronizado) ----------
+  const DB = 'hrss-automatizador', STORE = 'kv';
+  function idb(mode, fn) {
+    return new Promise((resolve, reject) => {
+      const open = indexedDB.open(DB, 1);
+      open.onupgradeneeded = () => open.result.createObjectStore(STORE);
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        const tx = open.result.transaction(STORE, mode);
+        const req = fn(tx.objectStore(STORE));
+        tx.oncomplete = () => resolve(req && req.result);
+        tx.onerror = () => reject(tx.error);
+      };
+    });
+  }
+  let folder = null;
+  const folderListeners = [];
+  function folderSupported() { return typeof window.showDirectoryPicker === 'function'; }
+  function folderName() { return folder ? folder.name : ''; }
+  function onFolderChange(fn) { folderListeners.push(fn); }
+  function notifyFolder() { folderListeners.forEach((fn) => { try { fn(); } catch (e) { console.error(e); } }); }
+  async function loadFolder() {
+    try { folder = (await idb('readonly', (s) => s.get('trackerDir'))) || null; } catch (e) { folder = null; }
+    notifyFolder();
+  }
+  async function pickFolder() {
+    if (!folderSupported()) throw new Error('Este navegador no permite elegir carpetas. Usa Microsoft Edge o Google Chrome actualizados.');
+    const h = await window.showDirectoryPicker({ id: 'hrss-tracker', mode: 'readwrite' });
+    folder = h;
+    try { await idb('readwrite', (s) => s.put(h, 'trackerDir')); } catch (e) { /* no se pudo recordar; se pedirá otra vez */ }
+    notifyFolder();
+    return h;
+  }
+  async function forgetFolder() {
+    folder = null;
+    try { await idb('readwrite', (s) => s.delete('trackerDir')); } catch (e) { /* nada */ }
+    notifyFolder();
+  }
+  function saveMode() { return config().saveMode === 'folder' && folder ? 'folder' : 'download'; }
+  /** Pide permiso de escritura. Debe llamarse al inicio del clic (antes de procesar). */
+  async function ensureFolderPermission() {
+    if (!folder) throw new Error('Elige primero la carpeta Tracker en Configuración.');
+    const opts = { mode: 'readwrite' };
+    if (folder.queryPermission && (await folder.queryPermission(opts)) === 'granted') return;
+    if (folder.requestPermission && (await folder.requestPermission(opts)) === 'granted') return;
+    throw new Error('No se concedió permiso para escribir en la carpeta ' + folder.name + '.');
+  }
+  async function subdir(dir, parts, create) {
+    let d = dir;
+    for (const p of parts) if (p) d = await d.getDirectoryHandle(p, { create });
+    return d;
+  }
+  /** Ubica la carpeta "{Año}\Tracker" a partir de lo que el usuario eligió (Tracker, el año o la carpeta General). */
+  async function trackerDir(year) {
+    const n = Core.norm(folder.name);
+    if (n === 'tracker') return folder;
+    try {
+      if (/^\d{4}$/.test(n)) return await subdir(folder, ['Tracker'], false);
+      return await subdir(folder, [String(year), 'Tracker'], false);
+    } catch (e) {
+      throw new Error('No encontré la carpeta "' + year + '\\Tracker" dentro de "' + folder.name + '". En Configuración elige la carpeta …\\Gerencia HRSS-Organización - General\\' + year + '\\Tracker.');
+    }
+  }
+  async function exists(dir, name) { try { await dir.getFileHandle(name); return true; } catch (e) { return false; } }
+  /**
+   * Guarda archivos: en la carpeta Tracker (modo carpeta) o como descarga.
+   * opts: { year, files: [{path:'Suppliers/06. Junio/K2/x.xlsx', data}], zipName?: 'x.zip' (si son varios y se descargan) }
+   * build: función async que devuelve opts.files (se llama después de pedir permiso).
+   */
+  async function save(year, build, zipName) {
+    const mode = saveMode();
+    if (mode === 'folder') await ensureFolderPermission();
+    const files = await build();
+    if (!files || !files.length) return [];
+    if (mode === 'folder') {
+      const root = await trackerDir(year);
+      const plan = [];
+      for (const f of files) {
+        const parts = f.path.split('/');
+        const name = parts.pop();
+        const dir = await subdir(root, parts, true);
+        plan.push({ dir, name, f, exists: await exists(dir, name) });
+      }
+      const over = plan.filter((p) => p.exists);
+      if (over.length && !confirm('Ya existen ' + over.length + ' archivo(s):\n\n' + over.slice(0, 8).map((p) => '• ' + p.f.path).join('\n') + (over.length > 8 ? '\n…' : '') + '\n\n¿Reemplazarlos?')) {
+        toast('No se guardó nada.', 'warn');
+        return [];
+      }
+      for (const p of plan) {
+        const fh = await p.dir.getFileHandle(p.name, { create: true });
+        const w = await fh.createWritable();
+        await w.write(p.f.data);
+        await w.close();
+      }
+      toast('Guardado en ' + root.name + ': ' + files.length + ' archivo(s)', 'ok', 6000);
+      return files.map((f) => ({ path: (root.name + '/' + f.path), saved: true }));
+    }
+    if (files.length === 1 || !zipName) {
+      files.forEach((f) => Core.downloadBlob(new Blob([f.data], { type: f.type || 'application/octet-stream' }), f.path.split('/').pop()));
+    } else {
+      const JSZip = Core.lib('JSZip');
+      const zip = new JSZip();
+      files.forEach((f) => zip.file(f.path, f.data));
+      Core.downloadBlob(await zip.generateAsync({ type: 'blob' }), zipName);
+    }
+    return files.map((f) => ({ path: f.path, saved: false }));
+  }
+  /** Lista los nombres de archivo de una subcarpeta del Tracker (para el checklist). */
+  async function listFolder(year, relPath) {
+    await ensureFolderPermission();
+    const root = await trackerDir(year);
+    const dir = await subdir(root, relPath.split('/'), false);
+    const names = [];
+    for await (const [name, h] of dir.entries()) if (h.kind === 'file') names.push(name);
+    return names;
+  }
+  /** Texto corto que indica dónde se guardará (junto a los botones). */
+  function whereText(rel) {
+    return saveMode() === 'folder' ? '📁 Se guarda en ' + folder.name + '\\' + String(rel || '').replace(/\//g, '\\') : '⬇ Se guarda en Descargas';
+  }
+  async function wbFile(path, wb) { return { path, data: new Uint8Array(await wb.xlsx.writeBuffer()), type: Core.XLSX_MIME }; }
+
+  // ---------- Contactos y borradores de correo ----------
+  function contacts() {
+    const map = [];
+    String(config().contacts || '').split(/\r?\n/).forEach((line) => {
+      const m = line.split(/[;\t]/).map((x) => x.trim());
+      if (m.length >= 2 && /@/.test(m[1])) map.push({ name: m[0], email: m[1] });
+      else if (m.length === 1 && /@/.test(m[0])) map.push({ name: m[0], email: m[0] });
+    });
+    return map;
+  }
+  /** Convierte nombres (o "Nombre / Nombre") a correos usando el directorio de Configuración. */
+  function emailsFor(names) {
+    const list = contacts();
+    const out = [], missing = [];
+    (Array.isArray(names) ? names : [names]).flatMap((n) => String(n || '').split(/[\/;,]/)).map((n) => n.trim()).filter(Boolean).forEach((n) => {
+      if (/@/.test(n)) { out.push(n); return; }
+      let best = null;
+      list.forEach((c) => { const s = Core.nameScore(n, c.name); if (s >= 0.9 && (!best || s > best.s)) best = { s, c }; });
+      if (best) out.push(best.c.email); else missing.push(n);
+    });
+    return { emails: Array.from(new Set(out)), missing: Array.from(new Set(missing)) };
+  }
+  function downloadEml(m) {
+    const eml = Core.buildEml(m);
+    Core.downloadBlob(new Blob([eml], { type: 'message/rfc822' }), Core.safeFileName(m.subject || 'Correo').slice(0, 120) + '.eml');
+  }
+
+  root.UI = {
+    $, $$, esc, num, toast, msg, clear, table, dropZone, withBusy, copy, copyable, options, readFile, loadConfig, saveConfig, config, profile, exportConfig, importConfig, resetConfig,
+    folderSupported, folderName, onFolderChange, loadFolder, pickFolder, forgetFolder, saveMode, save, listFolder, wbFile, whereText, contacts, emailsFor, downloadEml
+  };
 })(typeof self !== 'undefined' ? self : this);
 
 </script>
@@ -2328,29 +2899,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   // ---------- HC Aprobado ----------
   function readEquivalences(wb) {
     const p = prof();
+    const eq = HC.readEquivalences(wb);
     let n = 0;
-    const ff = Core.getSheet(wb, ['For Filters']);
-    if (ff) {
-      Core.sheetRows(ff.ws).forEach((r) => {
-        if (!r) return;
-        const pairs = [[0, 1, 'funcMapBPC'], [3, 4, 'funcMapApp']];
-        pairs.forEach(([a, b, key]) => {
-          const ka = Core.str(r[a]), vb = Core.str(r[b]);
-          if (!ka || !vb || Core.norm(vb) === 'function' || /slicer$/.test(Core.norm(ka))) return;
-          if (!p[key][ka]) { p[key][ka] = vb; n++; }
-        });
-      });
-    }
-    const en = Core.getSheet(wb, ['Entidades']);
-    if (en) {
-      const rows = Core.sheetRows(en.ws);
-      const h = Core.findHeaderRow(rows, ['Codigo Entidad', 'Entidad'], 10);
-      if (h >= 0) {
-        const ci = Core.findCol(rows[h], ['Codigo Entidad', 'Código Entidad', 'Codigo', 'Code']);
-        const ei = Core.findCol(rows[h], ['Entidad', 'Entity'], ['codigo', 'code']);
-        if (ci >= 0 && ei >= 0) rows.slice(h + 1).forEach((r) => { const k = Core.str(r && r[ci]), v = Core.str(r && r[ei]); if (k && v && !p.entityMapBPC[k]) { p.entityMapBPC[k] = v; n++; } });
-      }
-    }
+    ['funcMapBPC', 'funcMapApp', 'entityMapBPC'].forEach((key) => Object.entries(eq[key]).forEach(([k, v]) => { if (!p[key][k]) { p[key][k] = v; n++; } }));
     UI.saveConfig();
     return n;
   }
@@ -2464,6 +3015,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     } else UI.toast('Sin HC Aprobado: solo se mostrará el conteo de BPC.', 'warn');
     S.cfg = cfg;
     S.result = HC.run(S.input.rows, app, cfg);
+    S.changes = takeSnapshot(cfg.market, S.result, cfg);
+    $('#hc-mail-to').value = prof().mailTo || '';
+    $('#hc-mail-cc').value = prof().mailCc || UI.config().ccDefault || '';
     UI.options('#hc-f-entity', S.result.entities, '', 'Todas');
     UI.options('#hc-f-func', S.result.funcs, '', 'Todas');
     $('#hc-f-entity').disabled = !cfg.multiEntity;
@@ -2492,11 +3046,121 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       { h: 'Grado', k: 'grade' }, { h: 'FTE', f: (p) => p.fte }, { h: 'Inicio', f: (p) => Core.fmtDate(p.startSerial) }, { h: 'Fin', f: (p) => Core.fmtDate(p.endSerial) },
       { h: 'Motivo ' + cfg.sopLabel, k: 'reasonSOP' }, { h: 'Motivo ' + cfg.coplanLabel, k: 'reasonCOPLAN' }
     ], nc, { limit: 500 });
+    renderChanges();
+  }
+  function reportName(market, sopLabel) {
+    const d = new Date();
+    return Core.safeFileName('HC Variations ' + market + ' ' + sopLabel + ' ' + d.getFullYear() + '-' + Core.pad(d.getMonth() + 1) + '-' + Core.pad(d.getDate())) + '.xlsx';
   }
   async function download() {
-    const wb = await HC.buildReport(S.result, S.cfg, filter());
+    const wb = await HC.buildReport(S.result, S.cfg, filter(), S.changes);
+    await Core.downloadWorkbook(wb, reportName(S.cfg.market, S.cfg.sopLabel));
+  }
+  async function emlHC() {
+    const p = prof();
+    p.mailTo = $('#hc-mail-to').value.trim();
+    p.mailCc = $('#hc-mail-cc').value.trim();
+    UI.saveConfig();
+    const f = filter();
+    const m = HC.emailText(S.result, S.cfg, f);
+    const wb = await HC.buildReport(S.result, S.cfg, f, S.changes);
+    const to = UI.emailsFor([p.mailTo]), cc = UI.emailsFor([p.mailCc]);
+    if (to.missing.length || cc.missing.length) UI.toast('Sin correo en el directorio para: ' + to.missing.concat(cc.missing).join(', '), 'warn', 7000);
+    UI.downloadEml({ to: to.emails, cc: cc.emails, subject: m.subject, text: m.body, attachments: [{ name: reportName(S.cfg.market, S.cfg.sopLabel), data: await wb.xlsx.writeBuffer(), type: Core.XLSX_MIME }] });
+  }
+
+  // ---------- Cambios contra la corrida anterior ----------
+  /** Guarda una foto de la corrida y devuelve los cambios contra la última corrida distinta (otro archivo de BPC). */
+  function takeSnapshot(market, res, cfg) {
+    const c = UI.config();
+    c.hc.snapshots = c.hc.snapshots || {};
+    const key = market + '|' + cfg.sopLabel;
+    const list = c.hc.snapshots[key] || [];
+    const snap = HC.snapshot(res, cfg);
+    snap.sig = snap.source + '|' + snap.positions + '|' + snap.total.bpcSOP + '|' + snap.total.bpcCOPLAN + '|' + snap.total.diffSOP + '|' + snap.total.diffCOPLAN;
+    const prev = list.slice().reverse().find((x) => x.sig !== snap.sig) || null;
+    if (list.length && list[list.length - 1].sig === snap.sig) list[list.length - 1] = snap; else list.push(snap);
+    c.hc.snapshots[key] = list.slice(-5);
+    UI.saveConfig();
+    return prev ? HC.changes(res, prev) : null;
+  }
+  function renderChanges() {
+    const ch = S.changes, cfg = S.cfg;
+    const el = $('#hc-changes');
+    if (!ch) { el.innerHTML = '<div class="msg info">Primera corrida de ' + esc(cfg.market + ' ' + cfg.sopLabel) + ' en esta computadora: la próxima vez verás qué cambió.</div>'; return; }
+    el.innerHTML = '<h3>Cambios desde la corrida del ' + esc(ch.date) + '</h3><div class="msg ' + (ch.worse ? 'warn' : 'ok') + '"><b>' + ch.fixed + '</b> grado(s) corregidos · <b>' + ch.worse + '</b> con diferencia nueva o mayor · posiciones ' + ch.prevPositions + ' → ' + ch.positions + '</div>' +
+      (ch.rows.length ? UI.table([
+        { h: 'Pay Grade', k: 'grade' }, { h: 'Dif ' + cfg.sopLabel + ' antes', k: 'prevDiffSOP', num: true }, { h: 'ahora', k: 'diffSOP', num: true }, { h: 'Cambio', k: 'chSOP', cls: (r) => chCls(r.chSOP) },
+        { h: 'Dif ' + cfg.coplanLabel + ' antes', k: 'prevDiffCOPLAN', num: true }, { h: 'ahora', k: 'diffCOPLAN', num: true }, { h: 'Cambio', k: 'chCOPLAN', cls: (r) => chCls(r.chCOPLAN) }
+      ], ch.rows) : '');
+  }
+  function chCls(t) { return /Corregido|Mejor/.test(t) ? 'okc' : /Nueva|Empeor/.test(t) ? 'badc' : ''; }
+
+  // ---------- Varios mercados ----------
+  const B = { files: [] };
+  async function onBatchFiles(files) {
+    for (const file of files) {
+      const f = await UI.readFile(file);
+      const item = { name: f.name, wb: f.wb, kind: null, market: null };
+      for (const sn of f.wb.SheetNames) {
+        try { const rows = Core.sheetRows(f.wb.Sheets[sn]); const parsed = HC.parseHRInput(rows); item.kind = 'input'; item.rows = rows; item.parsed = parsed; item.market = HC.detectMarket(parsed) || HC.detectMarketFromName(f.name); break; } catch (e) { /* no es HR Input */ }
+      }
+      if (!item.kind) { item.kind = 'master'; item.market = HC.detectMarketFromName(f.name); }
+      B.files.push(item);
+    }
+    renderBatchFiles();
+  }
+  function renderBatchFiles() {
+    const markets = Object.keys(HC.MARKETS);
+    const el = $('#hcb-files');
+    el.innerHTML = B.files.length ? '<table class="t"><thead><tr><th>Archivo</th><th>Tipo</th><th>Mercado</th><th>Detalle</th><th></th></tr></thead><tbody>' + B.files.map((it, i) =>
+      '<tr><td>' + esc(it.name) + '</td><td>' + (it.kind === 'input' ? 'HR Input' : 'Maestro / HC Aprobado') + '</td><td><select data-bm="' + i + '"><option value="">— elige —</option>' + markets.map((m) => '<option' + (m === it.market ? ' selected' : '') + '>' + esc(m) + '</option>').join('') + '</select></td>' +
+      '<td class="small">' + (it.kind === 'input' ? it.parsed.positions.length + ' posiciones' : it.wb.SheetNames.length + ' hojas') + '</td><td><button class="mini danger" data-bx="' + i + '">✕</button></td></tr>').join('') + '</tbody></table>' : '';
+    UI.$$('[data-bm]', el).forEach((s) => s.addEventListener('change', () => { B.files[Number(s.dataset.bm)].market = s.value || null; renderBatchFiles(); }));
+    UI.$$('[data-bx]', el).forEach((b) => b.addEventListener('click', () => { B.files.splice(Number(b.dataset.bx), 1); renderBatchFiles(); }));
+    $('#hcb-run').disabled = !B.files.some((f) => f.kind === 'input' && f.market);
+  }
+  function runBatch() {
+    saveFormToProfile();
+    const base = buildCfg();
+    const out = [], warn = [];
+    Object.keys(HC.MARKETS).forEach((market) => {
+      const input = B.files.find((f) => f.kind === 'input' && f.market === market);
+      if (!input) return;
+      const master = B.files.find((f) => f.kind === 'master' && f.market === market);
+      const p = UI.profile(market);
+      if (master) {
+        const eq = HC.readEquivalences(master.wb);
+        ['funcMapBPC', 'funcMapApp', 'entityMapBPC'].forEach((key) => Object.entries(eq[key]).forEach(([k, v]) => { if (!p[key][k]) p[key][k] = v; }));
+      } else warn.push(market + ': sin archivo de HC Aprobado (solo conteo de BPC).');
+      const cfg = Object.assign({}, base, {
+        market, multiEntity: p.multiEntity, splitMarketing: p.splitMarketing, marketingFieldSubfunction: p.fieldSub, gradeGroupMax: Number(p.gradeGroupMax) || null, entityName: p.entityName || 'Total',
+        funcMapBPC: p.funcMapBPC, funcMapApp: p.funcMapApp, entityMapBPC: p.entityMapBPC, entityMapApp: p.entityMapApp, sourceName: input.name
+      });
+      const app = master ? HC.autoApproved(master.wb, p, cfg.sopLabel, cfg.coplanLabel) : null;
+      if (app && (app.cols.grade < 0 || (app.cols.sop < 0 && app.cols.coplan < 0))) warn.push(market + ': no identifiqué las columnas de Grado / SOP / COPLAN en el maestro; configúralo una vez en “Un mercado”.');
+      const res = HC.run(input.rows, app && app.cols.grade >= 0 ? app : null, cfg);
+      out.push({ market, res, cfg, sourceName: input.name, changes: takeSnapshot(market, res, cfg) });
+    });
+    UI.saveConfig();
+    B.results = out;
+    const el = $('#hcb-results');
+    el.innerHTML = warn.map((w) => '<div class="msg warn">' + esc(w) + '</div>').join('') + UI.table([
+      { h: 'Mercado', k: 'market' }, { h: 'Posiciones', f: (x) => x.res.positions.length, num: true },
+      { h: 'Dif ' + base.sopLabel, f: (x) => x.res.overall.total.diffSOP, num: true, cls: (x) => (x.res.overall.statusSOP.ok ? 'zero' : 'neg') },
+      { h: base.sopLabel, f: (x) => x.res.overall.statusSOP.text + ' · ' + x.res.overall.statusSOP.detail, cls: (x) => (x.res.overall.statusSOP.ok ? 'okc' : 'badc') },
+      { h: 'Dif ' + base.coplanLabel, f: (x) => x.res.overall.total.diffCOPLAN, num: true, cls: (x) => (x.res.overall.statusCOPLAN.ok ? 'zero' : 'neg') },
+      { h: base.coplanLabel, f: (x) => x.res.overall.statusCOPLAN.text + ' · ' + x.res.overall.statusCOPLAN.detail, cls: (x) => (x.res.overall.statusCOPLAN.ok ? 'okc' : 'badc') },
+      { h: 'Alertas', f: (x) => x.res.alerts.length, num: true },
+      { h: 'Vs. corrida anterior', f: (x) => (x.changes ? x.changes.fixed + ' corregidos · ' + x.changes.worse + ' nuevos/peores' : 'Primera corrida') }
+    ], out);
+    $('#hcb-download').disabled = !out.length;
+  }
+  async function downloadBatch() {
+    const base = buildCfg();
+    const wb = await HC.buildBatchReport(B.results, base);
     const d = new Date();
-    await Core.downloadWorkbook(wb, Core.safeFileName('HC Variations ' + S.cfg.market + ' ' + S.cfg.sopLabel + ' ' + d.getFullYear() + '-' + Core.pad(d.getMonth() + 1) + '-' + Core.pad(d.getDate())) + '.xlsx');
+    await Core.downloadWorkbook(wb, Core.safeFileName('HC Variations Todos ' + base.sopLabel + ' ' + d.getFullYear() + '-' + Core.pad(d.getMonth() + 1) + '-' + Core.pad(d.getDate())) + '.xlsx');
   }
 
   function init() {
@@ -2520,6 +3184,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $('#hc-run').addEventListener('click', () => { try { run(); } catch (e) { UI.toast(e.message, 'bad', 7000); } });
     $('#hc-download').addEventListener('click', (e) => UI.withBusy(e.currentTarget, download));
     $('#hc-f-entity').addEventListener('change', renderResults);
+    $('#hc-mail').addEventListener('click', (e) => UI.withBusy(e.currentTarget, emlHC));
+    UI.$$('#hc-tabs button').forEach((b) => b.addEventListener('click', () => {
+      UI.$$('#hc-tabs button').forEach((x) => x.classList.toggle('active', x === b));
+      UI.$$('#page-hc > .tab').forEach((t) => t.classList.toggle('active', t.id === 'hc-tab-' + b.dataset.tab));
+    }));
+    UI.dropZone('#hcb-drop', { multiple: true, keepLabel: true, onFiles: onBatchFiles });
+    $('#hcb-run').addEventListener('click', () => { try { runBatch(); } catch (e) { console.error(e); UI.toast(e.message, 'bad', 8000); } });
+    $('#hcb-download').addEventListener('click', (e) => UI.withBusy(e.currentTarget, downloadBatch));
     $('#hc-f-func').addEventListener('change', renderResults);
   }
   root.PageHC = { init, state: S };
@@ -2532,40 +3204,73 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   'use strict';
   const { Core, Recharges: R, UI } = root;
   const { $, esc } = UI;
-  const T = { assignments: null };
+  const T = { base: null, prev: null, assignments: null, stats: null };
   const P = { list: [] };
 
   function defaultHalf() { return new Date().getMonth() < 6 ? 'H1' : 'H2'; }
 
   // ---------- Tracker ----------
   function trParams() { return { half: $('#tr-half').value, year: Number($('#tr-year').value), oneId: $('#tr-oneid').value || UI.config().oneId, nameOrder: $('#tr-order').value }; }
+  function trackerPath(p) { return 'Recharges/' + R.periodShort(p.half, p.year) + '/Tracker Recharges ' + R.periodShort(p.half, p.year).replace("'", '') + '.xlsx'; }
   async function onAssignments(files) {
     const f = await UI.readFile(files[0]);
     const res = R.readAssignments(f.wb);
     if (!res.assignments.length) throw new Error('No encontré asignaciones. El archivo debe tener columnas como Nombre, Payroll Num., CeCo, Host Country…');
-    T.assignments = res.assignments;
+    T.base = res.assignments;
     const el = $('#tr-info');
     UI.clear(el);
     UI.msg(el, '<b>' + res.assignments.length + '</b> asignaciones en ' + res.sheets.length + ' hoja(s): ' + res.sheets.map((s) => esc(s.sheet)).join(', '), 'ok');
     const noIC = res.assignments.filter((a) => !a.ic || !a.coder).length;
     if (noIC) UI.msg(el, noIC + ' asignación(es) sin IC code o Coder: aparecerán en la hoja “Datos faltantes”.', 'warn');
+    recompute();
+  }
+  async function onPrev(files) {
+    const f = await UI.readFile(files[0]);
+    const prev = R.readPreviousTracker(f.wb);
+    if (!prev) throw new Error('No reconocí el archivo como un Tracker generado por la app (busqué las columnas Key, Estatus, Recharge ID (Webi)…).');
+    T.prev = prev;
+    recompute();
+  }
+  function recompute() {
+    const base = T.base || (T.prev ? T.prev.rows.map((r) => Object.assign({}, r)) : null);
+    if (!base) return;
+    const m = R.mergeTracker(base, T.prev ? T.prev.rows : []);
+    T.assignments = m.assignments;
+    T.stats = T.prev ? m.stats : null;
+    const el = $('#tr-prev-info');
+    UI.clear(el);
+    if (T.prev) {
+      UI.msg(el, 'Tracker anterior: <b>' + T.prev.rows.length + '</b> asignaciones (hoja ' + esc(T.prev.sheet) + ') · <b>' + m.stats.kept + '</b> conservan lo capturado · <b>' + m.stats.nuevos + '</b> nuevas · <b>' + m.stats.soloAnterior + '</b> ya no vienen en la lista (se dejan en gris al final)', 'ok');
+      if (!T.base) UI.msg(el, 'Sin lista nueva: se regenera el Tracker con lo que ya tenía.', 'info');
+    }
     renderTracker();
     $('#tr-download').disabled = false;
   }
   function renderTracker() {
+    updateWhere();
     if (!T.assignments) return;
     const p = trParams();
+    const view = (a) => { const o = Object.assign({}, a, a.manual || {}); return o; };
     $('#tr-preview').innerHTML = UI.table([
-      { h: 'Key', k: 'key' }, { h: 'Nombre', k: 'nombre' }, { h: 'Área', k: 'area' }, { h: 'Sociedad', k: 'sociedad' }, { h: 'CeCo', k: 'ceco' },
+      { h: 'Key', k: 'key', cls: (a) => (a._new && T.prev ? 'empty' : '') }, { h: 'Nombre', k: 'nombre' }, { h: 'Área', k: 'area' }, { h: 'Sociedad', k: 'sociedad' }, { h: 'CeCo', k: 'ceco' },
       { h: 'Host', k: 'host' }, { h: 'Tipo', k: 'tipo' }, { h: 'Periodo', f: (a) => [a.desde, a.hasta].filter(Boolean).join(' – ') },
       { h: 'IC code', k: 'ic', cls: (a) => (a.ic ? '' : 'empty') }, { h: 'Coder', k: 'coder', cls: (a) => (a.coder ? '' : 'empty') },
-      { h: 'Note Title', f: (a) => R.noteTitle(a, p.half, p.year, p.nameOrder) }
-    ], T.assignments);
+      { h: 'Note Title', f: (a) => R.noteTitle(a, p.half, p.year, p.nameOrder) },
+      { h: 'Novedad', f: (a) => (a._onlyPrev ? 'Ya no viene' : a._new && T.prev ? 'Nueva' : '') },
+      { h: 'Estatus', f: (a) => view(a).estatus || R.STATUSES[0] }, { h: 'Siguiente paso', f: (a) => R.nextStep(view(a)) }
+    ], T.assignments, { rowCls: (a) => (a._onlyPrev ? 'gone' : '') });
+  }
+  function updateWhere() {
+    const p = trParams();
+    $('#tr-where').textContent = UI.whereText(trackerPath(p));
+    $('#tr-download').innerHTML = UI.saveMode() === 'folder' ? '💾 Guardar Tracker' : '⬇ Descargar Tracker';
+    const sp = sapParams();
+    $('#sap-where').textContent = UI.whereText('Recharges/' + R.periodShort(sp.half, sp.year) + '/Webis|JVUs|Accruals');
+    $('#sap-zip').innerHTML = UI.saveMode() === 'folder' ? '💾 Guardar en las carpetas de cada empleado' : '⬇ Descargar ZIP con carpetas';
   }
   async function downloadTracker() {
     const p = trParams();
-    const wb = await R.buildTracker(T.assignments, p);
-    await Core.downloadWorkbook(wb, 'Tracker Recharges ' + R.periodShort(p.half, p.year).replace("'", '') + '.xlsx');
+    await UI.save(p.year, async () => [await UI.wbFile(trackerPath(p), await R.buildTracker(T.assignments, p))]);
   }
 
   // ---------- Formatos SAP ----------
@@ -2632,11 +3337,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const missing = P.list.filter((pr) => !pr.ctx.key || !pr.ctx.nombre);
     if (missing.length) throw new Error('Falta KEY o Nombre en: ' + missing.map((m) => m.file).join(', '));
     const p = sapParams();
-    const { blob, log } = await R.buildZip(P.list, p);
-    Core.downloadBlob(blob, 'Recharges ' + R.periodShort(p.half, p.year).replace("'", '') + ' - formatos SAP.zip');
+    let log = [];
+    const saved = await UI.save(p.year, async () => { const r = await R.buildFiles(P.list, p); log = r.log; return r.files; }, 'Recharges ' + R.periodShort(p.half, p.year).replace("'", '') + ' - formatos SAP.zip');
+    if (!saved.length) return;
     const el = $('#sap-log');
-    el.innerHTML = '<div class="msg ok"><b>ZIP generado.</b> Descomprímelo dentro de la carpeta <code>' + esc(R.paths(UI.config().oneId, p.year, p.half).webis.replace(/\\Webis$/, '')) + '</code></div>' +
-      log.map((l) => '<div class="small ' + (l.ok ? '' : 'msg bad') + '">' + (l.ok ? '✔ ' : '✖ ') + esc(l.msg) + '</div>').join('');
+    const head = saved[0].saved
+      ? '<div class="msg ok"><b>Guardado en las carpetas de cada empleado</b> (' + saved.length + ' archivos).</div>'
+      : '<div class="msg ok"><b>ZIP generado.</b> Descomprímelo dentro de la carpeta <code>' + esc(R.paths(UI.config().oneId, p.year, p.half).webis.replace(/\\Recharges\\.*$/, '')) + '</code> (trae la estructura Recharges\\' + esc(R.periodShort(p.half, p.year)) + '\\…).</div>';
+    el.innerHTML = head + log.map((l) => '<div class="small ' + (l.ok ? '' : 'msg bad') + '">' + (l.ok ? '✔ ' : '✖ ') + esc(l.msg) + '</div>').join('');
   }
 
   function init() {
@@ -2645,7 +3353,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     ['#tr-half', '#sap-half'].forEach((s) => { $(s).value = defaultHalf(); });
     $('#tr-oneid').value = UI.config().oneId || '';
     UI.dropZone('#tr-drop', { onFiles: onAssignments });
+    UI.dropZone('#tr-drop-prev', { onFiles: onPrev });
     ['#tr-half', '#tr-year', '#tr-order'].forEach((s) => $(s).addEventListener('change', renderTracker));
+    ['#sap-half', '#sap-year'].forEach((s) => $(s).addEventListener('change', updateWhere));
+    document.addEventListener('hrss-folder', updateWhere);
+    updateWhere();
     $('#tr-download').addEventListener('click', (e) => UI.withBusy(e.currentTarget, downloadTracker));
     UI.dropZone('#sap-drop', { multiple: true, keepLabel: true, accept: '.xlsx,.xlsm,.xls', onFiles: onSapFiles });
     ['#sap-half', '#sap-year'].forEach((s) => $(s).addEventListener('change', renderSap));
@@ -2674,6 +3386,22 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function updateFolder() {
     const p = params();
     $('#rc-folder').innerHTML = 'Carpeta del periodo: <code>' + esc(RC.supplierFolder(UI.config().oneId, p.year, p.month, p.provider)) + '</code>';
+    UI.$$('.rc-where').forEach((el) => { el.textContent = UI.whereText(rel()); });
+    const folder = UI.saveMode() === 'folder';
+    $('#rc-a-download').innerHTML = folder ? '💾 Guardar “Sent to HRBPs”' : '⬇ Descargar “Sent to HRBPs”';
+    $('#rc-b-download').innerHTML = folder ? '💾 Guardar validación' : '⬇ Descargar validación';
+    $('#rc-c-download').innerHTML = folder ? '💾 Guardar “Reclasificacion por CeCo”' : '⬇ Descargar “Reclasificacion por CeCo”';
+    $('#rc-ev-check').disabled = !folder;
+    $('#rc-ev-check').title = folder ? '' : 'Elige la carpeta Tracker en Configuración para usar esta opción';
+  }
+  function rel() { const p = params(); return RC.supplierRelPath(p.month, p.provider); }
+  function fileNames() {
+    const p = params();
+    return { sent: 'Sent to HRBPs - ' + p.sociedad + ' ' + p.provider + '.xlsx', val: 'Validacion CeCos - ' + p.sociedad + ' ' + p.provider + '.xlsx', recl: 'Reclasificacion por CeCo.xlsx', hist: 'Para Historico - ' + p.provider + ' ' + Core.MESES[p.month - 1] + ' ' + p.year + '.xlsx' };
+  }
+  /** Muestra a quién va el correo y qué nombres no están en el directorio. */
+  function mailInfo(el, to, missing) {
+    $(el).innerHTML = missing.length ? '<div class="msg warn">Sin correo en el directorio para: ' + esc(missing.join(', ')) + '. Agrégalos en Configuración › Correos o escríbelos en Outlook.</div>' : (to.length ? '<div class="msg ok small">Para: ' + esc(to.join('; ')) + '</div>' : '');
   }
   async function rowsOf(file, preferSheet) {
     const f = await UI.readFile(file);
@@ -2746,16 +3474,25 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (miss) $('#rc-a-preview').insertAdjacentHTML('afterbegin', '<div class="msg warn">' + miss + ' cargo(s) sin CeCo en el histórico: quedarán en amarillo para que el HRBP lo complete.</div>');
     $('#rc-a-download').disabled = false;
     $('#rc-a-email').disabled = false;
+    $('#rc-a-eml').disabled = false;
   }
   async function downloadA() {
     const p = params();
+    await UI.save(p.year, async () => [await UI.wbFile(rel() + '/' + fileNames().sent, await RC.buildSentToHRBP(S.sup, S.enrA, p))]);
+  }
+  function hrbpNames(enr) { return Array.from(new Set(enr.map((e) => e.hrbp).filter(Boolean).flatMap((h) => h.split('/').map((x) => x.trim())))); }
+  async function emlA() {
+    const p = params();
+    const m = RC.emailToHRBPs(p);
     const wb = await RC.buildSentToHRBP(S.sup, S.enrA, p);
-    await Core.downloadWorkbook(wb, 'Sent to HRBPs - ' + p.sociedad + ' ' + p.provider + '.xlsx');
+    const to = UI.emailsFor(hrbpNames(S.enrA));
+    mailInfo('#rc-a-mailinfo', to.emails, to.missing);
+    UI.downloadEml({ to: to.emails, cc: UI.config().ccDefault, subject: m.subject, text: m.body, attachments: [{ name: fileNames().sent, data: await wb.xlsx.writeBuffer(), type: Core.XLSX_MIME }] });
   }
   function showEmail() {
     const p = params();
     const m = RC.emailToHRBPs(p);
-    const hrbps = Array.from(new Set(S.enrA.map((e) => e.hrbp).filter(Boolean).flatMap((h) => h.split('/').map((x) => x.trim()))));
+    const hrbps = hrbpNames(S.enrA);
     $('#rc-a-email-box').innerHTML = '<div class="filecard"><div class="kv"><span class="k">Para</span><span>' + esc(hrbps.join('; ') || '(HRBPs involucrados)') + '</span>' + UI.copyable(hrbps.join('; ')) +
       '<span class="k">Asunto</span><span>' + esc(m.subject) + '</span>' + UI.copyable(m.subject) + '</div>' +
       '<textarea id="rc-mail-body">' + esc(m.body) + '</textarea><div class="actions">' + UI.copyable(m.body) +
@@ -2791,12 +3528,22 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const keys = Object.keys(bad);
     if (!keys.length) { box.innerHTML = '<div class="msg ok"><b>Todos los CeCos pertenecen a ' + esc(p.sociedad) + '.</b> Puedes continuar con la reclasificación (pestaña C).</div>'; return; }
     box.innerHTML = '<div class="msg bad"><b>' + keys.reduce((a, k) => a + bad[k].length, 0) + ' cargo(s) con CeCo incorrecto.</b> NO procedas a la reclasificación sin corregir. Correos sugeridos:</div>' +
-      keys.map((h) => { const m = RC.emailInvalidCecos(h, bad[h], p); return '<div class="filecard"><div class="kv"><span class="k">Para</span><span>' + esc(h) + '</span><span></span><span class="k">Asunto</span><span>' + esc(m.subject) + '</span>' + UI.copyable(m.subject) + '</div><textarea style="min-height:150px">' + esc(m.body) + '</textarea>' + UI.copyable(m.body) + '</div>'; }).join('');
+      keys.map((h, i) => {
+        const m = RC.emailInvalidCecos(h, bad[h], p);
+        const to = UI.emailsFor([h]);
+        return '<div class="filecard"><div class="kv"><span class="k">Para</span><span>' + esc(to.emails.join('; ') || h) + (to.missing.length ? ' <span class="pill bad">sin correo en el directorio</span>' : '') + '</span><button class="mini primary" data-eml="' + i + '">✉ Borrador (.eml)</button>' +
+          '<span class="k">Asunto</span><span>' + esc(m.subject) + '</span>' + UI.copyable(m.subject) + '</div><textarea style="min-height:150px">' + esc(m.body) + '</textarea>' + UI.copyable(m.body) + '</div>';
+      }).join('');
+    UI.$$('[data-eml]', box).forEach((b) => b.addEventListener('click', () => {
+      const h = keys[Number(b.dataset.eml)];
+      const m = RC.emailInvalidCecos(h, bad[h], p);
+      const body = b.closest('.filecard').querySelector('textarea').value;
+      UI.downloadEml({ to: UI.emailsFor([h]).emails, cc: UI.config().ccDefault, subject: m.subject, text: body });
+    }));
   }
   async function downloadB() {
     const p = params();
-    const wb = await RC.buildValidated(S.ret, S.enrB, S.cecos, p);
-    await Core.downloadWorkbook(wb, 'Validacion CeCos - ' + p.sociedad + ' ' + p.provider + '.xlsx');
+    await UI.save(p.year, async () => [await UI.wbFile(rel() + '/' + fileNames().val, await RC.buildValidated(S.ret, S.enrB, S.cecos, p))]);
   }
 
   // ---------- C ----------
@@ -2834,6 +3581,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const ok = !!b && Number($('#rc-rate').value) > 0;
     $('#rc-c-download').disabled = !ok;
     $('#rc-c-hist').disabled = !ok;
+    $('#rc-c-eml').disabled = !ok;
     if (!b) { sum.innerHTML = '<div class="msg info">Carga el archivo del proveedor (A) o el Retrieved (B).</div>'; return; }
     const p = params();
     const rate = Number($('#rc-rate').value) || null;
@@ -2856,16 +3604,37 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
   async function downloadC() {
     const p = Object.assign(params(), { exRate: Number($('#rc-rate').value) });
-    const wb = await RC.buildReclassWorkbook(S.resC, p);
-    await Core.downloadWorkbook(wb, 'Reclasificacion por CeCo.xlsx');
+    await UI.save(p.year, async () => [await UI.wbFile(rel() + '/' + fileNames().recl, await RC.buildReclassWorkbook(S.resC, p))]);
   }
   async function downloadHist() {
-    const wb = await RC.buildHistoricPaste(S.resC);
     const p = params();
-    await Core.downloadWorkbook(wb, 'Para Historico - ' + p.provider + ' ' + Core.MESES[p.month - 1] + ' ' + p.year + '.xlsx');
+    await UI.save(p.year, async () => [await UI.wbFile(rel() + '/' + fileNames().hist, await RC.buildHistoricPaste(S.resC))]);
+  }
+  async function emlC() {
+    const p = Object.assign(params(), { exRate: Number($('#rc-rate').value) });
+    const m = RC.emailReclass(S.resC, p);
+    const wb = await RC.buildReclassWorkbook(S.resC, p);
+    const c = UI.config();
+    const b = base();
+    // Para: Intern de Planning · CC: su Line Manager / HR Data Analyst LM (Configuración) + HRBPs involucrados
+    const hr = UI.emailsFor(hrbpNames(b.enr));
+    const to = UI.emailsFor([c.planningTo || '']);
+    const cc = UI.emailsFor([c.reclassCc || '']).emails.concat(hr.emails);
+    mailInfo('#rc-c-mailinfo', to.emails, to.missing.concat(hr.missing));
+    if (!c.planningTo) UI.toast('Tip: captura el correo del Intern de Planning en Configuración › Correos.', 'info', 6000);
+    UI.downloadEml({ to: to.emails, cc, subject: m.subject, text: m.body, attachments: [{ name: fileNames().recl, data: await wb.xlsx.writeBuffer(), type: Core.XLSX_MIME }] });
   }
 
   // ---------- D ----------
+  async function checkFolder() {
+    const p = params();
+    try {
+      checklist(await UI.listFolder(p.year, rel()));
+    } catch (e) {
+      if (e.name === 'NotFoundError') throw new Error('No existe la carpeta ' + rel().replace(/\//g, '\\') + ' dentro de ' + p.year + '\\Tracker.');
+      throw e;
+    }
+  }
   function checklist(names) {
     const p = params();
     const items = RC.evidenceChecklist(names, p.provider, p.sociedad);
@@ -2897,6 +3666,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $('#rc-rate').addEventListener('input', () => { S.manualRate = true; renderC(); });
     $('#rc-a-download').addEventListener('click', (e) => UI.withBusy(e.currentTarget, downloadA));
     $('#rc-a-email').addEventListener('click', showEmail);
+    $('#rc-a-eml').addEventListener('click', (e) => UI.withBusy(e.currentTarget, emlA));
+    $('#rc-c-eml').addEventListener('click', (e) => UI.withBusy(e.currentTarget, emlC));
+    $('#rc-ev-check').addEventListener('click', (e) => UI.withBusy(e.currentTarget, checkFolder));
+    document.addEventListener('hrss-folder', updateFolder);
     $('#rc-b-download').addEventListener('click', (e) => UI.withBusy(e.currentTarget, downloadB));
     $('#rc-c-download').addEventListener('click', (e) => UI.withBusy(e.currentTarget, downloadC));
     $('#rc-c-hist').addEventListener('click', (e) => UI.withBusy(e.currentTarget, downloadHist));
@@ -2920,8 +3693,26 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     window.scrollTo(0, 0);
   }
 
+  function renderFolder() {
+    const c = UI.config();
+    const name = UI.folderName();
+    const mode = UI.saveMode();
+    const ind = $('#folder-ind');
+    ind.textContent = mode === 'folder' ? '📁 Guardando en: ' + name : '⬇ Guardando en: Descargas';
+    ind.classList.toggle('on', mode === 'folder');
+    if (c.saveMode === 'folder' && !name) ind.textContent = '⚠ Elige la carpeta Tracker';
+    const fn = $('#cfg-folder-name');
+    fn.textContent = name ? 'Carpeta elegida: ' + name : (UI.folderSupported() ? 'Sin carpeta elegida' : 'Este navegador no permite guardar en carpetas; usa Edge o Chrome.');
+    $$('input[name=cfg-save]').forEach((r) => { r.checked = r.value === (c.saveMode || 'download'); });
+    document.dispatchEvent(new CustomEvent('hrss-folder'));
+  }
   function renderConfig() {
     const c = UI.config();
+    $('#cfg-cc').value = c.ccDefault || '';
+    $('#cfg-planning').value = c.planningTo || '';
+    $('#cfg-reclass-cc').value = c.reclassCc || '';
+    $('#cfg-contacts').value = c.contacts || '';
+    renderFolder();
     $('#cfg-oneid').value = c.oneId || '';
     $('#cfg-soc').value = c.sociedad || 'MX15';
     $('#cfg-dateorder').value = c.dateOrder || 'dmy';
@@ -2962,6 +3753,32 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       e.target.value = '';
     });
     $('#cfg-reset').addEventListener('click', () => { if (confirm('¿Borrar toda la configuración y equivalencias guardadas en este navegador?')) { UI.resetConfig(); location.reload(); } });
+    [['#cfg-cc', 'ccDefault'], ['#cfg-planning', 'planningTo'], ['#cfg-reclass-cc', 'reclassCc'], ['#cfg-contacts', 'contacts']].forEach(([sel, key]) => {
+      $(sel).addEventListener('change', () => { UI.config()[key] = $(sel).value.trim(); UI.saveConfig(); UI.toast('Guardado', 'ok', 1500); });
+    });
+    $$('input[name=cfg-save]').forEach((r) => r.addEventListener('change', () => {
+      UI.config().saveMode = r.value;
+      UI.saveConfig();
+      if (r.value === 'folder' && !UI.folderName()) UI.toast('Ahora elige la carpeta Tracker.', 'warn');
+      renderFolder();
+    }));
+    $('#cfg-folder-pick').addEventListener('click', async () => {
+      try {
+        await UI.pickFolder();
+        UI.config().saveMode = 'folder';
+        UI.saveConfig();
+        renderFolder();
+        UI.toast('Carpeta elegida: ' + UI.folderName(), 'ok');
+      } catch (e) { if (e.name !== 'AbortError') UI.toast(e.message, 'bad', 7000); }
+    });
+    $('#cfg-folder-forget').addEventListener('click', async () => { await UI.forgetFolder(); UI.config().saveMode = 'download'; UI.saveConfig(); renderFolder(); });
+    UI.onFolderChange(renderFolder);
+    if (!UI.folderSupported()) {
+      $('#cfg-folder-pick').disabled = true;
+      $$('input[name=cfg-save]').forEach((r) => { if (r.value === 'folder') r.disabled = true; });
+    }
+    renderConfig();
+    UI.loadFolder();
     showWho();
     let start = 'home';
     try { start = sessionStorage.getItem('hrss-page') || 'home'; } catch (e) { /* sin almacenamiento */ }

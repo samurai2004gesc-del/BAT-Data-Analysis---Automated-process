@@ -128,3 +128,8 @@ table.t input { padding: 4px 6px; width: 100%; }
 
 #toast { position: fixed; right: 18px; bottom: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 50; }
 #toast .msg { box-shadow: 0 4px 14px rgba(0, 0, 0, .12); max-width: 420px; }
+.folder-ind { color: #cfe3f3; margin-right: 14px; font-size: 12.5px; text-decoration: none; }
+.folder-ind.on { color: #9be7b0; }
+.save-where { margin-left: 4px; }
+.filecard label.check { margin: 4px 0; }
+table.t tr.gone td { color: #8a949e; font-style: italic; }

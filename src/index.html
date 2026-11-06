@@ -9,7 +9,7 @@
 <body>
 <header class="topbar">
   <div class="brand"><span class="logo">HR</span><div><strong>HRSS Automatizador</strong><small>v__VERSION__ · funciona sin internet · tus archivos no salen de esta computadora</small></div></div>
-  <div class="top-actions"><span id="who" class="muted"></span></div>
+  <div class="top-actions"><a id="folder-ind" class="folder-ind" data-goto="config" title="Dónde se guardan los resultados"></a><span id="who" class="muted"></span></div>
 </header>
 <div class="layout">
   <nav class="sidebar" id="nav">
@@ -44,6 +44,15 @@
     <section class="page" id="page-hc">
       <h1>HC in BPC vs HC Approved</h1>
       <p class="lead">Compara el headcount capturado en SAP BPC contra el headcount aprobado. No necesitas pegar nada: arrastra el HR Input Report tal como lo descargaste.</p>
+      <div class="tabs" id="hc-tabs"><button data-tab="one" class="active">Un mercado</button><button data-tab="many">Varios mercados a la vez</button></div>
+      <div class="tab" id="hc-tab-many">
+        <p class="muted">Arrastra juntos los HR Input y los archivos maestros de todos los mercados. La app reconoce de qué mercado es cada uno y usa las equivalencias y columnas que guardaste al configurar cada mercado en “Un mercado” (hazlo una vez por mercado). Usa el año y las etiquetas SOP / COPLAN de la pestaña “Un mercado”.</p>
+        <div class="drop" id="hcb-drop"><b>Arrastra aquí todos los archivos</b><span>HR Input Reports + maestros (.xlsm / .xlsx), de uno o varios mercados</span></div>
+        <div id="hcb-files"></div>
+        <div class="actions"><button class="primary" id="hcb-run" disabled>▶ Comparar todos</button><button id="hcb-download" disabled>⬇ Descargar reporte consolidado</button></div>
+        <div id="hcb-results"></div>
+      </div>
+      <div class="tab active" id="hc-tab-one">
 
       <div class="step">
         <div class="step-h"><span class="stepnum">1</span><h2>Mercado y ejercicio</h2></div>
@@ -117,6 +126,15 @@
         <h3>Alertas</h3>
         <div id="hc-alerts"></div>
         <details><summary>Ver posiciones que NO cuentan (motivo)</summary><div id="hc-nocount" class="scroll"></div></details>
+        <div id="hc-changes"></div>
+        <h3>Enviar al HRBP</h3>
+        <div class="grid g3">
+          <label>Para (correos o nombres del directorio; se guarda por mercado)<input id="hc-mail-to" placeholder="hrbp@empresa.com; otro@empresa.com"></label>
+          <label>CC<input id="hc-mail-cc"></label>
+          <div class="actions" style="margin:auto 0 0"><button id="hc-mail">✉ Borrador con el reporte (.eml)</button></div>
+        </div>
+        <p class="muted small">El borrador incluye las diferencias del filtro actual (entidad / función) y el reporte de Excel adjunto. Ábrelo con doble clic: Outlook lo muestra listo para enviar.</p>
+      </div>
       </div>
     </section>
 
@@ -137,9 +155,15 @@
         <div class="step-h"><span class="stepnum">2</span><h2>Lista de asignaciones</h2></div>
         <div class="drop" id="tr-drop"><b>Arrastra aquí la lista de asignaciones</b><span>Una o varias hojas (p. ej. una por área: OPERACIONES, MARKETING, FINANCE, HR…). Columnas: Nombre, Payroll, Sociedad, CeCo, Grade, Host Country, Tipo, Desde, Hasta, IC code, Coder.</span></div>
         <div id="tr-info" class="info"></div>
-        <div id="tr-preview" class="scroll"></div>
       </div>
-      <div class="actions"><button class="primary" id="tr-download" disabled>⬇ Descargar Tracker</button></div>
+      <div class="step">
+        <div class="step-h"><span class="stepnum">3</span><h2>Tracker anterior <span class="muted">(opcional)</span></h2></div>
+        <p class="muted">Si ya tienes un Tracker de este semestre generado con la app, arrástralo: se conservan los IDs, aprobadores, PO, JVU, estatus y comentarios que capturaste; se agregan las asignaciones nuevas y se marcan las que ya no vienen.</p>
+        <div class="drop small" id="tr-drop-prev"><b>Arrastra aquí el Tracker anterior</b><span>Tracker Recharges H226.xlsx</span></div>
+        <div id="tr-prev-info" class="info"></div>
+      </div>
+      <div id="tr-preview" class="scroll"></div>
+      <div class="actions"><button class="primary" id="tr-download" disabled>⬇ Descargar Tracker</button><span class="muted small save-where" id="tr-where"></span></div>
     </section>
 
     <!-- ================= FORMATOS SAP ================= -->
@@ -157,6 +181,7 @@
       <div class="actions">
         <button class="primary" id="sap-zip" disabled>⬇ Descargar ZIP con carpetas</button>
         <button id="sap-clear">Limpiar lista</button>
+        <span class="muted small save-where" id="sap-where"></span>
       </div>
       <div id="sap-log" class="info"></div>
     </section>
@@ -190,8 +215,11 @@
         <div id="rc-a-preview" class="scroll"></div>
         <div class="actions">
           <button class="primary" id="rc-a-download" disabled>⬇ Descargar “Sent to HRBPs”</button>
-          <button id="rc-a-email" disabled>✉ Ver correo para HRBPs</button>
+          <button id="rc-a-eml" disabled>✉ Borrador con adjunto (.eml)</button>
+          <button id="rc-a-email" disabled>Ver texto del correo</button>
+          <span class="muted small save-where rc-where"></span>
         </div>
+        <div id="rc-a-mailinfo"></div>
         <div id="rc-a-email-box"></div>
       </div>
 
@@ -200,7 +228,7 @@
         <div class="drop" id="rc-drop-ret"><b>Retrieved From HRBPs - MX15 …xlsx</b><span>El archivo con los CeCos confirmados</span></div>
         <div id="rc-b-info" class="info"></div>
         <div id="rc-b-preview" class="scroll"></div>
-        <div class="actions"><button class="primary" id="rc-b-download" disabled>⬇ Descargar validación</button></div>
+        <div class="actions"><button class="primary" id="rc-b-download" disabled>⬇ Descargar validación</button><span class="muted small save-where rc-where"></span></div>
         <div id="rc-b-emails"></div>
       </div>
 
@@ -219,14 +247,17 @@
         <div class="actions">
           <button class="primary" id="rc-c-download" disabled>⬇ Descargar “Reclasificacion por CeCo”</button>
           <button id="rc-c-hist" disabled>⬇ Filas para “Histórico K2”</button>
+          <button id="rc-c-eml" disabled>✉ Borrador para Planning (.eml)</button>
+          <span class="muted small save-where rc-where"></span>
         </div>
+        <div id="rc-c-mailinfo"></div>
       </div>
 
       <div class="tab" id="rc-tab-d">
         <p class="muted">Selecciona la carpeta del mes y proveedor (p. ej. <code>Suppliers\06. Junio\K2</code>) o arrastra sus archivos para verificar que estén las 6 evidencias.</p>
         <div class="grid g2">
           <div class="drop" id="rc-drop-ev"><b>Arrastra aquí los archivos de la carpeta</b><span>.msg / .xlsx</span></div>
-          <div><label class="btnlike">📁 Elegir carpeta…<input type="file" id="rc-ev-folder" webkitdirectory multiple hidden></label></div>
+          <div class="actions" style="margin:0;align-items:start"><button class="primary" id="rc-ev-check">📁 Revisar la carpeta del periodo</button><label class="btnlike">Elegir otra carpeta…<input type="file" id="rc-ev-folder" webkitdirectory multiple hidden></label></div>
         </div>
         <div id="rc-ev-result"></div>
       </div>
@@ -240,6 +271,21 @@
         <label>Sociedad por defecto<input id="cfg-soc" value="MX15"></label>
         <label>Fechas ambiguas como<select id="cfg-dateorder"><option value="dmy">día/mes/año</option><option value="mdy">mes/día/año</option></select></label>
       </div>
+      <h3>Dónde guardar los resultados</h3>
+      <div class="filecard">
+        <label class="check"><input type="radio" name="cfg-save" value="download"> En la carpeta de <b>Descargas</b> (los Webis/JVUs salen en un ZIP)</label>
+        <label class="check"><input type="radio" name="cfg-save" value="folder"> Directo en mi carpeta <b>Tracker</b> de OneDrive / SharePoint, cada archivo en su subcarpeta</label>
+        <div class="actions"><button id="cfg-folder-pick">📁 Elegir carpeta Tracker…</button><button id="cfg-folder-forget" class="mini">Olvidar carpeta</button><span id="cfg-folder-name" class="muted"></span></div>
+        <p class="muted small">Elige la carpeta <code>…\Gerencia HRSS-Organización - General\2026\Tracker</code> (también sirve la carpeta “General”: la app entra sola a <code>{Año}\Tracker</code>). Los archivos se guardan en <code>Recharges\H2'26\Webis|JVUs|Accruals\{KEY}. {Nombre}</code> y <code>Suppliers\06. Junio\K2</code>. Si un archivo ya existe, la app pregunta antes de reemplazarlo. El navegador puede pedirte permiso una vez por sesión.</p>
+      </div>
+      <h3>Correos</h3>
+      <div class="grid g3">
+        <label>CC por defecto (p. ej. tu Line Manager)<input id="cfg-cc"></label>
+        <label>Para: Intern de Planning (reclasificación)<input id="cfg-planning"></label>
+        <label>CC de la reclasificación<input id="cfg-reclass-cc" placeholder="Line Manager de Planning; HR Data Analyst LM"></label>
+      </div>
+      <label><span>Directorio de correos (una persona por renglón: <code>Nombre; correo</code>). Se usa para llenar “Para” a partir de los nombres de HRBP.</span>
+        <textarea id="cfg-contacts" style="min-height:140px" placeholder="Camila Iglesias; camila_iglesias@empresa.com&#10;Eugenia Juarez; eugenia_juarez@empresa.com"></textarea></label>
       <h3>Equivalencias guardadas por mercado (Headcount)</h3>
       <div id="cfg-profiles"></div>
       <div class="actions">
@@ -274,6 +320,13 @@
           <li>Un solo filtro de Entidad/Función para SOP y COPLAN (antes podían quedar distintos sin aviso).</li>
           <li>Aparecen todos los grados (antes la lista era fija) y avisa de funciones/entidades sin equivalencia.</li>
           <li>Sin límite de filas (antes 473 en CAR y 4,893 en Colombia).</li>
+        </ul>
+        <h3>Lo más nuevo</h3>
+        <ul>
+          <li><b>Guardar directo en OneDrive:</b> en Configuración elige tu carpeta Tracker y cada archivo se guarda en su subcarpeta (Webis, JVUs, Accruals, Suppliers), sin ZIP.</li>
+          <li><b>Borradores de correo (.eml):</b> se abren en Outlook con destinatarios, asunto, texto y adjunto listos.</li>
+          <li><b>Tracker que se actualiza:</b> arrastra el Tracker anterior y se conserva lo capturado; la columna “Siguiente paso” dice qué falta.</li>
+          <li><b>Headcount:</b> varios mercados a la vez y comparación contra la corrida anterior.</li>
         </ul>
         <h3>Privacidad</h3>
         <p>La app no se conecta a internet: todo se procesa en la memoria del navegador de tu laptop. No sube archivos a ningún lado.</p>

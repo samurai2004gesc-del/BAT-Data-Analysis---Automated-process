@@ -288,7 +288,7 @@
   }
 
   // ---------- Reporte Excel ----------
-  async function buildReport(res, cfg, filter) {
+  async function buildReport(res, cfg, filter, ch) {
     const wb = Core.newWorkbook();
     const C = Core.COLORS;
     const sopL = cfg.sopLabel || 'SOP', copL = cfg.coplanLabel || 'COPLAN';
@@ -412,10 +412,199 @@
       ['Agrupa grados ≤', cfg.gradeGroupMax || 'No'], ['Encabezado HR Input', res.parsed.headerCell], ['Posiciones leídas', res.positions.length],
       ['Filas de HC Aprobado', res.approved.length]
     ]);
+    addChangesSheet(wb, ch, cfg);
     return wb;
   }
 
+  // ---------- Detección de mercado ----------
+  const COUNTRY_MARKET = { CO: 'Colombia', VE: 'Venezuela', GY: 'CAR', JM: 'CAR', TT: 'CAR', HN: 'CAM', CR: 'CAM', PA: 'CAM', CT: 'CAM' };
+  function marketOfUnit(code) {
+    const c = str(code).toUpperCase();
+    if (!c) return null;
+    let m = c.match(/^C00M([A-Z]{2})/);
+    const cc = m ? m[1] : c.slice(0, 2);
+    if (cc === 'MX') return c[2] === 'O' ? 'México Operaciones' : 'México Comercial';
+    return COUNTRY_MARKET[cc] || null;
+  }
+  /** Mercado más probable de un HR Input (por el Planning Reporting Unit de sus posiciones). */
+  function detectMarket(parsed) {
+    const count = {};
+    parsed.positions.forEach((p) => { const m = marketOfUnit(p.pru); if (m) count[m] = (count[m] || 0) + 1; });
+    const best = Object.entries(count).sort((a, b) => b[1] - a[1])[0];
+    return best ? best[0] : null;
+  }
+  function detectMarketFromName(name) {
+    const n = norm(name);
+    if (/colombia|\bcol\b/.test(n)) return 'Colombia';
+    if (/venezuela|\bven?\b/.test(n)) return 'Venezuela';
+    if (/\bcar\b|caribe|caribbean/.test(n)) return 'CAR';
+    if (/\bcam\b|centroam|central america/.test(n)) return 'CAM';
+    if (/(mexico|\bmx\b).*(oper|ops)/.test(n)) return 'México Operaciones';
+    if (/(mexico|\bmx\b).*(comer|commer|com\b)/.test(n)) return 'México Comercial';
+    return null;
+  }
+
+  // ---------- Catálogo aprobado y equivalencias desde el archivo maestro ----------
+  /** Lee las hojas "For Filters" y "Entidades" del maestro. */
+  function readEquivalences(wb) {
+    const out = { funcMapBPC: {}, funcMapApp: {}, entityMapBPC: {} };
+    const ff = Core.getSheet(wb, ['For Filters']);
+    if (ff) {
+      Core.sheetRows(ff.ws).forEach((r) => {
+        if (!r) return;
+        [[0, 1, 'funcMapBPC'], [3, 4, 'funcMapApp']].forEach(([a, b, key]) => {
+          const ka = str(r[a]), vb = str(r[b]);
+          if (!ka || !vb || norm(vb) === 'function' || /slicer$/.test(norm(ka))) return;
+          if (!out[key][ka]) out[key][ka] = vb;
+        });
+      });
+    }
+    const en = Core.getSheet(wb, ['Entidades']);
+    if (en) {
+      const rows = Core.sheetRows(en.ws);
+      const h = Core.findHeaderRow(rows, ['Codigo Entidad', 'Entidad'], 10);
+      if (h >= 0) {
+        const ci = Core.findCol(rows[h], ['Codigo Entidad', 'Código Entidad', 'Codigo', 'Code']);
+        const ei = Core.findCol(rows[h], ['Entidad', 'Entity'], ['codigo', 'code']);
+        if (ci >= 0 && ei >= 0) rows.slice(h + 1).forEach((r) => { const k = str(r && r[ci]), v = str(r && r[ei]); if (k && v && !out.entityMapBPC[k]) out.entityMapBPC[k] = v; });
+      }
+    }
+    return out;
+  }
+  function findApprovedSheet(wb, savedSheet) {
+    if (savedSheet && wb.SheetNames.includes(savedSheet)) return savedSheet;
+    const s = Core.getSheet(wb, ['HC_YTD (Grade) (HC Tool Approv)', 'hc_ytd', 'aprobado', 'approved', 'approv']);
+    return s ? s.name : wb.SheetNames[0];
+  }
+  function findApprovedHeader(rows) {
+    const h = Core.findHeaderRow(rows, [/grad[eo]/, /^sop/, /coplan/, /function|funcion/, /entidad|country|pais/], 40);
+    return h < 0 ? 0 : h;
+  }
+  /** Elige columnas: las guardadas por nombre, las etiquetas del ejercicio, o las que adivina. */
+  function pickApprovedColumns(headerRow, saved, sopLabel, coplanLabel) {
+    const headers = Core.headerLabels(headerRow || []);
+    const guess = guessApprovedColumns(headerRow || []);
+    const byName = (name) => (name ? headers.findIndex((x) => norm(x) === norm(name)) : -1);
+    const byLabel = (lbl) => (lbl ? headers.findIndex((x) => norm(x).includes(norm(lbl))) : -1);
+    const cols = {};
+    ['grade', 'func', 'entity'].forEach((k) => { const i = byName(saved && saved[k]); cols[k] = i >= 0 ? i : guess[k]; });
+    const s = byLabel(sopLabel), c = byLabel(coplanLabel);
+    cols.sop = s >= 0 ? s : guess.sop;
+    cols.coplan = c >= 0 ? c : guess.coplan;
+    return cols;
+  }
+  /** Prepara la entrada de HC Aprobado de un libro maestro sin intervención (modo varios mercados). */
+  function autoApproved(wb, profile, sopLabel, coplanLabel) {
+    const saved = (profile && profile.appCols) || {};
+    const sheet = findApprovedSheet(wb, saved.sheet);
+    const rows = Core.sheetRows(wb.Sheets[sheet]);
+    const headerIdx = findApprovedHeader(rows);
+    const cols = pickApprovedColumns(rows[headerIdx], saved, sopLabel, coplanLabel);
+    return { sheet, rows, headerIdx, cols };
+  }
+
+  // ---------- Cambios contra la corrida anterior ----------
+  function snapshot(res, cfg) {
+    const o = res.overall;
+    return {
+      date: Core.stamp(), sopLabel: cfg.sopLabel, coplanLabel: cfg.coplanLabel, source: cfg.sourceName || '',
+      rows: o.rows.map((r) => ({ grade: r.grade, bpcSOP: r.bpcSOP, appSOP: r.appSOP, diffSOP: r.diffSOP, bpcCOPLAN: r.bpcCOPLAN, appCOPLAN: r.appCOPLAN, diffCOPLAN: r.diffCOPLAN })),
+      total: { bpcSOP: o.total.bpcSOP, diffSOP: o.total.diffSOP, bpcCOPLAN: o.total.bpcCOPLAN, diffCOPLAN: o.total.diffCOPLAN },
+      positions: res.positions.length
+    };
+  }
+  /** Compara la corrida actual (sin filtros) contra una foto anterior. */
+  function changes(res, snap) {
+    if (!snap) return null;
+    const prev = {};
+    snap.rows.forEach((r) => { prev[r.grade] = r; });
+    const grades = sortGrades(Array.from(new Set(res.overall.rows.map((r) => r.grade).concat(snap.rows.map((r) => r.grade)))));
+    const cur = {};
+    res.overall.rows.forEach((r) => { cur[r.grade] = r; });
+    const label = (a, b) => {
+      if (a === b) return a === 0 ? '' : 'Sin cambio';
+      if (b === 0) return '✔ Corregido';
+      if (a === 0) return '⚠ Nueva diferencia';
+      return Math.abs(b) < Math.abs(a) ? '↓ Mejoró' : '↑ Empeoró';
+    };
+    const rows = grades.map((g) => {
+      const p = prev[g] || { bpcSOP: 0, diffSOP: 0, bpcCOPLAN: 0, diffCOPLAN: 0 }, c = cur[g] || { bpcSOP: 0, diffSOP: 0, bpcCOPLAN: 0, diffCOPLAN: 0 };
+      return {
+        grade: g, prevDiffSOP: p.diffSOP, diffSOP: c.diffSOP, prevBpcSOP: p.bpcSOP, bpcSOP: c.bpcSOP, chSOP: label(p.diffSOP, c.diffSOP),
+        prevDiffCOPLAN: p.diffCOPLAN, diffCOPLAN: c.diffCOPLAN, prevBpcCOPLAN: p.bpcCOPLAN, bpcCOPLAN: c.bpcCOPLAN, chCOPLAN: label(p.diffCOPLAN, c.diffCOPLAN)
+      };
+    }).filter((r) => r.chSOP || r.chCOPLAN);
+    const fixed = rows.filter((r) => r.chSOP === '✔ Corregido' || r.chCOPLAN === '✔ Corregido').length;
+    const worse = rows.filter((r) => /Nueva|Empeor/.test(r.chSOP + r.chCOPLAN)).length;
+    return { date: snap.date, source: snap.source, rows, fixed, worse, prevPositions: snap.positions, positions: res.positions.length };
+  }
+  function addChangesSheet(wb, ch, cfg) {
+    if (!ch) return;
+    const ws = wb.addWorksheet('Cambios vs anterior');
+    Core.title(ws, 1, 'Cambios contra la corrida del ' + ch.date, ch.fixed + ' grado(s) corregidos · ' + ch.worse + ' con diferencia nueva o mayor · Posiciones: ' + ch.prevPositions + ' → ' + ch.positions);
+    const st = (cell) => { const v = String(cell.value || ''); if (/Corregido|Mejor/.test(v)) cell.fill = Core.fill(Core.COLORS.green); else if (/Nueva|Empeor/.test(v)) cell.fill = Core.fill(Core.COLORS.red); };
+    Core.writeTable(ws, 4, [
+      { header: 'Pay Grade', width: 20 }, { header: 'Dif ' + cfg.sopLabel + ' antes', width: 13 }, { header: 'Dif ' + cfg.sopLabel + ' ahora', width: 13 }, { header: 'Cambio ' + cfg.sopLabel, width: 18, style: st },
+      { header: 'Dif ' + cfg.coplanLabel + ' antes', width: 15 }, { header: 'Dif ' + cfg.coplanLabel + ' ahora', width: 15 }, { header: 'Cambio ' + cfg.coplanLabel, width: 18, style: st }
+    ], ch.rows.map((r) => [r.grade, r.prevDiffSOP, r.diffSOP, r.chSOP, r.prevDiffCOPLAN, r.diffCOPLAN, r.chCOPLAN]));
+  }
+
+  // ---------- Varios mercados ----------
+  async function buildBatchReport(items, cfgBase) {
+    const wb = Core.newWorkbook();
+    const C = Core.COLORS;
+    const ws = wb.addWorksheet('Resumen mercados', { views: [{ showGridLines: false }] });
+    Core.title(ws, 1, 'HC in BPC vs HC Approved — todos los mercados', 'Generado: ' + Core.stamp() + ' · ' + (cfgBase.sopLabel || 'SOP') + ' / ' + (cfgBase.coplanLabel || 'COPLAN'));
+    const stStyle = (cell) => { const ok = /ALIGNED/.test(String(cell.value)); cell.fill = Core.fill(ok ? C.green : C.red); cell.font = { bold: true, color: { argb: ok ? C.greenTx : C.redTx } }; };
+    const sopL = cfgBase.sopLabel || 'SOP', copL = cfgBase.coplanLabel || 'COPLAN';
+    Core.writeTable(ws, 4, [
+      { header: 'Mercado', width: 22 }, { header: 'Posiciones', width: 11 },
+      { header: 'BPC ' + sopL, width: 11 }, { header: 'Aprobado ' + sopL, width: 13 }, { header: 'Dif ' + sopL, width: 10 }, { header: 'Grados con dif. ' + sopL, width: 14 }, { header: 'Estatus ' + sopL, width: 28, style: stStyle },
+      { header: 'BPC ' + copL, width: 12 }, { header: 'Aprobado ' + copL, width: 14 }, { header: 'Dif ' + copL, width: 11 }, { header: 'Grados con dif. ' + copL, width: 15 }, { header: 'Estatus ' + copL, width: 28, style: stStyle },
+      { header: 'Alertas', width: 9 }, { header: 'Cambios vs anterior', width: 30 }
+    ], items.map((it) => {
+      const o = it.res.overall;
+      return [it.market, it.res.positions.length, o.total.bpcSOP, o.total.appSOP, o.total.diffSOP, o.rows.filter((r) => r.diffSOP !== 0).length, o.statusSOP.text,
+        o.total.bpcCOPLAN, o.total.appCOPLAN, o.total.diffCOPLAN, o.rows.filter((r) => r.diffCOPLAN !== 0).length, o.statusCOPLAN.text, it.res.alerts.length,
+        it.changes ? (it.changes.fixed + ' corregidos · ' + it.changes.worse + ' nuevos/peores') : 'Primera corrida'];
+    }));
+    items.forEach((it) => {
+      const w = wb.addWorksheet(Core.safeFileName(it.market).slice(0, 31));
+      Core.title(w, 1, it.market, (it.sourceName || '') + ' · ' + it.res.positions.length + ' posiciones');
+      const o = it.res.overall;
+      const dst = (cell) => { const v = Number(cell.value) || 0; cell.fill = Core.fill(v === 0 ? C.green : C.red); };
+      Core.writeTable(w, 4, [
+        { header: 'Pay Grade', width: 22 }, { header: 'BPC ' + sopL, width: 11, total: true }, { header: 'Aprobado ' + sopL, width: 13, total: true }, { header: 'Dif ' + sopL, width: 10, total: true, style: dst }, { header: 'Acción ' + sopL, width: 40 },
+        { header: 'BPC ' + copL, width: 12, total: true }, { header: 'Aprobado ' + copL, width: 14, total: true }, { header: 'Dif ' + copL, width: 11, total: true, style: dst }, { header: 'Acción ' + copL, width: 40 }
+      ], o.rows.map((r) => [r.grade, r.bpcSOP, r.appSOP, r.diffSOP, r.actionSOP, r.bpcCOPLAN, r.appCOPLAN, r.diffCOPLAN, r.actionCOPLAN]), { totals: true, totalsLabel: 'Grand Total' });
+    });
+    const wa = wb.addWorksheet('Alertas');
+    const al = [];
+    items.forEach((it) => it.res.alerts.forEach((a) => al.push([it.market, a.tipo, a.detalle, a.accion])));
+    Core.writeTable(wa, 1, [{ header: 'Mercado', width: 20 }, { header: 'Tipo', width: 32 }, { header: 'Detalle', width: 80 }, { header: 'Acción', width: 60 }], al, { autoFilter: true });
+    return wb;
+  }
+
+  /** Texto del correo para el HRBP con las diferencias que debe corregir. */
+  function emailText(res, cfg, filter) {
+    const cmp = compare(res.positions, res.approved, filter || {});
+    const lines = (key, label) => {
+      const bad = cmp.rows.filter((r) => r['diff' + key] !== 0);
+      if (!bad.length) return label + ': HC alineado, sin acciones.';
+      return label + ':\n' + bad.map((r) => '• ' + r.grade + ': BPC ' + r['bpc' + key] + ' vs aprobado ' + r['app' + key] + ' (' + (r['diff' + key] > 0 ? '+' : '') + r['diff' + key] + ') → ' + r['action' + key]).join('\n');
+    };
+    const scope = [filter && filter.entity, filter && filter.func].filter(Boolean).join(' / ');
+    return {
+      subject: 'HC in BPC vs HC Approved - ' + (cfg.market || '') + (scope ? ' (' + scope + ')' : '') + ' - ' + cfg.sopLabel + ' / ' + cfg.coplanLabel,
+      body: 'Hola,\n\nTe comparto la comparación entre el headcount capturado en BPC y el headcount aprobado' + (scope ? ' para ' + scope : '') + '. El detalle por posición viene en el archivo adjunto (hoja "Posiciones BPC").\n\n' +
+        lines('SOP', cfg.sopLabel) + '\n\n' + lines('COPLAN', cfg.coplanLabel) +
+        '\n\n¿Me apoyas por favor con los ajustes en BPC? En cuanto los tengas, vuelvo a correr la validación.\n\nSaludos.'
+    };
+  }
+
   return {
+    COUNTRY_MARKET, marketOfUnit, detectMarket, detectMarketFromName, readEquivalences, findApprovedSheet, findApprovedHeader, pickApprovedColumns, autoApproved,
+    snapshot, changes, addChangesSheet, buildBatchReport, emailText,
     HR_COLUMNS, MARKETS, defaultCutoffs, parseHRInput, computePositions, gradeKey, sortGrades,
     guessApprovedColumns, parseApproved, compare, alerts, run, buildReport, lookup
   };

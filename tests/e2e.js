@@ -18,6 +18,22 @@ const shots = process.argv[2];
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+  page.on('dialog', (d) => d.accept());
+  await page.addInitScript(() => {
+    class MemFile { constructor(n) { this.kind = 'file'; this.name = n; this.data = null; }
+      async createWritable() { const self = this; const chunks = []; return { write: async (d) => { chunks.push(d); }, close: async () => { self.data = new Blob(chunks); } }; }
+      async getFile() { return new File([this.data || ''], this.name); } }
+    class MemDir { constructor(n) { this.kind = 'directory'; this.name = n; this.children = new Map(); }
+      async getDirectoryHandle(n, o) { let c = this.children.get(n); if (!c) { if (!(o && o.create)) throw new DOMException('no existe', 'NotFoundError'); c = new MemDir(n); this.children.set(n, c); } return c; }
+      async getFileHandle(n, o) { let c = this.children.get(n); if (!c) { if (!(o && o.create)) throw new DOMException('no existe', 'NotFoundError'); c = new MemFile(n); this.children.set(n, c); } return c; }
+      async *entries() { for (const e of this.children) yield e; }
+      async queryPermission() { return 'granted'; } async requestPermission() { return 'granted'; } }
+    const root = new MemDir('General'); const t = new MemDir('Tracker'); const y = new MemDir('2026'); y.children.set('Tracker', t); root.children.set('2026', y);
+    window.__memRoot = root;
+    window.__memList = () => { const out = []; const walk = (d, pre) => d.children.forEach((v, k) => (v.kind === 'file' ? out.push(pre + k) : walk(v, pre + k + '/'))); walk(root, ''); return out.sort(); };
+    window.__memRead = async (pathStr) => { let d = root; const parts = pathStr.split('/'); const last = parts.pop(); for (const q of parts) d = d.children.get(q); return await d.children.get(last).data.text(); };
+    window.showDirectoryPicker = async () => root;
+  });
   await page.goto('file://' + path.join(ROOT, 'dist', 'HRSS-Automatizador.html'));
   if (process.env.DBG) { page.on('console', (m) => console.log('   [console]', m.text())); await page.evaluate(() => { const o = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { console.log('a.click download=' + this.download + ' href=' + this.href.slice(0, 30)); return o.call(this); }; }); }
   const shot = async (name) => { if (shots) await page.screenshot({ path: path.join(shots, name + '.png'), fullPage: true }); };
@@ -54,6 +70,33 @@ const shots = process.argv[2];
   const hcFile = await download('#hc-download');
   const hcWb = XLSX.readFile(hcFile.path);
   check(hcWb.SheetNames[0] === 'Resumen' && hcFile.name.startsWith('HC Variations CAR'), 'HC: reporte Excel descargado (' + hcFile.name + ')');
+  check((await page.textContent('#hc-changes')).includes('Primera corrida'), 'HC: primera corrida sin comparación');
+  await page.fill('#hc-mail-to', 'hrbp.car@example.com');
+  const hcMail = await download('#hc-mail');
+  const hcEml = fs.readFileSync(hcMail.path, 'utf8');
+  check(hcMail.name.endsWith('.eml') && /^X-Unsent: 1/.test(hcEml) && hcEml.includes('To: hrbp.car@example.com') && hcEml.includes('filename="HC Variations CAR'), 'HC: borrador .eml con reporte adjunto');
+  // Segunda corrida con otro HR Input (falta una posición) → muestra cambios
+  const wbIn = XLSX.readFile(EX('01 HR Input Report CAR (ejemplo).xlsx'));
+  const aoa = XLSX.utils.sheet_to_json(wbIn.Sheets[wbIn.SheetNames[0]], { header: 1, raw: true, defval: null });
+  aoa.splice(40, 1); // quita la posición de Finance Grade 36 (multiplicador 2)
+  const wb2 = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb2, XLSX.utils.aoa_to_sheet(aoa), 'HR Input');
+  const in2 = path.join(require('os').tmpdir(), 'HR Input CAR v2.xlsx'); XLSX.writeFile(wb2, in2);
+  await upload('#hc-drop-input', in2);
+  await page.waitForTimeout(300);
+  await page.click('#hc-run');
+  await page.waitForSelector('#hc-changes h3');
+  check((await page.textContent('#hc-changes')).includes('Grade 36'), 'HC: segunda corrida muestra qué cambió');
+  // Varios mercados
+  await page.click('#hc-tabs button[data-tab=many]');
+  await page.setInputFiles('#hcb-drop input[type=file]', [EX('01 HR Input Report CAR (ejemplo).xlsx'), EX('02 Maestro HC CAR - catalogo aprobado (ejemplo).xlsx')]);
+  await page.waitForSelector('#hcb-files table');
+  await page.selectOption('#hcb-files select[data-bm="1"]', 'CAR');
+  await page.click('#hcb-run');
+  await page.waitForSelector('#hcb-results table');
+  await shot('02b-hc-varios');
+  const batch = await download('#hcb-download');
+  check(XLSX.readFile(batch.path).SheetNames.join(',') === 'Resumen mercados,CAR,Alertas', 'HC varios mercados: reporte consolidado (' + batch.name + ')');
+  await page.click('#hc-tabs button[data-tab=one]');
 
   // ---- Tracker ----
   await page.click('#nav a[data-page=tracker]');
@@ -63,6 +106,17 @@ const shots = process.argv[2];
   await shot('03-tracker');
   const tr = await download('#tr-download');
   check(XLSX.readFile(tr.path).SheetNames.includes('Resumen por área'), 'Tracker descargado (' + tr.name + ')');
+  // Simula captura manual en el tracker y lo vuelve a cargar como "anterior"
+  const trWb = XLSX.readFile(tr.path);
+  const trWs = trWb.Sheets[trWb.SheetNames[0]];
+  const trRows = XLSX.utils.sheet_to_json(trWs, { header: 1, defval: null });
+  const ridCol = trRows[2].indexOf('Recharge ID (Webi)');
+  trWs[XLSX.utils.encode_cell({ r: 3, c: ridCol })] = { t: 's', v: '000002052572' };
+  const trPrev = path.join(require('os').tmpdir(), 'Tracker anterior.xlsx'); XLSX.writeFile(trWb, trPrev);
+  await upload('#tr-drop-prev', trPrev);
+  await page.waitForSelector('#tr-prev-info .msg.ok');
+  check((await page.textContent('#tr-prev-info')).includes('4 conservan'), 'Tracker: conserva lo capturado del anterior');
+  check((await page.textContent('#tr-preview')).includes('Seguir aprobaciones'), 'Tracker: siguiente paso calculado');
 
   // ---- Formatos SAP ----
   await page.click('#nav a[data-page=sap]');
@@ -111,6 +165,54 @@ const shots = process.argv[2];
   await page.setInputFiles('#rc-drop-ev input[type=file]', [EX('05 K2 MX15 (ejemplo).xlsx'), sent.path, rcl.path]);
   await page.waitForSelector('#rc-ev-result .checklist');
   await shot('08-reclas-d');
+
+  // ---- Guardar directo en la carpeta Tracker (OneDrive simulado) ----
+  await page.click('#nav a[data-page=config]');
+  await page.click('#cfg-folder-pick');
+  await page.waitForFunction(() => document.querySelector('#folder-ind').textContent.includes('General'));
+  check(true, 'Carpeta elegida: ' + (await page.textContent('#folder-ind')));
+  await page.fill('#cfg-contacts', 'Laura Mendez Ruiz; laura.mendez@example.com\nCarlos Ortega Paz; carlos.ortega@example.com');
+  await page.dispatchEvent('#cfg-contacts', 'change');
+  await page.fill('#cfg-planning', 'planning@example.com');
+  await page.dispatchEvent('#cfg-planning', 'change');
+  await shot('10-config-carpeta');
+  await page.click('#nav a[data-page=sap]');
+  await page.click('#sap-zip');
+  await page.waitForSelector('#sap-log .msg.ok');
+  await page.click('#nav a[data-page=tracker]');
+  await page.click('#tr-download');
+  await page.waitForTimeout(800);
+  await page.click('#nav a[data-page=reclass]');
+  await page.click('#rc-tabs button[data-tab=a]');
+  await page.click('#rc-a-download');
+  await page.waitForTimeout(500);
+  const aMail = await download('#rc-a-eml');
+  const aEml = fs.readFileSync(aMail.path, 'utf8');
+  check(aEml.includes('laura.mendez@example.com') && aEml.includes('filename="Sent to HRBPs - MX15 K2.xlsx"'), 'Reclas A: borrador .eml a HRBPs con adjunto');
+  check((await page.textContent('#rc-a-mailinfo')).includes('Sofia Navarro Gil'), 'Reclas A: avisa nombres sin correo');
+  await page.click('#rc-tabs button[data-tab=c]');
+  await page.click('#rc-c-download');
+  await page.waitForTimeout(500);
+  const cMail = await download('#rc-c-eml');
+  check(fs.readFileSync(cMail.path, 'utf8').includes('To: planning@example.com'), 'Reclas C: borrador para Planning');
+  await page.click('#rc-tabs button[data-tab=d]');
+  await page.click('#rc-ev-check');
+  await page.waitForSelector('#rc-ev-result .checklist');
+  check((await page.textContent('#rc-ev-result')).includes('2 de 6'), 'Checklist leído desde la carpeta: ' + (await page.textContent('#rc-ev-result .msg')));
+  const mem = await page.evaluate(() => window.__memList());
+  const expect = [
+    "2026/Tracker/Recharges/H2'26/Tracker Recharges H226.xlsx",
+    "2026/Tracker/Recharges/H2'26/Webis/1. Perez Lopez Juan Carlos/1. Webi Perez Lopez Juan Carlos.txt",
+    "2026/Tracker/Recharges/H2'26/JVUs/1. Perez Lopez Juan Carlos/1. JVU Perez Lopez Juan Carlos.xlsx",
+    '2026/Tracker/Suppliers/06. Junio/K2/Sent to HRBPs - MX15 K2.xlsx',
+    '2026/Tracker/Suppliers/06. Junio/K2/Reclasificacion por CeCo.xlsx'
+  ];
+  check(expect.every((e) => mem.includes(e)), 'Archivos guardados en sus carpetas (' + mem.length + '): ' + expect.filter((e) => !mem.includes(e)).join(' | '));
+  // Volver a guardar pregunta antes de reemplazar (el diálogo se acepta)
+  await page.click('#nav a[data-page=sap]');
+  await page.click('#sap-zip');
+  await page.waitForSelector('#sap-log .msg.ok');
+  check(true, 'Reemplazo con confirmación');
 
   // ---- Configuración ----
   await page.click('#nav a[data-page=config]');

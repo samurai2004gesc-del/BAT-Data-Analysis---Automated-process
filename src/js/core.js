@@ -322,6 +322,45 @@
   }
   async function workbookToBuffer(wb) { return wb.xlsx.writeBuffer(); }
 
+  // ---------- Correo (.eml que Outlook abre como borrador) ----------
+  function toBytes(data) {
+    if (data instanceof Uint8Array) return data;
+    if (data instanceof ArrayBuffer) return new Uint8Array(data);
+    if (data && data.buffer instanceof ArrayBuffer) return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+    return new TextEncoder().encode(String(data));
+  }
+  function bytesToBase64(data) {
+    const u8 = toBytes(data);
+    let bin = '';
+    for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+    return btoa(bin);
+  }
+  function wrap76(s) { return s.replace(/(.{76})/g, '$1\r\n'); }
+  function encHeader(s) { return /^[\x20-\x7e]*$/.test(s) ? s : '=?UTF-8?B?' + bytesToBase64(new TextEncoder().encode(s)) + '?='; }
+  function textToHtml(text) {
+    const e = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return '<html><body><div style="font-family:Calibri,Arial,sans-serif;font-size:11pt">' +
+      String(text).split(/\n{2,}/).map((p) => '<p>' + e(p).replace(/\n/g, '<br>') + '</p>').join('') + '</div></body></html>';
+  }
+  /** Arma un .eml con X-Unsent: 1 (Outlook lo abre como borrador editable, con los adjuntos ya puestos). */
+  function buildEml(m) {
+    const B = '=_hrss_' + Math.random().toString(36).slice(2);
+    const list = (v) => (Array.isArray(v) ? v : String(v || '').split(/[;,]/)).map((x) => x.trim()).filter(Boolean).join(', ');
+    const h = ['X-Unsent: 1', 'MIME-Version: 1.0'];
+    if (list(m.to)) h.push('To: ' + encHeader(list(m.to)));
+    if (list(m.cc)) h.push('Cc: ' + encHeader(list(m.cc)));
+    h.push('Subject: ' + encHeader(m.subject || ''));
+    h.push('Content-Type: multipart/mixed; boundary="' + B + '"');
+    const parts = [];
+    parts.push('Content-Type: text/html; charset="utf-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n' + wrap76(bytesToBase64(new TextEncoder().encode(m.html || textToHtml(m.text || '')))));
+    (m.attachments || []).forEach((a) => {
+      const n = encHeader(a.name);
+      parts.push('Content-Type: ' + (a.type || 'application/octet-stream') + '; name="' + n + '"\r\nContent-Disposition: attachment; filename="' + n + '"\r\nContent-Transfer-Encoding: base64\r\n\r\n' + wrap76(bytesToBase64(a.data)));
+    });
+    return h.join('\r\n') + '\r\n\r\nEste es un mensaje MIME.\r\n' + parts.map((p) => '--' + B + '\r\n' + p + '\r\n').join('') + '--' + B + '--\r\n';
+  }
+  const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
   // ---------- Navegador ----------
   function downloadBlob(blob, filename) {
     const a = document.createElement('a');
@@ -357,6 +396,7 @@
     findHeaderRow, findCol, headerLabels, colLetter, rowIsEmpty,
     nameTokens, nameScore,
     encodeCP1252, toTabText, cleanGrid,
+    bytesToBase64, textToHtml, buildEml, XLSX_MIME,
     COLORS, BORDER, fill, newWorkbook, styleHeader, writeTable, title, workbookToBuffer,
     downloadBlob, downloadWorkbook, readFileAsArrayBuffer, loadFile, safeFileName
   };

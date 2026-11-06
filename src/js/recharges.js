@@ -82,7 +82,7 @@
       dedup.push(a);
     });
     let next = dedup.reduce((m, a) => Math.max(m, parseInt(a.key, 10) || 0), 0) + 1;
-    dedup.forEach((a) => { if (!a.key) a.key = String(next++); });
+    dedup.forEach((a) => { if (!a.key) { a.key = String(next++); a._autoKey = true; } });
     return { assignments: dedup, sheets };
   }
 
@@ -122,53 +122,159 @@
 
   const STATUSES = ['Pendiente de información', 'Webi cargado', 'En aprobación (1/3)', 'En aprobación (2/3)', 'En aprobación (3/3)', 'Aprobado - PO generada', 'JVU cargado', 'JVU contabilizado (Batch ID)', 'Accrual cargado', 'Validado en FBL5N', 'Rechazado', 'Cancelado'];
 
+  const TRACKER_COLS = [
+    { header: 'Key', key: 'key', width: 6 }, { header: 'Nombre (Apellidos Nombre)', key: 'nombre', width: 34 },
+    { header: 'Payroll Num.', key: 'payroll', width: 12 }, { header: 'Área', key: 'area', width: 16 },
+    { header: 'Sociedad', key: 'sociedad', width: 9 }, { header: 'SE Company Code', key: 'se', width: 13 },
+    { header: 'CeCo', key: 'ceco', width: 13 }, { header: 'Grade', key: 'grade', width: 7 },
+    { header: 'Host Country', key: 'host', width: 14 }, { header: 'Tipo asignación', key: 'tipo', width: 12 },
+    { header: 'Desde', key: 'desde', width: 9 }, { header: 'Hasta', key: 'hasta', width: 9 },
+    { header: 'Receiving IC code', key: 'ic', width: 13 }, { header: 'Coder (aprobador Host)', key: 'coder', width: 20 },
+    { header: 'Coder email', key: 'coderEmail', width: 26 },
+    { header: 'Note Title (SAP)', key: 'noteTitle', width: 28 }, { header: 'Note Text (SAP)', key: 'noteText', width: 50 },
+    { header: 'Estatus', key: 'estatus', width: 24 }, { header: 'Siguiente paso', key: 'next', width: 34 },
+    { header: 'Recharge ID (Webi)', key: 'rid', width: 16 }, { header: 'Fecha carga Webi', key: 'f1', width: 12 },
+    { header: 'Aprobador 1', key: 'ap1', width: 18 }, { header: 'Aprobador 2', key: 'ap2', width: 18 }, { header: 'Aprobador 3', key: 'ap3', width: 18 },
+    { header: 'RRB WBS / PO', key: 'po', width: 26 }, { header: 'Monto Webi', key: 'mw', width: 12 }, { header: 'Monto PO (ME23N)', key: 'mp', width: 13 },
+    { header: 'JVU ID', key: 'jvu', width: 14 }, { header: 'Fecha carga JVU', key: 'f2', width: 12 }, { header: 'BATCH ID', key: 'batch', width: 14 },
+    { header: '¿Accrual?', key: 'acc', width: 9 }, { header: 'Accrual ID', key: 'accid', width: 14 }, { header: 'Validación FBL5N', key: 'fbl', width: 14 },
+    { header: 'Comentarios', key: 'com', width: 40 },
+    { header: 'Archivo Shopping Cart', key: 'fsc', width: 36 }, { header: 'Archivo Webi', key: 'fwebi', width: 36 },
+    { header: 'Archivo JVU', key: 'fjvu', width: 36 }, { header: 'Archivo Accrual', key: 'facc', width: 36 },
+    { header: 'Carpeta del empleado', key: 'folder', width: 36 }
+  ];
+  /** Columnas que se capturan a mano durante el semestre (se conservan al regenerar el Tracker). */
+  const MANUAL_KEYS = ['estatus', 'rid', 'f1', 'ap1', 'ap2', 'ap3', 'po', 'mw', 'mp', 'jvu', 'f2', 'batch', 'acc', 'accid', 'fbl', 'com'];
+  const DATA_KEYS = ['payroll', 'area', 'sociedad', 'ceco', 'grade', 'host', 'tipo', 'desde', 'hasta', 'ic', 'coder', 'coderEmail'];
+  const colIdx = (k) => TRACKER_COLS.findIndex((c) => c.key === k);
+
+  /** Siguiente paso del proceso según lo capturado (misma lógica que la fórmula del Excel). */
+  function nextStep(m) {
+    const v = (k) => !isBlank(m[k]);
+    const st = norm(m.estatus);
+    if (st === 'cancelado' || st === 'rechazado') return '—';
+    if (v('fbl')) return '✔ Terminado';
+    if (norm(m.acc) === 'si' && !v('accid')) return 'Crear y cargar Accrual (mismo día)';
+    if (!v('rid')) return 'Crear y cargar Webi';
+    if (!v('po')) return 'Seguir aprobaciones (RRB PO Dashboard)';
+    if (!v('jvu') && !v('accid')) return 'Generar y cargar JVU (mismo día)';
+    if (v('jvu') && !v('batch')) return 'Esperar BATCH ID';
+    return 'Validar en FBL5N';
+  }
+  function nextStepFormula(r) {
+    const L = (k) => Core.colLetter(colIdx(k)) + r;
+    return 'IF(OR(' + L('estatus') + '="Cancelado",' + L('estatus') + '="Rechazado"),"—",IF(' + L('fbl') + '<>"","✔ Terminado",IF(AND(' + L('acc') + '="Sí",' + L('accid') + '=""),"Crear y cargar Accrual (mismo día)",' +
+      'IF(' + L('rid') + '="","Crear y cargar Webi",IF(' + L('po') + '="","Seguir aprobaciones (RRB PO Dashboard)",IF(AND(' + L('jvu') + '="",' + L('accid') + '=""),"Generar y cargar JVU (mismo día)",' +
+      'IF(AND(' + L('jvu') + '<>"",' + L('batch') + '=""),"Esperar BATCH ID","Validar en FBL5N")))))))';
+  }
+
+  /** Lee un Tracker generado antes por la app (para conservar lo capturado). */
+  function readPreviousTracker(wb) {
+    let best = null;
+    wb.SheetNames.forEach((sn) => {
+      if (best) return;
+      const rows = Core.sheetRows(wb.Sheets[sn]);
+      const h = Core.findHeaderRow(rows, ['Key', 'Estatus', 'Recharge ID (Webi)', 'RRB WBS / PO', 'Nombre (Apellidos Nombre)'], 10);
+      if (h < 0) return;
+      const hd = (rows[h] || []).map(norm);
+      if (!hd.includes(norm('Recharge ID (Webi)')) && !hd.includes('estatus')) return;
+      const map = {};
+      TRACKER_COLS.forEach((c) => { const i = hd.indexOf(norm(c.header)); if (i >= 0) map[c.key] = i; });
+      if (map.nombre === undefined) return;
+      const out = [];
+      rows.slice(h + 1).forEach((r) => {
+        if (!r || isBlank(r[map.nombre])) return;
+        const o = {};
+        Object.keys(map).forEach((k) => { const v = r[map[k]]; o[k] = isBlank(v) ? '' : v; });
+        ['key', 'nombre'].concat(DATA_KEYS).forEach((k) => { o[k] = str(o[k]); });
+        if (o.com) o.com = String(o.com).replace(/^\[No viene en la lista nueva\]\s*/, '');
+        out.push(o);
+      });
+      best = { sheet: sn, rows: out };
+    });
+    return best;
+  }
+  /** Combina la lista nueva con el Tracker anterior: conserva lo capturado, agrega nuevos y marca los que ya no vienen. */
+  function mergeTracker(assignments, prevRows) {
+    const prev = (prevRows || []).map((p) => Object.assign({ _used: false }, p));
+    const match = (a) => {
+      let m = prev.find((p) => !p._used && a.payroll && p.payroll && norm(a.payroll) === norm(p.payroll));
+      if (!m) {
+        let bs = 0;
+        prev.forEach((p) => { if (p._used) return; const sc = Core.nameScore(a.nombre, p.nombre); if (sc >= 0.9 && sc > bs) { bs = sc; m = p; } });
+      }
+      return m;
+    };
+    const out = [];
+    let kept = 0, nuevos = 0;
+    assignments.forEach((a0) => {
+      const a = Object.assign({}, a0);
+      const m = match(a);
+      if (m) {
+        m._used = true; kept++;
+        a.manual = {};
+        MANUAL_KEYS.forEach((k) => { if (!isBlank(m[k])) a.manual[k] = m[k]; });
+        DATA_KEYS.forEach((k) => { if (isBlank(a[k]) && !isBlank(m[k])) a[k] = m[k]; });
+        if (a._autoKey && m.key) { a.key = m.key; a._autoKey = false; }
+      } else { a._new = true; nuevos++; }
+      out.push(a);
+    });
+    const only = prev.filter((p) => !p._used).map((p) => {
+      const a = { key: p.key, nombre: p.nombre, _onlyPrev: true, manual: {} };
+      DATA_KEYS.forEach((k) => { a[k] = p[k] || ''; });
+      MANUAL_KEYS.forEach((k) => { if (!isBlank(p[k])) a.manual[k] = p[k]; });
+      a.manual.com = '[No viene en la lista nueva] ' + (a.manual.com || '');
+      return a;
+    });
+    // KEY consecutivo para los nuevos sin KEY propio, sin chocar con los existentes
+    const used = new Set(out.concat(only).filter((a) => !a._autoKey).map((a) => String(a.key)));
+    let next = Array.from(used).reduce((mx, k) => Math.max(mx, parseInt(k, 10) || 0), 0) + 1;
+    out.forEach((a) => { if (a._autoKey) { while (used.has(String(next))) next++; a.key = String(next); used.add(a.key); a._autoKey = false; } });
+    return { assignments: out.concat(only), stats: { kept, nuevos, soloAnterior: only.length } };
+  }
+
   async function buildTracker(assignments, p) {
     const wb = Core.newWorkbook();
     const C = Core.COLORS;
     const ps = periodShort(p.half, p.year);
     const pth = paths(p.oneId, p.year, p.half);
     const ws = wb.addWorksheet('Tracker ' + ps.replace("'", ''), { views: [{ state: 'frozen', xSplit: 2, ySplit: 3 }] });
-    Core.title(ws, 1, 'Tracker de Recobros ' + ps, 'Generado: ' + Core.stamp() + ' · ' + assignments.length + ' asignaciones · Mes a marcar con "X" en SAP si se crea hoy: ' + monthToMark(Core.todaySerial()));
-    const cols = [
-      { header: 'Key', key: 'key', width: 6 }, { header: 'Nombre (Apellidos Nombre)', key: 'nombre', width: 34 },
-      { header: 'Payroll Num.', key: 'payroll', width: 12 }, { header: 'Área', key: 'area', width: 16 },
-      { header: 'Sociedad', key: 'sociedad', width: 9 }, { header: 'SE Company Code', key: 'se', width: 13 },
-      { header: 'CeCo', key: 'ceco', width: 13 }, { header: 'Grade', key: 'grade', width: 7 },
-      { header: 'Host Country', key: 'host', width: 14 }, { header: 'Tipo asignación', key: 'tipo', width: 12 },
-      { header: 'Desde', key: 'desde', width: 9 }, { header: 'Hasta', key: 'hasta', width: 9 },
-      { header: 'Receiving IC code', key: 'ic', width: 13 }, { header: 'Coder (aprobador Host)', key: 'coder', width: 20 },
-      { header: 'Coder email', key: 'coderEmail', width: 26 },
-      { header: 'Note Title (SAP)', key: 'noteTitle', width: 28 }, { header: 'Note Text (SAP)', key: 'noteText', width: 50 },
-      { header: 'Estatus', key: 'estatus', width: 24 },
-      { header: 'Recharge ID (Webi)', key: 'rid', width: 16 }, { header: 'Fecha carga Webi', key: 'f1', width: 12 },
-      { header: 'Aprobador 1', key: 'ap1', width: 18 }, { header: 'Aprobador 2', key: 'ap2', width: 18 }, { header: 'Aprobador 3', key: 'ap3', width: 18 },
-      { header: 'RRB WBS / PO', key: 'po', width: 26 }, { header: 'Monto Webi', key: 'mw', width: 12 }, { header: 'Monto PO (ME23N)', key: 'mp', width: 13 },
-      { header: 'JVU ID', key: 'jvu', width: 14 }, { header: 'Fecha carga JVU', key: 'f2', width: 12 }, { header: 'BATCH ID', key: 'batch', width: 14 },
-      { header: '¿Accrual?', key: 'acc', width: 9 }, { header: 'Accrual ID', key: 'accid', width: 14 }, { header: 'Validación FBL5N', key: 'fbl', width: 14 },
-      { header: 'Comentarios', key: 'com', width: 40 },
-      { header: 'Archivo Shopping Cart', key: 'fsc', width: 36 }, { header: 'Archivo Webi', key: 'fwebi', width: 36 },
-      { header: 'Archivo JVU', key: 'fjvu', width: 36 }, { header: 'Archivo Accrual', key: 'facc', width: 36 },
-      { header: 'Carpeta del empleado', key: 'folder', width: 36 }
-    ];
-    const rows = assignments.map((a) => Object.assign({}, a, {
-      se: seCompanyCode(a.sociedad),
-      noteTitle: noteTitle(a, p.half, p.year, p.nameOrder), noteText: noteText(a, p.half, p.year),
-      estatus: STATUSES[0], acc: 'No',
-      fsc: fileName(a.key, 'SC', a.nombre), fwebi: fileName(a.key, 'Webi', a.nombre),
-      fjvu: fileName(a.key, 'JVU', a.nombre), facc: fileName(a.key, 'Accrual', a.nombre), folder: folderName(a.key, a.nombre)
-    }));
+    Core.title(ws, 1, 'Tracker de Recobros ' + ps, 'Generado: ' + Core.stamp() + ' · ' + assignments.length + ' asignaciones · Mes a marcar con "X" en SAP si se crea hoy: ' + monthToMark(Core.todaySerial()) + ' · Key en amarillo = asignación nueva · "Siguiente paso" se actualiza solo al capturar');
+    const cols = TRACKER_COLS;
+    const rows = assignments.map((a) => {
+      const m = a.manual || {};
+      const o = Object.assign({}, a, {
+        se: seCompanyCode(a.sociedad),
+        noteTitle: noteTitle(a, p.half, p.year, p.nameOrder), noteText: noteText(a, p.half, p.year),
+        fsc: fileName(a.key, 'SC', a.nombre), fwebi: fileName(a.key, 'Webi', a.nombre),
+        fjvu: fileName(a.key, 'JVU', a.nombre), facc: fileName(a.key, 'Accrual', a.nombre), folder: folderName(a.key, a.nombre)
+      });
+      MANUAL_KEYS.forEach((k) => { o[k] = isBlank(m[k]) ? null : m[k]; });
+      ['f1', 'f2'].forEach((k) => { if (typeof o[k] === 'number') o[k] = Core.serialToJSDate(o[k]); });
+      if (!o.estatus) o.estatus = STATUSES[0];
+      if (!o.acc) o.acc = 'No';
+      o.next = nextStep(o);
+      return o;
+    });
     const t = Core.writeTable(ws, 3, cols, rows, { autoFilter: true });
     // Colores por bloque de información
-    const groups = [[1, 15, C.head], [16, 17, 'FF7F6000'], [18, 33, 'FF375623'], [34, 38, 'FF595959']];
+    const groups = [[1, colIdx('coderEmail') + 1, C.head], [colIdx('noteTitle') + 1, colIdx('noteText') + 1, 'FF7F6000'], [colIdx('estatus') + 1, colIdx('com') + 1, 'FF375623'], [colIdx('fsc') + 1, cols.length, 'FF595959']];
     groups.forEach(([a, b, color]) => { for (let c = a; c <= b; c++) { const cell = ws.getCell(3, c); cell.fill = Core.fill(color); } });
+    const cE = colIdx('estatus') + 1, cA = colIdx('acc') + 1, cN = colIdx('next') + 1;
     for (let r = 4; r <= t.lastRow; r++) {
-      ws.getCell(r, 18).dataValidation = { type: 'list', allowBlank: true, formulae: ['"' + STATUSES.join(',') + '"'] };
-      ws.getCell(r, 30).dataValidation = { type: 'list', allowBlank: true, formulae: ['"Sí,No"'] };
-      for (let c = 18; c <= 33; c++) ws.getCell(r, c).fill = Core.fill('FFF4F9EF');
-      ['f1', 'f2'].forEach((k) => { ws.getCell(r, cols.findIndex((x) => x.key === k) + 1).numFmt = 'dd/mm/yyyy'; });
+      const a = rows[r - 4];
+      ws.getCell(r, cE).dataValidation = { type: 'list', allowBlank: true, formulae: ['"' + STATUSES.join(',') + '"'] };
+      ws.getCell(r, cA).dataValidation = { type: 'list', allowBlank: true, formulae: ['"Sí,No"'] };
+      for (let c = cE; c <= colIdx('com') + 1; c++) ws.getCell(r, c).fill = Core.fill('FFF4F9EF');
+      const nc = ws.getCell(r, cN);
+      nc.value = { formula: nextStepFormula(r), result: a.next };
+      nc.font = { bold: true, color: { argb: 'FF1F4E79' } };
+      ['f1', 'f2'].forEach((k) => { ws.getCell(r, colIdx(k) + 1).numFmt = 'dd/mm/yyyy'; });
+      if (a._new) ws.getCell(r, 1).fill = Core.fill(C.yellow);
+      if (a._onlyPrev) ws.getRow(r).eachCell((c) => { c.font = { color: { argb: 'FF808080' }, italic: true }; });
     }
     ws.addConditionalFormatting({
-      ref: 'R4:R' + Math.max(4, t.lastRow),
+      ref: Core.colLetter(cE - 1) + '4:' + Core.colLetter(cE - 1) + Math.max(4, t.lastRow),
       rules: [
         { type: 'containsText', operator: 'containsText', text: 'Validado', style: { fill: Core.fill(C.green), font: { color: { argb: C.greenTx } } }, priority: 1 },
         { type: 'containsText', operator: 'containsText', text: 'Rechazado', style: { fill: Core.fill(C.red), font: { color: { argb: C.redTx } } }, priority: 2 },
@@ -410,13 +516,11 @@
     return { file: file.name, ctx, items, buffer: file.buffer, opts };
   }
 
-  /** Arma el ZIP con la estructura de carpetas y nomenclatura del proceso. */
-  async function buildZip(processed, p) {
-    const JSZip = Core.lib('JSZip');
-    const zip = new JSZip();
-    const ps = periodShort(p.half, p.year);
-    const root = zip.folder('Recharges ' + ps.replace("'", ''));
-    const log = [];
+  /** Lista de archivos a generar, con rutas relativas a la carpeta "{Año}\\Tracker":
+   *  Recharges/H2'26/{Webis|JVUs|Accruals}/{KEY}. {Nombre}/{KEY}. {Tipo} {Nombre}.xlsx|.txt */
+  async function buildFiles(processed, p) {
+    const base0 = 'Recharges/' + periodShort(p.half, p.year);
+    const files = [], log = [];
     for (const pr of processed) {
       const key = str(pr.ctx.key), nombre = str(pr.ctx.nombre);
       if (!key || !nombre) { log.push({ file: pr.file, ok: false, msg: 'Falta KEY o Nombre' }); continue; }
@@ -425,22 +529,31 @@
         if (it.include === false) continue;
         const info = kindInfo(it.kind);
         const base = fileName(key, it.kind, nombre);
-        const dir = root.folder(info.folder === 'webis' ? 'Webis' : info.folder === 'jvus' ? 'JVUs' : 'Accruals').folder(folder);
+        const sub = info.folder === 'webis' ? 'Webis' : info.folder === 'jvus' ? 'JVUs' : 'Accruals';
+        const dir = base0 + '/' + sub + '/' + folder + '/';
         let xbuf = await copySheetWithFormats(pr.buffer, it.sheet);
         const styled = !!xbuf;
         if (!xbuf) xbuf = await valuesWorkbook(it.grid, it.sheet);
-        dir.file(base + '.xlsx', xbuf);
-        if (info.txt) dir.file(base + '.txt', Core.encodeCP1252(Core.toTabText(it.grid)));
-        log.push({ file: pr.file, ok: true, msg: (info.folder === 'webis' ? 'Webis' : info.folder === 'jvus' ? 'JVUs' : 'Accruals') + '/' + folder + '/' + base + (info.txt ? ' (.xlsx + .txt)' : ' (.xlsx)') + (styled ? '' : ' · solo valores') });
+        files.push({ path: dir + base + '.xlsx', data: new Uint8Array(xbuf), type: Core.XLSX_MIME });
+        if (info.txt) files.push({ path: dir + base + '.txt', data: Core.encodeCP1252(Core.toTabText(it.grid)), type: 'text/plain' });
+        log.push({ file: pr.file, ok: true, msg: sub + '/' + folder + '/' + base + (info.txt ? ' (.xlsx + .txt)' : ' (.xlsx)') + (styled ? '' : ' · solo valores') });
       }
     }
+    return { files, log };
+  }
+  /** ZIP con la misma estructura (para descargar y descomprimir dentro de Tracker). */
+  async function buildZip(processed, p) {
+    const JSZip = Core.lib('JSZip');
+    const zip = new JSZip();
+    const { files, log } = await buildFiles(processed, p);
+    files.forEach((f) => zip.file(f.path, f.data));
     const blob = await zip.generateAsync({ type: typeof window !== 'undefined' ? 'blob' : 'nodebuffer' });
-    return { blob, log };
+    return { blob, log, files };
   }
 
   return {
     ASSIGN_FIELDS, STATUSES, KINDS, guessAssignmentColumns, readAssignments, nameParts, periodShort, noteTitle, noteText,
-    fileName, folderName, monthToMark, paths, seCompanyCode, buildTracker,
-    detectFormats, detectContext, analyze, amountForCompare, copySheetWithFormats, processWorkbook, buildZip, kindInfo
+    fileName, folderName, monthToMark, paths, seCompanyCode, buildTracker, TRACKER_COLS, MANUAL_KEYS, nextStep, readPreviousTracker, mergeTracker,
+    detectFormats, detectContext, analyze, amountForCompare, copySheetWithFormats, processWorkbook, buildFiles, buildZip, kindInfo
   };
 });

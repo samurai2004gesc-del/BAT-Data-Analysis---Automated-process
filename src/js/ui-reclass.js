@@ -14,6 +14,22 @@
   function updateFolder() {
     const p = params();
     $('#rc-folder').innerHTML = 'Carpeta del periodo: <code>' + esc(RC.supplierFolder(UI.config().oneId, p.year, p.month, p.provider)) + '</code>';
+    UI.$$('.rc-where').forEach((el) => { el.textContent = UI.whereText(rel()); });
+    const folder = UI.saveMode() === 'folder';
+    $('#rc-a-download').innerHTML = folder ? '💾 Guardar “Sent to HRBPs”' : '⬇ Descargar “Sent to HRBPs”';
+    $('#rc-b-download').innerHTML = folder ? '💾 Guardar validación' : '⬇ Descargar validación';
+    $('#rc-c-download').innerHTML = folder ? '💾 Guardar “Reclasificacion por CeCo”' : '⬇ Descargar “Reclasificacion por CeCo”';
+    $('#rc-ev-check').disabled = !folder;
+    $('#rc-ev-check').title = folder ? '' : 'Elige la carpeta Tracker en Configuración para usar esta opción';
+  }
+  function rel() { const p = params(); return RC.supplierRelPath(p.month, p.provider); }
+  function fileNames() {
+    const p = params();
+    return { sent: 'Sent to HRBPs - ' + p.sociedad + ' ' + p.provider + '.xlsx', val: 'Validacion CeCos - ' + p.sociedad + ' ' + p.provider + '.xlsx', recl: 'Reclasificacion por CeCo.xlsx', hist: 'Para Historico - ' + p.provider + ' ' + Core.MESES[p.month - 1] + ' ' + p.year + '.xlsx' };
+  }
+  /** Muestra a quién va el correo y qué nombres no están en el directorio. */
+  function mailInfo(el, to, missing) {
+    $(el).innerHTML = missing.length ? '<div class="msg warn">Sin correo en el directorio para: ' + esc(missing.join(', ')) + '. Agrégalos en Configuración › Correos o escríbelos en Outlook.</div>' : (to.length ? '<div class="msg ok small">Para: ' + esc(to.join('; ')) + '</div>' : '');
   }
   async function rowsOf(file, preferSheet) {
     const f = await UI.readFile(file);
@@ -86,16 +102,25 @@
     if (miss) $('#rc-a-preview').insertAdjacentHTML('afterbegin', '<div class="msg warn">' + miss + ' cargo(s) sin CeCo en el histórico: quedarán en amarillo para que el HRBP lo complete.</div>');
     $('#rc-a-download').disabled = false;
     $('#rc-a-email').disabled = false;
+    $('#rc-a-eml').disabled = false;
   }
   async function downloadA() {
     const p = params();
+    await UI.save(p.year, async () => [await UI.wbFile(rel() + '/' + fileNames().sent, await RC.buildSentToHRBP(S.sup, S.enrA, p))]);
+  }
+  function hrbpNames(enr) { return Array.from(new Set(enr.map((e) => e.hrbp).filter(Boolean).flatMap((h) => h.split('/').map((x) => x.trim())))); }
+  async function emlA() {
+    const p = params();
+    const m = RC.emailToHRBPs(p);
     const wb = await RC.buildSentToHRBP(S.sup, S.enrA, p);
-    await Core.downloadWorkbook(wb, 'Sent to HRBPs - ' + p.sociedad + ' ' + p.provider + '.xlsx');
+    const to = UI.emailsFor(hrbpNames(S.enrA));
+    mailInfo('#rc-a-mailinfo', to.emails, to.missing);
+    UI.downloadEml({ to: to.emails, cc: UI.config().ccDefault, subject: m.subject, text: m.body, attachments: [{ name: fileNames().sent, data: await wb.xlsx.writeBuffer(), type: Core.XLSX_MIME }] });
   }
   function showEmail() {
     const p = params();
     const m = RC.emailToHRBPs(p);
-    const hrbps = Array.from(new Set(S.enrA.map((e) => e.hrbp).filter(Boolean).flatMap((h) => h.split('/').map((x) => x.trim()))));
+    const hrbps = hrbpNames(S.enrA);
     $('#rc-a-email-box').innerHTML = '<div class="filecard"><div class="kv"><span class="k">Para</span><span>' + esc(hrbps.join('; ') || '(HRBPs involucrados)') + '</span>' + UI.copyable(hrbps.join('; ')) +
       '<span class="k">Asunto</span><span>' + esc(m.subject) + '</span>' + UI.copyable(m.subject) + '</div>' +
       '<textarea id="rc-mail-body">' + esc(m.body) + '</textarea><div class="actions">' + UI.copyable(m.body) +
@@ -131,12 +156,22 @@
     const keys = Object.keys(bad);
     if (!keys.length) { box.innerHTML = '<div class="msg ok"><b>Todos los CeCos pertenecen a ' + esc(p.sociedad) + '.</b> Puedes continuar con la reclasificación (pestaña C).</div>'; return; }
     box.innerHTML = '<div class="msg bad"><b>' + keys.reduce((a, k) => a + bad[k].length, 0) + ' cargo(s) con CeCo incorrecto.</b> NO procedas a la reclasificación sin corregir. Correos sugeridos:</div>' +
-      keys.map((h) => { const m = RC.emailInvalidCecos(h, bad[h], p); return '<div class="filecard"><div class="kv"><span class="k">Para</span><span>' + esc(h) + '</span><span></span><span class="k">Asunto</span><span>' + esc(m.subject) + '</span>' + UI.copyable(m.subject) + '</div><textarea style="min-height:150px">' + esc(m.body) + '</textarea>' + UI.copyable(m.body) + '</div>'; }).join('');
+      keys.map((h, i) => {
+        const m = RC.emailInvalidCecos(h, bad[h], p);
+        const to = UI.emailsFor([h]);
+        return '<div class="filecard"><div class="kv"><span class="k">Para</span><span>' + esc(to.emails.join('; ') || h) + (to.missing.length ? ' <span class="pill bad">sin correo en el directorio</span>' : '') + '</span><button class="mini primary" data-eml="' + i + '">✉ Borrador (.eml)</button>' +
+          '<span class="k">Asunto</span><span>' + esc(m.subject) + '</span>' + UI.copyable(m.subject) + '</div><textarea style="min-height:150px">' + esc(m.body) + '</textarea>' + UI.copyable(m.body) + '</div>';
+      }).join('');
+    UI.$$('[data-eml]', box).forEach((b) => b.addEventListener('click', () => {
+      const h = keys[Number(b.dataset.eml)];
+      const m = RC.emailInvalidCecos(h, bad[h], p);
+      const body = b.closest('.filecard').querySelector('textarea').value;
+      UI.downloadEml({ to: UI.emailsFor([h]).emails, cc: UI.config().ccDefault, subject: m.subject, text: body });
+    }));
   }
   async function downloadB() {
     const p = params();
-    const wb = await RC.buildValidated(S.ret, S.enrB, S.cecos, p);
-    await Core.downloadWorkbook(wb, 'Validacion CeCos - ' + p.sociedad + ' ' + p.provider + '.xlsx');
+    await UI.save(p.year, async () => [await UI.wbFile(rel() + '/' + fileNames().val, await RC.buildValidated(S.ret, S.enrB, S.cecos, p))]);
   }
 
   // ---------- C ----------
@@ -174,6 +209,7 @@
     const ok = !!b && Number($('#rc-rate').value) > 0;
     $('#rc-c-download').disabled = !ok;
     $('#rc-c-hist').disabled = !ok;
+    $('#rc-c-eml').disabled = !ok;
     if (!b) { sum.innerHTML = '<div class="msg info">Carga el archivo del proveedor (A) o el Retrieved (B).</div>'; return; }
     const p = params();
     const rate = Number($('#rc-rate').value) || null;
@@ -196,16 +232,37 @@
   }
   async function downloadC() {
     const p = Object.assign(params(), { exRate: Number($('#rc-rate').value) });
-    const wb = await RC.buildReclassWorkbook(S.resC, p);
-    await Core.downloadWorkbook(wb, 'Reclasificacion por CeCo.xlsx');
+    await UI.save(p.year, async () => [await UI.wbFile(rel() + '/' + fileNames().recl, await RC.buildReclassWorkbook(S.resC, p))]);
   }
   async function downloadHist() {
-    const wb = await RC.buildHistoricPaste(S.resC);
     const p = params();
-    await Core.downloadWorkbook(wb, 'Para Historico - ' + p.provider + ' ' + Core.MESES[p.month - 1] + ' ' + p.year + '.xlsx');
+    await UI.save(p.year, async () => [await UI.wbFile(rel() + '/' + fileNames().hist, await RC.buildHistoricPaste(S.resC))]);
+  }
+  async function emlC() {
+    const p = Object.assign(params(), { exRate: Number($('#rc-rate').value) });
+    const m = RC.emailReclass(S.resC, p);
+    const wb = await RC.buildReclassWorkbook(S.resC, p);
+    const c = UI.config();
+    const b = base();
+    // Para: Intern de Planning · CC: su Line Manager / HR Data Analyst LM (Configuración) + HRBPs involucrados
+    const hr = UI.emailsFor(hrbpNames(b.enr));
+    const to = UI.emailsFor([c.planningTo || '']);
+    const cc = UI.emailsFor([c.reclassCc || '']).emails.concat(hr.emails);
+    mailInfo('#rc-c-mailinfo', to.emails, to.missing.concat(hr.missing));
+    if (!c.planningTo) UI.toast('Tip: captura el correo del Intern de Planning en Configuración › Correos.', 'info', 6000);
+    UI.downloadEml({ to: to.emails, cc, subject: m.subject, text: m.body, attachments: [{ name: fileNames().recl, data: await wb.xlsx.writeBuffer(), type: Core.XLSX_MIME }] });
   }
 
   // ---------- D ----------
+  async function checkFolder() {
+    const p = params();
+    try {
+      checklist(await UI.listFolder(p.year, rel()));
+    } catch (e) {
+      if (e.name === 'NotFoundError') throw new Error('No existe la carpeta ' + rel().replace(/\//g, '\\') + ' dentro de ' + p.year + '\\Tracker.');
+      throw e;
+    }
+  }
   function checklist(names) {
     const p = params();
     const items = RC.evidenceChecklist(names, p.provider, p.sociedad);
@@ -237,6 +294,10 @@
     $('#rc-rate').addEventListener('input', () => { S.manualRate = true; renderC(); });
     $('#rc-a-download').addEventListener('click', (e) => UI.withBusy(e.currentTarget, downloadA));
     $('#rc-a-email').addEventListener('click', showEmail);
+    $('#rc-a-eml').addEventListener('click', (e) => UI.withBusy(e.currentTarget, emlA));
+    $('#rc-c-eml').addEventListener('click', (e) => UI.withBusy(e.currentTarget, emlC));
+    $('#rc-ev-check').addEventListener('click', (e) => UI.withBusy(e.currentTarget, checkFolder));
+    document.addEventListener('hrss-folder', updateFolder);
     $('#rc-b-download').addEventListener('click', (e) => UI.withBusy(e.currentTarget, downloadB));
     $('#rc-c-download').addEventListener('click', (e) => UI.withBusy(e.currentTarget, downloadC));
     $('#rc-c-hist').addEventListener('click', (e) => UI.withBusy(e.currentTarget, downloadHist));

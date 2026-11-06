@@ -142,5 +142,157 @@
   }
   function resetConfig() { cfg = DEFAULTS(); saveConfig(); }
 
-  root.UI = { $, $$, esc, num, toast, msg, clear, table, dropZone, withBusy, copy, copyable, options, readFile, loadConfig, saveConfig, config, profile, exportConfig, importConfig, resetConfig };
+  // ---------- Carpeta "Tracker" (guardar directo en OneDrive / SharePoint sincronizado) ----------
+  const DB = 'hrss-automatizador', STORE = 'kv';
+  function idb(mode, fn) {
+    return new Promise((resolve, reject) => {
+      const open = indexedDB.open(DB, 1);
+      open.onupgradeneeded = () => open.result.createObjectStore(STORE);
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        const tx = open.result.transaction(STORE, mode);
+        const req = fn(tx.objectStore(STORE));
+        tx.oncomplete = () => resolve(req && req.result);
+        tx.onerror = () => reject(tx.error);
+      };
+    });
+  }
+  let folder = null;
+  const folderListeners = [];
+  function folderSupported() { return typeof window.showDirectoryPicker === 'function'; }
+  function folderName() { return folder ? folder.name : ''; }
+  function onFolderChange(fn) { folderListeners.push(fn); }
+  function notifyFolder() { folderListeners.forEach((fn) => { try { fn(); } catch (e) { console.error(e); } }); }
+  async function loadFolder() {
+    try { folder = (await idb('readonly', (s) => s.get('trackerDir'))) || null; } catch (e) { folder = null; }
+    notifyFolder();
+  }
+  async function pickFolder() {
+    if (!folderSupported()) throw new Error('Este navegador no permite elegir carpetas. Usa Microsoft Edge o Google Chrome actualizados.');
+    const h = await window.showDirectoryPicker({ id: 'hrss-tracker', mode: 'readwrite' });
+    folder = h;
+    try { await idb('readwrite', (s) => s.put(h, 'trackerDir')); } catch (e) { /* no se pudo recordar; se pedirá otra vez */ }
+    notifyFolder();
+    return h;
+  }
+  async function forgetFolder() {
+    folder = null;
+    try { await idb('readwrite', (s) => s.delete('trackerDir')); } catch (e) { /* nada */ }
+    notifyFolder();
+  }
+  function saveMode() { return config().saveMode === 'folder' && folder ? 'folder' : 'download'; }
+  /** Pide permiso de escritura. Debe llamarse al inicio del clic (antes de procesar). */
+  async function ensureFolderPermission() {
+    if (!folder) throw new Error('Elige primero la carpeta Tracker en Configuración.');
+    const opts = { mode: 'readwrite' };
+    if (folder.queryPermission && (await folder.queryPermission(opts)) === 'granted') return;
+    if (folder.requestPermission && (await folder.requestPermission(opts)) === 'granted') return;
+    throw new Error('No se concedió permiso para escribir en la carpeta ' + folder.name + '.');
+  }
+  async function subdir(dir, parts, create) {
+    let d = dir;
+    for (const p of parts) if (p) d = await d.getDirectoryHandle(p, { create });
+    return d;
+  }
+  /** Ubica la carpeta "{Año}\Tracker" a partir de lo que el usuario eligió (Tracker, el año o la carpeta General). */
+  async function trackerDir(year) {
+    const n = Core.norm(folder.name);
+    if (n === 'tracker') return folder;
+    try {
+      if (/^\d{4}$/.test(n)) return await subdir(folder, ['Tracker'], false);
+      return await subdir(folder, [String(year), 'Tracker'], false);
+    } catch (e) {
+      throw new Error('No encontré la carpeta "' + year + '\\Tracker" dentro de "' + folder.name + '". En Configuración elige la carpeta …\\Gerencia HRSS-Organización - General\\' + year + '\\Tracker.');
+    }
+  }
+  async function exists(dir, name) { try { await dir.getFileHandle(name); return true; } catch (e) { return false; } }
+  /**
+   * Guarda archivos: en la carpeta Tracker (modo carpeta) o como descarga.
+   * opts: { year, files: [{path:'Suppliers/06. Junio/K2/x.xlsx', data}], zipName?: 'x.zip' (si son varios y se descargan) }
+   * build: función async que devuelve opts.files (se llama después de pedir permiso).
+   */
+  async function save(year, build, zipName) {
+    const mode = saveMode();
+    if (mode === 'folder') await ensureFolderPermission();
+    const files = await build();
+    if (!files || !files.length) return [];
+    if (mode === 'folder') {
+      const root = await trackerDir(year);
+      const plan = [];
+      for (const f of files) {
+        const parts = f.path.split('/');
+        const name = parts.pop();
+        const dir = await subdir(root, parts, true);
+        plan.push({ dir, name, f, exists: await exists(dir, name) });
+      }
+      const over = plan.filter((p) => p.exists);
+      if (over.length && !confirm('Ya existen ' + over.length + ' archivo(s):\n\n' + over.slice(0, 8).map((p) => '• ' + p.f.path).join('\n') + (over.length > 8 ? '\n…' : '') + '\n\n¿Reemplazarlos?')) {
+        toast('No se guardó nada.', 'warn');
+        return [];
+      }
+      for (const p of plan) {
+        const fh = await p.dir.getFileHandle(p.name, { create: true });
+        const w = await fh.createWritable();
+        await w.write(p.f.data);
+        await w.close();
+      }
+      toast('Guardado en ' + root.name + ': ' + files.length + ' archivo(s)', 'ok', 6000);
+      return files.map((f) => ({ path: (root.name + '/' + f.path), saved: true }));
+    }
+    if (files.length === 1 || !zipName) {
+      files.forEach((f) => Core.downloadBlob(new Blob([f.data], { type: f.type || 'application/octet-stream' }), f.path.split('/').pop()));
+    } else {
+      const JSZip = Core.lib('JSZip');
+      const zip = new JSZip();
+      files.forEach((f) => zip.file(f.path, f.data));
+      Core.downloadBlob(await zip.generateAsync({ type: 'blob' }), zipName);
+    }
+    return files.map((f) => ({ path: f.path, saved: false }));
+  }
+  /** Lista los nombres de archivo de una subcarpeta del Tracker (para el checklist). */
+  async function listFolder(year, relPath) {
+    await ensureFolderPermission();
+    const root = await trackerDir(year);
+    const dir = await subdir(root, relPath.split('/'), false);
+    const names = [];
+    for await (const [name, h] of dir.entries()) if (h.kind === 'file') names.push(name);
+    return names;
+  }
+  /** Texto corto que indica dónde se guardará (junto a los botones). */
+  function whereText(rel) {
+    return saveMode() === 'folder' ? '📁 Se guarda en ' + folder.name + '\\' + String(rel || '').replace(/\//g, '\\') : '⬇ Se guarda en Descargas';
+  }
+  async function wbFile(path, wb) { return { path, data: new Uint8Array(await wb.xlsx.writeBuffer()), type: Core.XLSX_MIME }; }
+
+  // ---------- Contactos y borradores de correo ----------
+  function contacts() {
+    const map = [];
+    String(config().contacts || '').split(/\r?\n/).forEach((line) => {
+      const m = line.split(/[;\t]/).map((x) => x.trim());
+      if (m.length >= 2 && /@/.test(m[1])) map.push({ name: m[0], email: m[1] });
+      else if (m.length === 1 && /@/.test(m[0])) map.push({ name: m[0], email: m[0] });
+    });
+    return map;
+  }
+  /** Convierte nombres (o "Nombre / Nombre") a correos usando el directorio de Configuración. */
+  function emailsFor(names) {
+    const list = contacts();
+    const out = [], missing = [];
+    (Array.isArray(names) ? names : [names]).flatMap((n) => String(n || '').split(/[\/;,]/)).map((n) => n.trim()).filter(Boolean).forEach((n) => {
+      if (/@/.test(n)) { out.push(n); return; }
+      let best = null;
+      list.forEach((c) => { const s = Core.nameScore(n, c.name); if (s >= 0.9 && (!best || s > best.s)) best = { s, c }; });
+      if (best) out.push(best.c.email); else missing.push(n);
+    });
+    return { emails: Array.from(new Set(out)), missing: Array.from(new Set(missing)) };
+  }
+  function downloadEml(m) {
+    const eml = Core.buildEml(m);
+    Core.downloadBlob(new Blob([eml], { type: 'message/rfc822' }), Core.safeFileName(m.subject || 'Correo').slice(0, 120) + '.eml');
+  }
+
+  root.UI = {
+    $, $$, esc, num, toast, msg, clear, table, dropZone, withBusy, copy, copyable, options, readFile, loadConfig, saveConfig, config, profile, exportConfig, importConfig, resetConfig,
+    folderSupported, folderName, onFolderChange, loadFolder, pickFolder, forgetFolder, saveMode, save, listFolder, wbFile, whereText, contacts, emailsFor, downloadEml
+  };
 })(typeof self !== 'undefined' ? self : this);

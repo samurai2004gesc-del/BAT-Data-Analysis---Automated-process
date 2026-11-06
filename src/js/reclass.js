@@ -324,6 +324,21 @@
     };
   }
 
+  function emailReclass(result, p) {
+    const mes = Core.MESES[Number(p.month) - 1];
+    const piv = pivotByCeco(result.ok);
+    const tot = piv.reduce((a, r) => a + r.mxn, 0);
+    const fmt = (n) => Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return {
+      subject: 'Reclasificación por CeCo - ' + p.provider + ' ' + mes + ' ' + p.year + ' ' + p.sociedad,
+      body: 'Hola,\n\nAdjunto la reclasificación por CeCo de los cargos de ' + p.provider + ' correspondientes a ' + mes + ' ' + p.year + ', ya validados por los HRBPs (todos los CeCos pertenecen a la sociedad ' + p.sociedad + ').\n\n' +
+        '• Sociedad: ' + p.sociedad + '\n• Cuenta: ' + (p.account || '5001208100 Other Staff Costs - Expat Recharge Exp') + '\n• CeCo origen: ' + (p.sourceCeco || 'MXCB7B0016 HR Recharges') + '\n' +
+        '• Tipo de cambio: ' + (p.exRate ? Core.round(p.exRate, 4) : 'N/D') + '\n• Total a reclasificar: $' + fmt(tot) + ' MXN en ' + piv.length + ' CeCo(s)\n\n' +
+        piv.map((r) => r.ceco + ': $' + fmt(r.mxn) + ' MXN').join('\n') +
+        '\n\n¿Me apoyas por favor con la reclasificación y me confirmas cuando quede registrada?\n\nSaludos.'
+    };
+  }
+
   // ---------- Checklist de evidencia ----------
   function evidenceChecklist(fileNames, provider, sociedad) {
     const prov = norm(provider), soc = norm(sociedad || 'MX15');
@@ -340,6 +355,10 @@
     items.forEach((i) => { i.ok = i.files.length > 0; });
     return items;
   }
+  /** Ruta relativa a "{Año}\\Tracker": Suppliers/06. Junio/K2 */
+  function supplierRelPath(month, provider) {
+    return 'Suppliers/' + Core.pad(Number(month)) + '. ' + Core.MESES[Number(month) - 1] + '/' + Core.safeFileName(provider);
+  }
   function supplierFolder(oneId, year, month, provider) {
     return 'C:\\Users\\' + (oneId || '{OneID}') + '\\BAT\\Gerencia HRSS-Organización - General\\' + year + '\\Tracker\\Suppliers\\' + Core.pad(Number(month)) + '. ' + Core.MESES[Number(month) - 1] + '\\' + provider;
   }
@@ -347,6 +366,6 @@
   return {
     detectSupplier, readSource, findPerson, enrich, readCecos, validateCeco, buildSentToHRBP, buildValidated,
     readKSB1, exRateFrom, buildHistoricRows, pivotByCeco, buildReclassWorkbook, buildHistoricPaste,
-    emailToHRBPs, emailInvalidCecos, evidenceChecklist, supplierFolder
+    emailToHRBPs, emailInvalidCecos, emailReclass, evidenceChecklist, supplierFolder, supplierRelPath
   };
 });

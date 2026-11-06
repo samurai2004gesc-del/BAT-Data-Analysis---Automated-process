@@ -150,10 +150,10 @@ function consolidado() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
     ['Nombre', 'Gross Amount (GBP)', 'Ceco', 'Tipo', 'Servicio', 'ExRate', 'Gross Amount MXN', 'Mes', 'Year', 'HRBP', 'Home Function'],
-    ['Perez Lopez, Juan Carlos', 400, 'MXCB2H2001', 'K2', 'Tax return', 23.1, 9240, 3, 2026, 'HRBP Ficticio A', 'Finance'],
-    ['Perez Lopez, Juan Carlos', 400, 'MXCB2H2011', 'K2', 'Tax return', 23.1, 9240, 5, 2026, 'HRBP Ficticio A', 'Finance'],
-    ['Garcia Ruiz, Ana', 200, 'MXCB8D0045', 'Deloitte', 'Disbursements', 23.1, 4620, 4, 2026, 'HRBP Ficticio B', 'Exec & Corp Services'],
-    ['Lopez Diaz, Maria Fernanda', 150, 'MXMA1D3H33', 'K2', 'Disbursements', 23.1, 3465, 4, 2026, 'HRBP Ficticio C', 'Marketing Office']
+    ['Perez Lopez, Juan Carlos', 400, 'MXCB2H2001', 'K2', 'Tax return', 23.1, 9240, 3, 2026, 'Laura Mendez Ruiz', 'Finance'],
+    ['Perez Lopez, Juan Carlos', 400, 'MXCB2H2011', 'K2', 'Tax return', 23.1, 9240, 5, 2026, 'Laura Mendez Ruiz', 'Finance'],
+    ['Garcia Ruiz, Ana', 200, 'MXCB8D0045', 'Deloitte', 'Disbursements', 23.1, 4620, 4, 2026, 'Carlos Ortega Paz', 'Exec & Corp Services'],
+    ['Lopez Diaz, Maria Fernanda', 150, 'MXMA1D3H33', 'K2', 'Disbursements', 23.1, 3465, 4, 2026, 'Sofia Navarro Gil', 'Marketing Office']
   ]), 'Histórico K2');
   return wb;
 }

@@ -82,29 +82,9 @@
   // ---------- HC Aprobado ----------
   function readEquivalences(wb) {
     const p = prof();
+    const eq = HC.readEquivalences(wb);
     let n = 0;
-    const ff = Core.getSheet(wb, ['For Filters']);
-    if (ff) {
-      Core.sheetRows(ff.ws).forEach((r) => {
-        if (!r) return;
-        const pairs = [[0, 1, 'funcMapBPC'], [3, 4, 'funcMapApp']];
-        pairs.forEach(([a, b, key]) => {
-          const ka = Core.str(r[a]), vb = Core.str(r[b]);
-          if (!ka || !vb || Core.norm(vb) === 'function' || /slicer$/.test(Core.norm(ka))) return;
-          if (!p[key][ka]) { p[key][ka] = vb; n++; }
-        });
-      });
-    }
-    const en = Core.getSheet(wb, ['Entidades']);
-    if (en) {
-      const rows = Core.sheetRows(en.ws);
-      const h = Core.findHeaderRow(rows, ['Codigo Entidad', 'Entidad'], 10);
-      if (h >= 0) {
-        const ci = Core.findCol(rows[h], ['Codigo Entidad', 'Código Entidad', 'Codigo', 'Code']);
-        const ei = Core.findCol(rows[h], ['Entidad', 'Entity'], ['codigo', 'code']);
-        if (ci >= 0 && ei >= 0) rows.slice(h + 1).forEach((r) => { const k = Core.str(r && r[ci]), v = Core.str(r && r[ei]); if (k && v && !p.entityMapBPC[k]) { p.entityMapBPC[k] = v; n++; } });
-      }
-    }
+    ['funcMapBPC', 'funcMapApp', 'entityMapBPC'].forEach((key) => Object.entries(eq[key]).forEach(([k, v]) => { if (!p[key][k]) { p[key][k] = v; n++; } }));
     UI.saveConfig();
     return n;
   }
@@ -218,6 +198,9 @@
     } else UI.toast('Sin HC Aprobado: solo se mostrará el conteo de BPC.', 'warn');
     S.cfg = cfg;
     S.result = HC.run(S.input.rows, app, cfg);
+    S.changes = takeSnapshot(cfg.market, S.result, cfg);
+    $('#hc-mail-to').value = prof().mailTo || '';
+    $('#hc-mail-cc').value = prof().mailCc || UI.config().ccDefault || '';
     UI.options('#hc-f-entity', S.result.entities, '', 'Todas');
     UI.options('#hc-f-func', S.result.funcs, '', 'Todas');
     $('#hc-f-entity').disabled = !cfg.multiEntity;
@@ -246,11 +229,121 @@
       { h: 'Grado', k: 'grade' }, { h: 'FTE', f: (p) => p.fte }, { h: 'Inicio', f: (p) => Core.fmtDate(p.startSerial) }, { h: 'Fin', f: (p) => Core.fmtDate(p.endSerial) },
       { h: 'Motivo ' + cfg.sopLabel, k: 'reasonSOP' }, { h: 'Motivo ' + cfg.coplanLabel, k: 'reasonCOPLAN' }
     ], nc, { limit: 500 });
+    renderChanges();
+  }
+  function reportName(market, sopLabel) {
+    const d = new Date();
+    return Core.safeFileName('HC Variations ' + market + ' ' + sopLabel + ' ' + d.getFullYear() + '-' + Core.pad(d.getMonth() + 1) + '-' + Core.pad(d.getDate())) + '.xlsx';
   }
   async function download() {
-    const wb = await HC.buildReport(S.result, S.cfg, filter());
+    const wb = await HC.buildReport(S.result, S.cfg, filter(), S.changes);
+    await Core.downloadWorkbook(wb, reportName(S.cfg.market, S.cfg.sopLabel));
+  }
+  async function emlHC() {
+    const p = prof();
+    p.mailTo = $('#hc-mail-to').value.trim();
+    p.mailCc = $('#hc-mail-cc').value.trim();
+    UI.saveConfig();
+    const f = filter();
+    const m = HC.emailText(S.result, S.cfg, f);
+    const wb = await HC.buildReport(S.result, S.cfg, f, S.changes);
+    const to = UI.emailsFor([p.mailTo]), cc = UI.emailsFor([p.mailCc]);
+    if (to.missing.length || cc.missing.length) UI.toast('Sin correo en el directorio para: ' + to.missing.concat(cc.missing).join(', '), 'warn', 7000);
+    UI.downloadEml({ to: to.emails, cc: cc.emails, subject: m.subject, text: m.body, attachments: [{ name: reportName(S.cfg.market, S.cfg.sopLabel), data: await wb.xlsx.writeBuffer(), type: Core.XLSX_MIME }] });
+  }
+
+  // ---------- Cambios contra la corrida anterior ----------
+  /** Guarda una foto de la corrida y devuelve los cambios contra la última corrida distinta (otro archivo de BPC). */
+  function takeSnapshot(market, res, cfg) {
+    const c = UI.config();
+    c.hc.snapshots = c.hc.snapshots || {};
+    const key = market + '|' + cfg.sopLabel;
+    const list = c.hc.snapshots[key] || [];
+    const snap = HC.snapshot(res, cfg);
+    snap.sig = snap.source + '|' + snap.positions + '|' + snap.total.bpcSOP + '|' + snap.total.bpcCOPLAN + '|' + snap.total.diffSOP + '|' + snap.total.diffCOPLAN;
+    const prev = list.slice().reverse().find((x) => x.sig !== snap.sig) || null;
+    if (list.length && list[list.length - 1].sig === snap.sig) list[list.length - 1] = snap; else list.push(snap);
+    c.hc.snapshots[key] = list.slice(-5);
+    UI.saveConfig();
+    return prev ? HC.changes(res, prev) : null;
+  }
+  function renderChanges() {
+    const ch = S.changes, cfg = S.cfg;
+    const el = $('#hc-changes');
+    if (!ch) { el.innerHTML = '<div class="msg info">Primera corrida de ' + esc(cfg.market + ' ' + cfg.sopLabel) + ' en esta computadora: la próxima vez verás qué cambió.</div>'; return; }
+    el.innerHTML = '<h3>Cambios desde la corrida del ' + esc(ch.date) + '</h3><div class="msg ' + (ch.worse ? 'warn' : 'ok') + '"><b>' + ch.fixed + '</b> grado(s) corregidos · <b>' + ch.worse + '</b> con diferencia nueva o mayor · posiciones ' + ch.prevPositions + ' → ' + ch.positions + '</div>' +
+      (ch.rows.length ? UI.table([
+        { h: 'Pay Grade', k: 'grade' }, { h: 'Dif ' + cfg.sopLabel + ' antes', k: 'prevDiffSOP', num: true }, { h: 'ahora', k: 'diffSOP', num: true }, { h: 'Cambio', k: 'chSOP', cls: (r) => chCls(r.chSOP) },
+        { h: 'Dif ' + cfg.coplanLabel + ' antes', k: 'prevDiffCOPLAN', num: true }, { h: 'ahora', k: 'diffCOPLAN', num: true }, { h: 'Cambio', k: 'chCOPLAN', cls: (r) => chCls(r.chCOPLAN) }
+      ], ch.rows) : '');
+  }
+  function chCls(t) { return /Corregido|Mejor/.test(t) ? 'okc' : /Nueva|Empeor/.test(t) ? 'badc' : ''; }
+
+  // ---------- Varios mercados ----------
+  const B = { files: [] };
+  async function onBatchFiles(files) {
+    for (const file of files) {
+      const f = await UI.readFile(file);
+      const item = { name: f.name, wb: f.wb, kind: null, market: null };
+      for (const sn of f.wb.SheetNames) {
+        try { const rows = Core.sheetRows(f.wb.Sheets[sn]); const parsed = HC.parseHRInput(rows); item.kind = 'input'; item.rows = rows; item.parsed = parsed; item.market = HC.detectMarket(parsed) || HC.detectMarketFromName(f.name); break; } catch (e) { /* no es HR Input */ }
+      }
+      if (!item.kind) { item.kind = 'master'; item.market = HC.detectMarketFromName(f.name); }
+      B.files.push(item);
+    }
+    renderBatchFiles();
+  }
+  function renderBatchFiles() {
+    const markets = Object.keys(HC.MARKETS);
+    const el = $('#hcb-files');
+    el.innerHTML = B.files.length ? '<table class="t"><thead><tr><th>Archivo</th><th>Tipo</th><th>Mercado</th><th>Detalle</th><th></th></tr></thead><tbody>' + B.files.map((it, i) =>
+      '<tr><td>' + esc(it.name) + '</td><td>' + (it.kind === 'input' ? 'HR Input' : 'Maestro / HC Aprobado') + '</td><td><select data-bm="' + i + '"><option value="">— elige —</option>' + markets.map((m) => '<option' + (m === it.market ? ' selected' : '') + '>' + esc(m) + '</option>').join('') + '</select></td>' +
+      '<td class="small">' + (it.kind === 'input' ? it.parsed.positions.length + ' posiciones' : it.wb.SheetNames.length + ' hojas') + '</td><td><button class="mini danger" data-bx="' + i + '">✕</button></td></tr>').join('') + '</tbody></table>' : '';
+    UI.$$('[data-bm]', el).forEach((s) => s.addEventListener('change', () => { B.files[Number(s.dataset.bm)].market = s.value || null; renderBatchFiles(); }));
+    UI.$$('[data-bx]', el).forEach((b) => b.addEventListener('click', () => { B.files.splice(Number(b.dataset.bx), 1); renderBatchFiles(); }));
+    $('#hcb-run').disabled = !B.files.some((f) => f.kind === 'input' && f.market);
+  }
+  function runBatch() {
+    saveFormToProfile();
+    const base = buildCfg();
+    const out = [], warn = [];
+    Object.keys(HC.MARKETS).forEach((market) => {
+      const input = B.files.find((f) => f.kind === 'input' && f.market === market);
+      if (!input) return;
+      const master = B.files.find((f) => f.kind === 'master' && f.market === market);
+      const p = UI.profile(market);
+      if (master) {
+        const eq = HC.readEquivalences(master.wb);
+        ['funcMapBPC', 'funcMapApp', 'entityMapBPC'].forEach((key) => Object.entries(eq[key]).forEach(([k, v]) => { if (!p[key][k]) p[key][k] = v; }));
+      } else warn.push(market + ': sin archivo de HC Aprobado (solo conteo de BPC).');
+      const cfg = Object.assign({}, base, {
+        market, multiEntity: p.multiEntity, splitMarketing: p.splitMarketing, marketingFieldSubfunction: p.fieldSub, gradeGroupMax: Number(p.gradeGroupMax) || null, entityName: p.entityName || 'Total',
+        funcMapBPC: p.funcMapBPC, funcMapApp: p.funcMapApp, entityMapBPC: p.entityMapBPC, entityMapApp: p.entityMapApp, sourceName: input.name
+      });
+      const app = master ? HC.autoApproved(master.wb, p, cfg.sopLabel, cfg.coplanLabel) : null;
+      if (app && (app.cols.grade < 0 || (app.cols.sop < 0 && app.cols.coplan < 0))) warn.push(market + ': no identifiqué las columnas de Grado / SOP / COPLAN en el maestro; configúralo una vez en “Un mercado”.');
+      const res = HC.run(input.rows, app && app.cols.grade >= 0 ? app : null, cfg);
+      out.push({ market, res, cfg, sourceName: input.name, changes: takeSnapshot(market, res, cfg) });
+    });
+    UI.saveConfig();
+    B.results = out;
+    const el = $('#hcb-results');
+    el.innerHTML = warn.map((w) => '<div class="msg warn">' + esc(w) + '</div>').join('') + UI.table([
+      { h: 'Mercado', k: 'market' }, { h: 'Posiciones', f: (x) => x.res.positions.length, num: true },
+      { h: 'Dif ' + base.sopLabel, f: (x) => x.res.overall.total.diffSOP, num: true, cls: (x) => (x.res.overall.statusSOP.ok ? 'zero' : 'neg') },
+      { h: base.sopLabel, f: (x) => x.res.overall.statusSOP.text + ' · ' + x.res.overall.statusSOP.detail, cls: (x) => (x.res.overall.statusSOP.ok ? 'okc' : 'badc') },
+      { h: 'Dif ' + base.coplanLabel, f: (x) => x.res.overall.total.diffCOPLAN, num: true, cls: (x) => (x.res.overall.statusCOPLAN.ok ? 'zero' : 'neg') },
+      { h: base.coplanLabel, f: (x) => x.res.overall.statusCOPLAN.text + ' · ' + x.res.overall.statusCOPLAN.detail, cls: (x) => (x.res.overall.statusCOPLAN.ok ? 'okc' : 'badc') },
+      { h: 'Alertas', f: (x) => x.res.alerts.length, num: true },
+      { h: 'Vs. corrida anterior', f: (x) => (x.changes ? x.changes.fixed + ' corregidos · ' + x.changes.worse + ' nuevos/peores' : 'Primera corrida') }
+    ], out);
+    $('#hcb-download').disabled = !out.length;
+  }
+  async function downloadBatch() {
+    const base = buildCfg();
+    const wb = await HC.buildBatchReport(B.results, base);
     const d = new Date();
-    await Core.downloadWorkbook(wb, Core.safeFileName('HC Variations ' + S.cfg.market + ' ' + S.cfg.sopLabel + ' ' + d.getFullYear() + '-' + Core.pad(d.getMonth() + 1) + '-' + Core.pad(d.getDate())) + '.xlsx');
+    await Core.downloadWorkbook(wb, Core.safeFileName('HC Variations Todos ' + base.sopLabel + ' ' + d.getFullYear() + '-' + Core.pad(d.getMonth() + 1) + '-' + Core.pad(d.getDate())) + '.xlsx');
   }
 
   function init() {
@@ -274,6 +367,14 @@
     $('#hc-run').addEventListener('click', () => { try { run(); } catch (e) { UI.toast(e.message, 'bad', 7000); } });
     $('#hc-download').addEventListener('click', (e) => UI.withBusy(e.currentTarget, download));
     $('#hc-f-entity').addEventListener('change', renderResults);
+    $('#hc-mail').addEventListener('click', (e) => UI.withBusy(e.currentTarget, emlHC));
+    UI.$$('#hc-tabs button').forEach((b) => b.addEventListener('click', () => {
+      UI.$$('#hc-tabs button').forEach((x) => x.classList.toggle('active', x === b));
+      UI.$$('#page-hc > .tab').forEach((t) => t.classList.toggle('active', t.id === 'hc-tab-' + b.dataset.tab));
+    }));
+    UI.dropZone('#hcb-drop', { multiple: true, keepLabel: true, onFiles: onBatchFiles });
+    $('#hcb-run').addEventListener('click', () => { try { runBatch(); } catch (e) { console.error(e); UI.toast(e.message, 'bad', 8000); } });
+    $('#hcb-download').addEventListener('click', (e) => UI.withBusy(e.currentTarget, downloadBatch));
     $('#hc-f-func').addEventListener('change', renderResults);
   }
   root.PageHC = { init, state: S };
