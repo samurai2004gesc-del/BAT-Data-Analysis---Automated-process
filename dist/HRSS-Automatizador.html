@@ -159,7 +159,7 @@ table.t tr.gone td { color: #8a949e; font-style: italic; }
 </head>
 <body>
 <header class="topbar">
-  <div class="brand"><span class="logo">HR</span><div><strong>HRSS Automatizador</strong><small>v1.3.0 · funciona sin internet · tus archivos no salen de esta computadora</small></div></div>
+  <div class="brand"><span class="logo">HR</span><div><strong>HRSS Automatizador</strong><small>v1.4.0 · funciona sin internet · tus archivos no salen de esta computadora</small></div></div>
   <div class="top-actions"><a id="folder-ind" class="folder-ind" data-goto="config" title="Dónde se guardan los resultados"></a><span id="who" class="muted"></span></div>
 </header>
 <div class="layout">
@@ -366,7 +366,7 @@ table.t tr.gone td { color: #8a949e; font-style: italic; }
         <div class="grid g2">
           <div><h3>Archivo del proveedor <span class="req">obligatorio</span></h3><div class="drop small" id="rc-drop-sup"><b>K2 MX15.xlsx</b><span>El adjunto del correo de Global</span></div><div id="rc-sup-info" class="info"></div></div>
           <div><h3>Histórico</h3><div class="drop small" id="rc-drop-hist"><b>ConsolidadoCharges_SIRVA-K2_AAAA.xlsx</b><span>Se usa la hoja “Histórico K2” para llenar HRBP / Función / CeCo</span></div><div id="rc-hist-info" class="info"></div></div>
-          <div><h3>Directorio adicional <span class="muted">(opcional)</span></h3><div class="drop small" id="rc-drop-dir"><b>MAE u otra lista</b><span>Cualquier Excel con Nombre + HRBP / Home Function / CeCo; tiene prioridad sobre el histórico</span></div><div id="rc-dir-info" class="info"></div></div>
+          <div><h3>Directorio adicional <span class="muted">(recomendado)</span></h3><div class="drop small" id="rc-drop-dir"><b>Retrieved de meses anteriores, MAE u otra lista</b><span>El Histórico K2 no trae HRBP ni Home Function: arrastra aquí los “Retrieved From HRBPs” de meses pasados (puedes soltar varios). Tiene prioridad sobre el histórico.</span></div><div id="rc-dir-info" class="info"></div></div>
           <div><h3>All CeCos - Approvers <span class="muted">(recomendado)</span></h3><div class="drop small" id="rc-drop-cecos"><b>All CeCos - Approvers.xlsx</b><span>Para validar la sociedad de cada CeCo</span></div><div id="rc-cecos-info" class="info"></div></div>
         </div>
         <div id="rc-a-preview" class="scroll"></div>
@@ -484,7 +484,7 @@ table.t tr.gone td { color: #8a949e; font-style: italic; }
     <section class="page" id="page-config">
       <h1>Configuración</h1>
       <div class="grid g3">
-        <label>OneID<input id="cfg-oneid" placeholder="85221637"></label>
+        <label>OneID<input id="cfg-oneid" placeholder="12345678"></label>
         <label>Sociedad por defecto<input id="cfg-soc" value="MX15"></label>
         <label>Fechas ambiguas como<select id="cfg-dateorder"><option value="dmy">día/mes/año</option><option value="mdy">mes/día/año</option></select></label>
       </div>
@@ -659,6 +659,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function norm(s) {
     if (s === null || s === undefined) return '';
     return String(s)
+      .replace(/_x([0-9a-fA-F]{4})_/g, (m, h) => String.fromCharCode(parseInt(h, 16))) // "inc_x002e_VAT" → "inc.VAT"
       .normalize('NFD').replace(/[̀-ͯ]/g, '')
       .replace(/[‘’´`]/g, "'")
       .replace(/\s+/g, ' ')
@@ -868,11 +869,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
     return out;
   }
-  /** Genera texto delimitado por tabuladores con fin de línea CRLF, como "Texto (delimitado por tabulaciones)" de Excel. */
+  /** Genera texto delimitado por tabuladores con fin de línea CRLF, como "Texto (delimitado por tabulaciones)" de Excel
+   *  (verificado byte por byte contra TXT aceptados por SAP: Excel entrecomilla los textos con comas). */
   function toTabText(rows) {
     return rows.map((r) => r.map((v) => {
       const s = v === null || v === undefined ? '' : String(v);
-      return /[\t\r\n"]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      return /[\t\r\n",]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
     }).join('\t')).join('\r\n') + '\r\n';
   }
   /** Quita filas vacías y columnas vacías al final (SAP rechaza líneas sin valores). */
@@ -1230,7 +1232,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return {
       grade: pick(/grad[eo]|pay ?grade|nivel/),
       func: pick(/home function short|function|funcion|area|departamento/, /sub/),
-      entity: pick(/entidad|entity|pais|country|mercado|market|unidad/),
+      // Preferir la columna con el nombre de la entidad ("Entidad") sobre códigos de país ("Country": T&T, JAM…)
+      entity: (() => { const e = H.findIndex((h) => h === 'entidad' || h === 'entity'); return e >= 0 ? e : pick(/entidad|entity|pais|country|mercado|market|unidad/, /entidad2|sub/); })(),
       sop: lastMatch(/sop/),
       coplan: lastMatch(/coplan|co-plan/)
     };
@@ -1300,9 +1303,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const list = [];
     const add = (tipo, detalle, accion) => list.push({ tipo, detalle, accion });
     const uniq = (arr) => Array.from(new Set(arr)).filter(Boolean);
-    const fBPC = uniq(positions.map((p) => p.func)).filter((f) => cfg.funcMapBPC && Object.keys(cfg.funcMapBPC).length && !hasMap(cfg.funcMapBPC, f));
+    // Un valor que ya es un nombre corto (aparece como destino de la equivalencia) no necesita equivalencia
+    const isTarget = (mapObj, v) => !!mapObj && Object.values(mapObj).some((x) => norm(x) === norm(v));
+    const fBPC = uniq(positions.map((p) => p.func)).filter((f) => cfg.funcMapBPC && Object.keys(cfg.funcMapBPC).length && !hasMap(cfg.funcMapBPC, f) && !isTarget(cfg.funcMapBPC, f));
     if (fBPC.length) add('Función sin equivalencia (BPC)', fBPC.join(', '), 'Agrégala en Configuración › Equivalencias de función BPC.');
-    const fApp = uniq(approved.map((a) => a.funcRaw)).filter((f) => cfg.funcMapApp && Object.keys(cfg.funcMapApp).length && !hasMap(cfg.funcMapApp, f));
+    const fApp = uniq(approved.map((a) => a.funcRaw)).filter((f) => cfg.funcMapApp && Object.keys(cfg.funcMapApp).length && !hasMap(cfg.funcMapApp, f) && !isTarget(cfg.funcMapApp, f) && !isTarget(cfg.funcMapBPC, f));
     if (fApp.length) add('Función sin equivalencia (Aprobado)', fApp.join(', '), 'Agrégala en Configuración › Equivalencias de función del HC Aprobado.');
     const fb = new Set(positions.map((p) => p.funcShort)), fa = new Set(approved.map((a) => a.funcShort));
     const onlyB = [...fb].filter((f) => !fa.has(f)), onlyA = [...fa].filter((f) => !fb.has(f));
@@ -1311,7 +1316,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (cfg.multiEntity) {
       const eb = uniq(positions.filter((p) => !hasMap(cfg.entityMapBPC, p.entityCode)).map((p) => p.entityCode));
       if (eb.length) add('Unidad BPC sin entidad', eb.join(', '), 'Agrega el código de 11 caracteres en Configuración › Entidades BPC.');
-      const ea = uniq(approved.filter((a) => !hasMap(cfg.entityMapApp, a.entityRaw)).map((a) => a.entityRaw));
+      const bpcEntities = new Set(positions.map((p) => norm(p.entity)));
+      const ea = uniq(approved.filter((a) => !hasMap(cfg.entityMapApp, a.entityRaw) && !bpcEntities.has(norm(a.entityRaw))).map((a) => a.entityRaw));
       if (ea.length) add('Entidad del Aprobado sin equivalencia', ea.join(', '), 'Agrégala en Configuración › Entidades del HC Aprobado.');
     }
     const noEnd = positions.filter((p) => p.total && p.endSerial === null);
@@ -1497,7 +1503,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   // ---------- Catálogo aprobado y equivalencias desde el archivo maestro ----------
   /** Lee las hojas "For Filters" y "Entidades" del maestro. */
   function readEquivalences(wb) {
-    const out = { funcMapBPC: {}, funcMapApp: {}, entityMapBPC: {} };
+    const out = { funcMapBPC: {}, funcMapApp: {}, entityMapBPC: {}, entityMapApp: {} };
+    const cat = Core.getSheet(wb, ['HC_YTD (Grade) (HC Tool Approv)', 'hc_ytd']);
+    if (cat) {
+      const rows = Core.sheetRows(cat.ws);
+      const hr = rows[0] || [];
+      const gi = hr.findIndex((x, j) => norm(x) === 'grupo' && norm(hr[j + 1]) === 'entidad'), ei = gi + 1;
+      if (gi >= 0 && ei >= 0) rows.slice(1).forEach((r) => { const k = str(r && r[gi]), v = str(r && r[ei]); if (k && v) out.entityMapApp[k] = v; });
+    }
     const ff = Core.getSheet(wb, ['For Filters']);
     if (ff) {
       Core.sheetRows(ff.ws).forEach((r) => {
@@ -1687,14 +1700,16 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     ['sociedad', 'Sociedad', [/sociedad/, /company code/, /^soc/]],
     ['ceco', 'CeCo', [/^ce\.? ?co(ste)?$/, /ce\.?co/, /cost cent/, /centro de cost/]],
     ['grade', 'Grade', [/grade/, /grado/]],
-    ['host', 'Host Country', [/host/, /pais destino/, /country/, /pais/]],
+    ['host', 'Host Country', [/host country/, /pais destino/, /^country$/, /^pais$/, /host(?!.*(hrbp|entity|region|gmsp|approver))/, /country/]],
     ['tipo', 'Tipo asignación', [/tipo/, /assignment type/, /type/]],
     ['desde', 'Desde', [/desde/, /^from$/, /start/, /inicio/]],
-    ['hasta', 'Hasta', [/hasta/, /^to$/, /end/, /fin/]],
+    ['hasta', 'Hasta', [/hasta/, /^to$/, /termino/, /end/, /fin/]],
     ['ic', 'IC code', [/ic code/, /receiving entity ic/, /^ic/, /intercompany/]],
     ['coder', 'Coder', [/receiving entity coder$/, /^coder$/, /coder(?!.*email)/, /aprobador/]],
     ['coderEmail', 'Coder email', [/coder.*e-?mail/, /e-?mail/, /correo/]],
-    ['hrbp', 'HRBP host', [/hrbp/]],
+    ['hrbp', 'HRBP', [/^hrbp$/, /hrbp/]],
+    ['currency', 'Moneda', [/^currency$/, /^moneda$/, /currency/]],
+    ['markup', 'Mark up', [/mark ?up/]],
     ['po', 'RRB PO', [/rrb ?po/, /rrb wbs/, /^po$/]]
   ];
   function guessAssignmentColumns(headers) {
@@ -1714,20 +1729,31 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function readAssignments(wb) {
     const out = [];
     const sheets = [];
+    // Las hojas que parecen Tracker (Webi, PO, JVU…) no son la lista de asignaciones: se usan como "Tracker anterior"
+    const DETAIL = ['payroll', 'ceco', 'tipo', 'ic', 'coderEmail', 'grade', 'sociedad', 'desde', 'hasta'];
+    const hiddenSheets = new Set(((wb.Workbook && wb.Workbook.Sheets) || []).filter((x) => x.Hidden).map((x) => x.name));
+    const cands = [];
     wb.SheetNames.forEach((sn) => {
+      if (hiddenSheets.has(sn)) return;
       const rows = Core.sheetRows(wb.Sheets[sn]);
       const h = Core.findHeaderRow(rows, ['Nombre', 'Name', 'Payroll', 'CeCo', 'Ce.coste', 'Host Country', 'Key', 'NumNom', 'Sociedad'], 40);
       if (h < 0) return;
       const headers = rows[h] || [];
       const cols = guessAssignmentColumns(headers);
       if (cols.nombre < 0 || (cols.ceco < 0 && cols.payroll < 0 && cols.key < 0)) return;
+      cands.push({ sn, rows, h, headers, cols, score: DETAIL.filter((k) => cols[k] >= 0).length });
+    });
+    const best = cands.reduce((m, c) => Math.max(m, c.score), 0);
+    cands.filter((c) => c.score >= Math.min(3, best)).forEach(({ sn, rows, h, headers, cols }) => {
       sheets.push({ sheet: sn, headerRow: h + 1, cols, headers: Core.headerLabels(headers) });
       const areaFromSheet = GENERIC_SHEETS.test(norm(sn)) ? '' : sn.trim();
       for (let i = h + 1; i < rows.length; i++) {
         const r = rows[i] || [];
         const get = (k) => (cols[k] >= 0 ? r[cols[k]] : null);
         const nombre = str(get('nombre'));
-        if (!nombre || norm(nombre) === 'nombre') continue;
+        if (!nombre || /^(nombre|name|total|grand total|row labels|by status|status|\(blank\))$/.test(norm(nombre))) continue;
+        // Con columna Key, solo cuentan las filas con un KEY numérico (lo demás suelen ser tablas dinámicas debajo)
+        if (cols.key >= 0 && !/^\d+(\.0+)?$/.test(str(get('key')))) continue;
         const a = {};
         ASSIGN_FIELDS.forEach(([k]) => { a[k] = str(get(k)); });
         a.nombre = nombre;
@@ -1794,7 +1820,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     { header: 'Host Country', key: 'host', width: 14 }, { header: 'Tipo asignación', key: 'tipo', width: 12 },
     { header: 'Desde', key: 'desde', width: 9 }, { header: 'Hasta', key: 'hasta', width: 9 },
     { header: 'Receiving IC code', key: 'ic', width: 13 }, { header: 'Coder (aprobador Host)', key: 'coder', width: 20 },
-    { header: 'Coder email', key: 'coderEmail', width: 26 },
+    { header: 'Coder email', key: 'coderEmail', width: 26 }, { header: 'Moneda', key: 'currency', width: 8 }, { header: 'Mark up', key: 'markup', width: 8 },
     { header: 'Note Title (SAP)', key: 'noteTitle', width: 28 }, { header: 'Note Text (SAP)', key: 'noteText', width: 50 },
     { header: 'Estatus', key: 'estatus', width: 24 }, { header: 'Siguiente paso', key: 'next', width: 34 },
     { header: 'Recharge ID (Webi)', key: 'rid', width: 16 }, { header: 'Fecha carga Webi', key: 'f1', width: 12 },
@@ -1809,12 +1835,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   ];
   /** Columnas que se capturan a mano durante el semestre (se conservan al regenerar el Tracker). */
   const MANUAL_KEYS = ['estatus', 'rid', 'f1', 'ap1', 'ap2', 'ap3', 'po', 'mw', 'mp', 'jvu', 'f2', 'batch', 'acc', 'accid', 'fbl', 'com'];
-  const DATA_KEYS = ['payroll', 'area', 'sociedad', 'ceco', 'grade', 'host', 'tipo', 'desde', 'hasta', 'ic', 'coder', 'coderEmail'];
+  const DATA_KEYS = ['payroll', 'area', 'sociedad', 'ceco', 'grade', 'host', 'tipo', 'desde', 'hasta', 'ic', 'coder', 'coderEmail', 'currency', 'markup', 'hrbp'];
   const colIdx = (k) => TRACKER_COLS.findIndex((c) => c.key === k);
 
   /** Siguiente paso del proceso según lo capturado (misma lógica que la fórmula del Excel). */
   function nextStep(m) {
-    const v = (k) => !isBlank(m[k]);
+    // "NA", "N/A", "Pendiente", "Aprobación…" no cuentan como hecho
+    const v = (k) => !isBlank(m[k]) && !/^(n\/?a|na|no|-|pendiente|pending|aprobaci)/.test(norm(m[k]));
     const st = norm(m.estatus);
     if (st === 'cancelado' || st === 'rechazado') return '—';
     if (v('fbl')) return '✔ Terminado';
@@ -1832,29 +1859,44 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       'IF(AND(' + L('jvu') + '<>"",' + L('batch') + '=""),"Esperar BATCH ID","Validar en FBL5N")))))))';
   }
 
-  /** Lee un Tracker generado antes por la app (para conservar lo capturado). */
+  const TRACKER_SYNONYMS = {
+    nombre: ['name', 'nombre'], estatus: ['status'], rid: ['webi', 'req id', 'recharge id'], f1: ['webi upload'],
+    ap1: ['se approver'], ap2: ['aprobador'], ap3: ['re approver'], po: ['po', 'rrb wbs'], mw: ['costo total'], jvu: ['jvu'],
+    f2: ['jvu approval'], batch: ['batch', 'status jvu'], accid: ['accrual'], fbl: ['registered in sap', 'fbl5n', 'contabilidad'],
+    com: ['comment', 'comments', 'comentario'], host: ['country', 'pais'], area: ['area'], coder: ['coder'], ceco: ['ceco'], ic: ['ic code']
+  };
+  /** Lee un Tracker generado antes por la app, o un Tracker propio con columnas tipo Status / Webi / PO / JVU. */
   function readPreviousTracker(wb) {
     let best = null;
+    const hiddenSheets = new Set(((wb.Workbook && wb.Workbook.Sheets) || []).filter((x) => x.Hidden).map((x) => x.name));
     wb.SheetNames.forEach((sn) => {
-      if (best) return;
       const rows = Core.sheetRows(wb.Sheets[sn]);
-      const h = Core.findHeaderRow(rows, ['Key', 'Estatus', 'Recharge ID (Webi)', 'RRB WBS / PO', 'Nombre (Apellidos Nombre)'], 10);
+      const h = Core.findHeaderRow(rows, ['Key', 'Estatus', 'Status', 'Recharge ID (Webi)', 'Webi', 'RRB WBS / PO', 'PO', 'JVU', 'Nombre (Apellidos Nombre)'], 10);
       if (h < 0) return;
-      const hd = (rows[h] || []).map(norm);
-      if (!hd.includes(norm('Recharge ID (Webi)')) && !hd.includes('estatus')) return;
+      const hd = (rows[h] || []).map((x) => norm(x).replace(/\s+mm\/dd\/yyyy$/, ''));
       const map = {};
-      TRACKER_COLS.forEach((c) => { const i = hd.indexOf(norm(c.header)); if (i >= 0) map[c.key] = i; });
-      if (map.nombre === undefined) return;
+      // Los nombres van en orden de prioridad
+      const take = (key, names) => {
+        if (map[key] !== undefined) return;
+        for (const n of names) { const i = hd.findIndex((x, j) => x === n && !Object.values(map).includes(j)); if (i >= 0) { map[key] = i; return; } }
+      };
+      TRACKER_COLS.forEach((c) => take(c.key, [norm(c.header)]));
+      // Sinónimos de otros formatos de Tracker (p. ej. el que se usaba antes de la app)
+      Object.entries(TRACKER_SYNONYMS).forEach(([k, names]) => take(k, names));
+      if (map.nombre === undefined || (map.rid === undefined && map.po === undefined && map.jvu === undefined)) return;
       const out = [];
       rows.slice(h + 1).forEach((r) => {
         if (!r || isBlank(r[map.nombre])) return;
+        if (map.key !== undefined && !/^\d+(\.0+)?$/.test(str(r[map.key]))) return; // tablas dinámicas debajo
         const o = {};
         Object.keys(map).forEach((k) => { const v = r[map[k]]; o[k] = isBlank(v) ? '' : v; });
         ['key', 'nombre'].concat(DATA_KEYS).forEach((k) => { o[k] = str(o[k]); });
         if (o.com) o.com = String(o.com).replace(/^\[No viene en la lista nueva\]\s*/, '');
         out.push(o);
       });
-      best = { sheet: sn, rows: out };
+      const cand = { sheet: sn, rows: out, hidden: hiddenSheets.has(sn) };
+      // Preferir hojas visibles y, entre ellas, la que tenga más asignaciones
+      if (!best || (best.hidden && !cand.hidden) || (best.hidden === cand.hidden && cand.rows.length > best.rows.length)) best = cand;
     });
     return best;
   }
@@ -1922,7 +1964,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     });
     const t = Core.writeTable(ws, 3, cols, rows, { autoFilter: true });
     // Colores por bloque de información
-    const groups = [[1, colIdx('coderEmail') + 1, C.head], [colIdx('noteTitle') + 1, colIdx('noteText') + 1, 'FF7F6000'], [colIdx('estatus') + 1, colIdx('com') + 1, 'FF375623'], [colIdx('fsc') + 1, cols.length, 'FF595959']];
+    const groups = [[1, colIdx('markup') + 1, C.head], [colIdx('noteTitle') + 1, colIdx('noteText') + 1, 'FF7F6000'], [colIdx('estatus') + 1, colIdx('com') + 1, 'FF375623'], [colIdx('fsc') + 1, cols.length, 'FF595959']];
     groups.forEach(([a, b, color]) => { for (let c = a; c <= b; c++) { const cell = ws.getCell(3, c); cell.fill = Core.fill(color); } });
     const cE = colIdx('estatus') + 1, cA = colIdx('acc') + 1, cN = colIdx('next') + 1;
     for (let r = 4; r <= t.lastRow; r++) {
@@ -2238,18 +2280,35 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   const { norm, isBlank, str, parseNum } = Core;
 
   // ---------- Archivo del proveedor / Retrieved ----------
+  /** Columna del monto en libras: "Gross Amount (GBP)" (K2), "Total Amount (inc.VAT) in GBP" (Deloitte)… */
+  function pickAmount(hd) {
+    let best = -1, bestScore = 0;
+    hd.forEach((h, i) => {
+      const n = norm(h);
+      if (!n || !/amount|importe|monto|total|fee/.test(n)) return;
+      if (/local|tax amount|^net|net amount|mxn|disburse|3rd|fx|rate|discount|excl|^vat$|^iva$|number|count/.test(n)) return;
+      let sc = 1;
+      if (/gbp|£/.test(n)) sc += 3;
+      if (/gross/.test(n)) sc += 4;
+      if (/total/.test(n)) sc += 2;
+      if (/inc/.test(n)) sc += 2;
+      if (/amount|importe|monto/.test(n)) sc += 1;
+      if (sc > bestScore) { bestScore = sc; best = i; }
+    });
+    return best;
+  }
   function detectSupplier(rows) {
     const h = Core.findHeaderRow(rows, ['Assignee Name', 'Employee', 'Name', 'Nombre', 'Amount', 'Gross', 'Invoice', 'Service', 'Currency'], 30);
     if (h < 0) throw new Error('No encontré la fila de encabezados en el archivo (busqué "Assignee Name", "Amount", etc.).');
     const hd = rows[h] || [];
     const cols = {
       name: Core.findCol(hd, ['Assignee Name', 'Employee Name', 'Assignee', 'Nombre del colaborador', 'Nombre', /(^| )name$/], ['manager', 'contact', 'company', 'hrbp', 'vendor', 'supplier']),
-      amount: Core.findCol(hd, [/gross amount/, /total amount/, /amount/, /importe/, /monto/, /^total/, /fee/], ['mxn', 'tax', 'vat', 'iva', 'net']),
-      currency: Core.findCol(hd, [/currency/, /moneda/, /^curr/]),
-      service: Core.findCol(hd, [/servicio/, /service/, /description/, /descripcion/, /concept/, /activity/, /^item/]),
+      amount: pickAmount(hd),
+      currency: Core.findCol(hd, [/^currency$/, /^moneda$/, /currency/, /moneda/, /^curr/], ['local', 'disburse']),
+      service: Core.findCol(hd, [/fee type as per rate card/, /^description$/, /^servicio$/, /^service$/, /servicio/, /descripcion/, /concept/, /fee type/, /service type/, /description/, /activity/, /^item/], ['disburse', '3rd party']),
       hrbp: Core.findCol(hd, ['HRBP']),
       func: Core.findCol(hd, ['Home Function', 'Function', 'Funcion', 'Area'], ['sub']),
-      ceco: Core.findCol(hd, [/^ce ?co$/, /ceco/, /cost cent/, /centro de cost/]),
+      ceco: Core.findCol(hd, [/^ce ?co$/, /ceco/, /cost cent/, /centro de cost/], ['host', 'home']),
       validation: Core.findCol(hd, ['Validation', 'Validacion', 'Sociedad'])
     };
     if (cols.name < 0) throw new Error('No encontré la columna con el nombre del colaborador (ej. "Assignee Name").');
@@ -2273,8 +2332,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (name < 0) name = 0;
     const c = {
       hrbp: Core.findCol(hd, ['HRBP']),
-      func: Core.findCol(hd, ['Home Function', 'Function', 'Funcion', 'Area'], ['sub']),
-      ceco: Core.findCol(hd, [/^ce ?co$/, /ceco/, /cost cent/, /centro de cost/]),
+      func: Core.findCol(hd, ['Home Function', 'Function', 'Funcion', 'Area2', 'Area'], ['sub']),
+      ceco: Core.findCol(hd, [/^ce ?co$/, /ceco/, /cost cent/, /centro de cost/], ['host', 'home']),
       year: Core.findCol(hd, ['Year', 'Año', 'Ano']),
       mes: Core.findCol(hd, ['Mes', 'Month'])
     };
@@ -2336,7 +2395,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       const r = rows[i] || [];
       const k = str(r[ceco]).toUpperCase();
       if (!k) continue;
-      if (!map[k]) map[k] = str(r[soc]).toUpperCase();
+      const sv = str(r[soc]).toUpperCase();
+      if (!map[k]) map[k] = sv;
+      else if (sv && !map[k].split('/').includes(sv)) map[k] += '/' + sv; // CeCo dado de alta en más de una sociedad
     }
     return { map, cecoCol: ceco, socCol: soc, count: Object.keys(map).length };
   }
@@ -2346,8 +2407,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if (!cecos) return { status: 'SIN_CATALOGO', text: 'Sin catálogo', soc: '' };
     const soc = cecos.map[k];
     if (soc === undefined) return { status: 'NO_EXISTE', text: 'No existe en All CeCos', soc: '' };
-    if (soc !== String(sociedad).toUpperCase()) return { status: 'OTRA_SOC', text: 'Pertenece a ' + soc + ' (debe ser ' + sociedad + ')', soc };
-    return { status: 'OK', text: soc, soc };
+    const target = String(sociedad).toUpperCase();
+    if (!soc.split('/').includes(target)) return { status: 'OTRA_SOC', text: 'Pertenece a ' + soc + ' (debe ser ' + sociedad + ')', soc };
+    return { status: 'OK', text: target, soc: target };
   }
 
   // ---------- Libros de salida ----------
@@ -2483,17 +2545,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const C = Core.COLORS;
     const ws = wb.addWorksheet('Reclasificacion por CeCo', { views: [{ showGridLines: false }] });
     const lbl = (r, a, b) => { const x = ws.getCell(r, 1); x.value = a; x.font = { bold: true, color: { argb: 'FFC00000' } }; ws.getCell(r, 2).value = b; };
-    lbl(1, 'Sociedad', p.sociedad || 'MX15');
-    lbl(2, 'Cuenta', p.account || '5001208100 Other Staff Costs - Expat Recharge Exp');
-    lbl(3, 'Centro de costo origen', p.sourceCeco || 'MXCB7B0016 HR Recharges');
-    lbl(4, 'Proveedor', p.provider);
-    lbl(5, 'Periodo', Core.MESES[Number(p.month) - 1] + ' ' + p.year);
-    lbl(6, 'Tipo de cambio', p.exRate ? Core.round(p.exRate, 6) : 'N/D');
+    // Mismo acomodo que la Reclasificación que se envía a Planning
+    lbl(2, 'Sociedad', ' ' + (p.sociedad || 'MX15'));
+    lbl(3, 'Cuenta', p.account || '5001208100 Other Staff Costs - Expat Recharge Exp');
+    lbl(4, 'Centro de costos', p.sourceCeco || 'MXCB7B0016 HR Recharges');
+    lbl(6, 'Year', Number(p.year));
+    lbl(7, 'Tipo', p.provider);
+    lbl(8, 'Mes', Number(p.month));
     const piv = pivotByCeco(result.ok);
-    Core.writeTable(ws, 8, [
-      { header: 'Row Labels (CeCo destino)', width: 26 }, { header: 'Sum of Gross-Amount MXN', width: 24, numFmt: '"$"#,##0.00', total: true },
-      { header: 'Sum of Gross Amount (GBP)', width: 24, numFmt: '"£"#,##0.00', total: true }, { header: 'Cargos', width: 9, total: true }
-    ], piv.map((r) => [r.ceco, Core.round(r.mxn, 2), Core.round(r.gbp, 2), r.n]), { totals: true, totalsLabel: 'Grand Total' });
+    Core.writeTable(ws, 10, [
+      { header: 'Row Labels', width: 26 }, { header: 'Sum of Gross-Amount MXN', width: 24, numFmt: '"$"#,##0.00', total: true }
+    ], piv.map((r) => [r.ceco, Core.round(r.mxn, 2)]), { totals: true, totalsLabel: 'Grand Total' });
+    ws.getCell(2, 4).value = 'Tipo de cambio: ' + (p.exRate ? Core.round(p.exRate, 6) : 'N/D') + ' · el detalle en GBP está en la hoja "Detalle"';
+    ws.getCell(2, 4).font = { italic: true, size: 9, color: { argb: 'FF595959' } };
     ws.getColumn(1).width = 26;
     ws.getColumn(2).width = 48;
 
@@ -2731,7 +2795,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   const TYPES = {
     webi: 'Webi', jvu: 'JVU', accrual: 'Accrual', sc: 'Shopping Cart', supplier: 'Cargos de proveedor', sent: 'Sent to HRBPs',
     retrieved: 'Retrieved from HRBPs', reclass: 'Reclasificación por CeCo', ksb1: 'Export KSB1', cecos: 'All CeCos - Approvers',
-    hrinput: 'HR Input Report (BPC)', hcmaster: 'Maestro HC (aprobado)', estimate: 'Estimate Benefits', tracker: 'Tracker de recobros',
+    hrinput: 'HR Input Report (BPC)', hcmaster: 'Maestro HC (aprobado)', estimate: 'Estimate Benefits', tracker: 'Tracker de recobros', asignaciones: 'Listado de asignaciones',
     consolidado: 'Consolidado de cargos', 'msg-global': 'Correo de Global (cargo)', 'msg-hrbp': 'Correo respuesta HRBP', msg: 'Correo (.msg)',
     validacion: 'Validación de CeCos', historico: 'Filas para Histórico', excel: 'Excel no reconocido', otro: 'Otro archivo', error: 'No se pudo leer'
   };
@@ -2743,7 +2807,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function pathContext(path) {
     const parts = String(path || '').split(/[\\/]/).filter(Boolean);
     const name = parts[parts.length - 1] || '';
-    const base = name.replace(/\.[^.]+$/, '');
+    const base = name.replace(/\.[^.]+$/, '').replace(/_+/g, ' ').replace(/\s+/g, ' ').trim(); // "2._Webi_Nombre" → "2. Webi Nombre"
     const ctx = { name, base, folder: parts.slice(0, -1).join('/'), ext: (name.match(/\.([^.]+)$/) || [, ''])[1].toLowerCase() };
     parts.forEach((seg) => {
       const n = norm(seg);
@@ -2757,6 +2821,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     });
     let m;
     if ((m = base.match(/^\s*(\d+)\.\s*(SC|Webi|JVU|Accrual)\s+(.+)$/i))) { ctx.key = m[1]; ctx.docKind = m[2]; ctx.employee = m[3].trim(); }
+    else if ((m = base.match(/^\s*(\d+)\.\s+(.+?)\s+H([12])\s*'?(\d{2,4})$/i))) { ctx.key = m[1]; ctx.employee = m[2].trim(); ctx.half = 'H' + m[3]; }
     else if (ctx.recFolder) {
       const empSeg = parts.slice(0, -1).reverse().find((s) => /^\d+\.\s+\S/.test(s));
       if (empSeg) { const mm = empSeg.match(/^(\d+)\.\s+(.+)$/); ctx.key = mm[1]; ctx.employee = mm[2].trim(); }
@@ -2848,6 +2913,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const hasAmount = H.some((h) => /amount|monto|importe/.test(h));
     if (hasName && hasAmount) return H.includes('hrbp') && H.some((h) => /^ce ?co$/.test(h)) ? 'retrieved' : 'supplier';
     if (H.some((h) => /company code|sociedad/.test(h)) && H.some((h) => /cost cent|ceco/.test(h)) && rows.length > 5) return 'cecos';
+    if (R.readPreviousTracker(wb)) return 'tracker';
+    if (R.readAssignments(wb).assignments.length) return 'asignaciones';
     return 'excel';
   }
 
@@ -2877,9 +2944,16 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       func: c.func >= 0 ? str(d.raw[c.func]) : '', ceco: c.ceco >= 0 ? str(d.raw[c.ceco]).toUpperCase() : ''
     }));
   }
-  function reclassRows(wb) {
+  function reclassRows(wb, ctx) {
     const ws = (Core.getSheet(wb, ['Reclasificacion por CeCo']) || { ws: wb.Sheets[wb.SheetNames[0]] }).ws;
     const rows = Core.sheetRows(ws);
+    // Encabezado con Year / Tipo / Mes (filtros de la tabla dinámica)
+    rows.slice(0, 12).forEach((r) => {
+      const k = norm(r && r[0]), v = r && r[1];
+      if (ctx && k === 'tipo' && str(v) && !/all|multiple/i.test(String(v))) ctx.provider = ctx.provider || (PROVIDERS.find((x) => norm(x) === norm(v)) || str(v));
+      if (ctx && k === 'mes' && parseNum(v) >= 1 && parseNum(v) <= 12) ctx.month = ctx.month || parseNum(v);
+      if (ctx && k === 'year' && parseNum(v) > 2000) ctx.year = ctx.year || parseNum(v);
+    });
     const h = Core.findHeaderRow(rows, ['Row Labels', 'Sum of Gross', 'MXN', 'GBP'], 40);
     if (h < 0) return [];
     const hd = rows[h];
@@ -2928,14 +3002,16 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if (!ctx.provider) { const p = PROVIDERS.find((x) => new RegExp('\\b' + x + '\\b', 'i').test(rec.data.subject)); if (p) ctx.provider = p; }
         return rec;
       }
-      const wb = Core.readWorkbook(f.data);
+      // Archivos grandes (p. ej. All CeCos, ~380 mil filas) se leen en modo compacto para usar menos memoria
+      const big = type === 'cecos' || (f.size || 0) > 8 * 1024 * 1024;
+      const wb = Core.readWorkbook(f.data, big ? { dense: true, cellNF: false, cellText: false } : undefined);
       if (!type) type = classifyByContent(wb, ctx);
       rec.type = type;
       rec.sheets = wb.SheetNames.length;
       switch (type) {
         case 'webi': case 'jvu': case 'accrual': case 'sc': rec.data = docInfo(type, wb); break;
         case 'supplier': case 'sent': case 'retrieved': rec.data = { rows: supplierRows(wb) }; break;
-        case 'reclass': rec.data = { rows: reclassRows(wb) }; break;
+        case 'reclass': rec.data = { rows: reclassRows(wb, ctx) }; break;
         case 'ksb1': rec.data = { lines: RC.readKSB1(Core.sheetRows(wb.Sheets[wb.SheetNames[0]])) }; break;
         case 'cecos': rec.data = RC.readCecos(Core.sheetRows(wb.Sheets[wb.SheetNames[0]])); break;
         case 'hrinput': rec.data = hrInputInfo(wb, opts.year || new Date().getFullYear()); break;
@@ -2999,7 +3075,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     });
 
     // All CeCos más reciente para validar
-    const cec = records.filter((r) => r.type === 'cecos' && r.data && r.data.count).sort((a, b) => (b.modified || 0) - (a.modified || 0))[0];
+    let cec = records.filter((r) => r.type === 'cecos' && r.data && r.data.count).sort((a, b) => (b.modified || 0) - (a.modified || 0))[0];
+    if (!cec && opts.cecosCatalog) cec = { path: 'Catálogo All CeCos guardado (' + (opts.cecosCatalog.date || '') + ')', data: opts.cecosCatalog };
     A.cecosSource = cec ? cec.path : '';
 
     // Cargos de proveedores y CeCos asignados
@@ -4104,6 +4181,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     for await (const [name, h] of dir.entries()) if (h.kind === 'file') names.push(name);
     return names;
   }
+  /** Catálogo All CeCos resumido (CeCo → sociedad): se guarda para no leer otra vez el archivo de ~20 MB. */
+  async function saveCatalog(cat) { try { await idb('readwrite', (st) => st.put(cat, 'cecosCatalog')); return true; } catch (e) { return false; } }
+  async function loadCatalog() { try { return (await idb('readonly', (st) => st.get('cecosCatalog'))) || null; } catch (e) { return null; } }
   /** Carpeta del año ({Año}) a partir de lo elegido; si eligieron Tracker, se usa esa misma. */
   async function yearDir(year) {
     const n = Core.norm(folder.name);
@@ -4160,7 +4240,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   root.UI = {
     $, $$, esc, num, toast, msg, clear, table, dropZone, withBusy, copy, copyable, options, readFile, loadConfig, saveConfig, config, profile, exportConfig, importConfig, resetConfig,
-    folderSupported, folderName, onFolderChange, loadFolder, pickFolder, forgetFolder, saveMode, save, listFolder, walkYear, wbFile, whereText, contacts, emailsFor, downloadEml
+    folderSupported, folderName, onFolderChange, loadFolder, pickFolder, forgetFolder, saveMode, save, listFolder, walkYear, saveCatalog, loadCatalog, wbFile, whereText, contacts, emailsFor, downloadEml
   };
 })(typeof self !== 'undefined' ? self : this);
 
@@ -4252,7 +4332,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const p = prof();
     const eq = HC.readEquivalences(wb);
     let n = 0;
-    ['funcMapBPC', 'funcMapApp', 'entityMapBPC'].forEach((key) => Object.entries(eq[key]).forEach(([k, v]) => { if (!p[key][k]) { p[key][k] = v; n++; } }));
+    ['funcMapBPC', 'funcMapApp', 'entityMapBPC', 'entityMapApp'].forEach((key) => Object.entries(eq[key] || {}).forEach(([k, v]) => { if (!p[key][k]) { p[key][k] = v; n++; } }));
     UI.saveConfig();
     return n;
   }
@@ -4482,7 +4562,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       const p = UI.profile(market);
       if (master) {
         const eq = HC.readEquivalences(master.wb);
-        ['funcMapBPC', 'funcMapApp', 'entityMapBPC'].forEach((key) => Object.entries(eq[key]).forEach(([k, v]) => { if (!p[key][k]) p[key][k] = v; }));
+        ['funcMapBPC', 'funcMapApp', 'entityMapBPC', 'entityMapApp'].forEach((key) => Object.entries(eq[key] || {}).forEach(([k, v]) => { if (!p[key][k]) p[key][k] = v; }));
       } else warn.push(market + ': sin archivo de HC Aprobado (solo conteo de BPC).');
       const cfg = Object.assign({}, base, {
         market, multiEntity: p.multiEntity, splitMarketing: p.splitMarketing, marketingFieldSubfunction: p.fieldSub, gradeGroupMax: Number(p.gradeGroupMax) || null, entityName: p.entityName || 'Total',
@@ -4772,7 +4852,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     UI.clear(el);
     const c = S.sup.cols;
     UI.msg(el, S.sup.data.length + ' cargos · hoja ' + esc(sheet) + ' · nombre: <b>' + esc(S.sup.header[c.name]) + '</b>' + (c.amount >= 0 ? ' · monto: <b>' + esc(S.sup.header[c.amount]) + '</b>' : '') + (c.service >= 0 ? ' · servicio: <b>' + esc(S.sup.header[c.service]) + '</b>' : ''), 'ok');
-    if (c.amount < 0) UI.msg(el, 'No identifiqué la columna del monto; el paso C la necesita.', 'warn');
+    if (c.amount < 0) UI.msg(el, 'No identifiqué la columna del monto; elígela abajo (el paso C la necesita).', 'warn');
+    columnPickers(el, S.sup, () => { renderA(); renderC(); });
     updateFolder();
     renderA();
   }
@@ -4796,11 +4877,37 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     renderA();
   }
   async function onCecos(files) {
-    const { sheet, rows } = await rowsOf(files[0]);
-    S.cecos = RC.readCecos(rows);
     UI.clear('#rc-cecos-info');
-    UI.msg('#rc-cecos-info', S.cecos.count + ' CeCos en el catálogo (hoja ' + esc(sheet) + ', CeCo = columna ' + Core.colLetter(S.cecos.cecoCol) + ', Sociedad = columna ' + Core.colLetter(S.cecos.socCol) + ')', S.cecos.count ? 'ok' : 'bad');
+    UI.msg('#rc-cecos-info', 'Leyendo el catálogo… (el All CeCos completo tiene ~380 mil filas y puede tardar de 20 a 40 segundos; solo se hace una vez)', 'info');
+    await new Promise((r) => setTimeout(r, 50));
+    const buf = await Core.readFileAsArrayBuffer(files[0]);
+    const wb = Core.readWorkbook(new Uint8Array(buf), { dense: true, cellNF: false, cellText: false });
+    const sheet = wb.SheetNames[0];
+    S.cecos = RC.readCecos(Core.sheetRows(wb.Sheets[sheet]));
+    S.cecos.date = Core.stamp();
+    S.cecos.file = files[0].name;
+    const saved = await UI.saveCatalog({ map: S.cecos.map, count: S.cecos.count, cecoCol: S.cecos.cecoCol, socCol: S.cecos.socCol, date: S.cecos.date, file: S.cecos.file });
+    showCatalog(saved);
     renderA(); renderB(); renderC();
+  }
+  function showCatalog(saved) {
+    UI.clear('#rc-cecos-info');
+    if (!S.cecos) return;
+    const note = saved === true ? '<br><span class="small">Guardado en este navegador: la próxima vez no necesitas volver a cargarlo.</span>'
+      : saved === 'cache' ? '<br><span class="small">Catálogo guardado de una sesión anterior. Arrastra uno nuevo para actualizarlo.</span>' : '';
+    UI.msg('#rc-cecos-info', '<b>' + UI.num(S.cecos.count) + '</b> CeCos · ' + esc(S.cecos.file || '') + ' (' + esc(S.cecos.date || '') + ') · CeCo = columna ' + Core.colLetter(S.cecos.cecoCol) + ', Sociedad = columna ' + Core.colLetter(S.cecos.socCol) + note, S.cecos.count ? 'ok' : 'bad');
+  }
+  const decodeX = (t) => String(t || '').replace(/_x([0-9a-f]{4})_/gi, (m, x) => String.fromCharCode(parseInt(x, 16))).replace(/\s+/g, ' ');
+  /** Selectores para corregir la columna de monto / servicio / moneda si el proveedor cambia su formato. */
+  function columnPickers(el, sup, after) {
+    const opts = (sel) => '<option value="-1">— ninguna —</option>' + sup.header.map((h, i) => '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>' + Core.colLetter(i) + ' · ' + esc(decodeX(h)) + '</option>').join('');
+    const box = document.createElement('div');
+    box.className = 'grid g3';
+    box.innerHTML = '<label>Columna de monto<select data-c="amount">' + opts(sup.cols.amount) + '</select></label>' +
+      '<label>Columna de servicio<select data-c="service">' + opts(sup.cols.service) + '</select></label>' +
+      '<label>Columna de moneda<select data-c="currency">' + opts(sup.cols.currency) + '</select></label>';
+    el.appendChild(box);
+    UI.$$('select', box).forEach((x) => x.addEventListener('change', () => { sup.cols[x.dataset.c] = Number(x.value); after(); }));
   }
   function amountOf(sup, d) { return sup.cols.amount >= 0 ? Core.parseNum(d.raw[sup.cols.amount]) : null; }
   function previewTable(sup, enriched) {
@@ -4859,6 +4966,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const c = S.ret.cols;
     UI.msg('#rc-b-info', S.ret.data.length + ' cargos · columnas: CeCo ' + (c.ceco >= 0 ? '✔' : '✖') + ' · HRBP ' + (c.hrbp >= 0 ? '✔' : '✖') + ' · Home Function ' + (c.func >= 0 ? '✔' : '✖'), c.ceco >= 0 ? 'ok' : 'bad');
     if (!S.cecos) UI.msg('#rc-b-info', 'Carga el catálogo “All CeCos - Approvers” en la pestaña A para validar.', 'warn');
+    columnPickers($('#rc-b-info'), S.ret, () => { renderB(); renderC(); });
     renderB(); renderC();
   }
   function renderB() {
@@ -4999,6 +5107,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     UI.options('#rc-month', Core.MESES.map((m, i) => ({ v: i + 1, t: Core.pad(i + 1) + '. ' + m })), d.getMonth() + 1);
     $('#rc-year').value = d.getFullYear();
     $('#rc-soc').value = UI.config().sociedad || 'MX15';
+    UI.loadCatalog().then((cat) => { if (cat && !S.cecos) { S.cecos = cat; showCatalog('cache'); renderA(); renderB(); renderC(); } });
     updateFolder();
     UI.$$('#rc-tabs button').forEach((b) => b.addEventListener('click', () => {
       UI.$$('#rc-tabs button').forEach((x) => x.classList.toggle('active', x === b));
@@ -5107,7 +5216,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $('#bk-cancel').classList.add('hidden');
     txt.textContent = (S.cancel ? 'Detenido. ' : 'Listo. ') + S.records.length + ' archivo(s) analizados en ' + Math.round((Date.now() - t0) / 1000) + ' s.';
     renderQueue();
-    S.A = Bulk.aggregate(S.records, { sociedad: UI.config().sociedad || 'MX15' });
+    S.A = Bulk.aggregate(S.records, { sociedad: UI.config().sociedad || 'MX15', cecosCatalog: await UI.loadCatalog() });
     renderResults();
   }
 

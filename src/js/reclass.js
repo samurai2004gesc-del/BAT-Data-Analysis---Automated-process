@@ -12,18 +12,35 @@
   const { norm, isBlank, str, parseNum } = Core;
 
   // ---------- Archivo del proveedor / Retrieved ----------
+  /** Columna del monto en libras: "Gross Amount (GBP)" (K2), "Total Amount (inc.VAT) in GBP" (Deloitte)… */
+  function pickAmount(hd) {
+    let best = -1, bestScore = 0;
+    hd.forEach((h, i) => {
+      const n = norm(h);
+      if (!n || !/amount|importe|monto|total|fee/.test(n)) return;
+      if (/local|tax amount|^net|net amount|mxn|disburse|3rd|fx|rate|discount|excl|^vat$|^iva$|number|count/.test(n)) return;
+      let sc = 1;
+      if (/gbp|£/.test(n)) sc += 3;
+      if (/gross/.test(n)) sc += 4;
+      if (/total/.test(n)) sc += 2;
+      if (/inc/.test(n)) sc += 2;
+      if (/amount|importe|monto/.test(n)) sc += 1;
+      if (sc > bestScore) { bestScore = sc; best = i; }
+    });
+    return best;
+  }
   function detectSupplier(rows) {
     const h = Core.findHeaderRow(rows, ['Assignee Name', 'Employee', 'Name', 'Nombre', 'Amount', 'Gross', 'Invoice', 'Service', 'Currency'], 30);
     if (h < 0) throw new Error('No encontré la fila de encabezados en el archivo (busqué "Assignee Name", "Amount", etc.).');
     const hd = rows[h] || [];
     const cols = {
       name: Core.findCol(hd, ['Assignee Name', 'Employee Name', 'Assignee', 'Nombre del colaborador', 'Nombre', /(^| )name$/], ['manager', 'contact', 'company', 'hrbp', 'vendor', 'supplier']),
-      amount: Core.findCol(hd, [/gross amount/, /total amount/, /amount/, /importe/, /monto/, /^total/, /fee/], ['mxn', 'tax', 'vat', 'iva', 'net']),
-      currency: Core.findCol(hd, [/currency/, /moneda/, /^curr/]),
-      service: Core.findCol(hd, [/servicio/, /service/, /description/, /descripcion/, /concept/, /activity/, /^item/]),
+      amount: pickAmount(hd),
+      currency: Core.findCol(hd, [/^currency$/, /^moneda$/, /currency/, /moneda/, /^curr/], ['local', 'disburse']),
+      service: Core.findCol(hd, [/fee type as per rate card/, /^description$/, /^servicio$/, /^service$/, /servicio/, /descripcion/, /concept/, /fee type/, /service type/, /description/, /activity/, /^item/], ['disburse', '3rd party']),
       hrbp: Core.findCol(hd, ['HRBP']),
       func: Core.findCol(hd, ['Home Function', 'Function', 'Funcion', 'Area'], ['sub']),
-      ceco: Core.findCol(hd, [/^ce ?co$/, /ceco/, /cost cent/, /centro de cost/]),
+      ceco: Core.findCol(hd, [/^ce ?co$/, /ceco/, /cost cent/, /centro de cost/], ['host', 'home']),
       validation: Core.findCol(hd, ['Validation', 'Validacion', 'Sociedad'])
     };
     if (cols.name < 0) throw new Error('No encontré la columna con el nombre del colaborador (ej. "Assignee Name").');
@@ -47,8 +64,8 @@
     if (name < 0) name = 0;
     const c = {
       hrbp: Core.findCol(hd, ['HRBP']),
-      func: Core.findCol(hd, ['Home Function', 'Function', 'Funcion', 'Area'], ['sub']),
-      ceco: Core.findCol(hd, [/^ce ?co$/, /ceco/, /cost cent/, /centro de cost/]),
+      func: Core.findCol(hd, ['Home Function', 'Function', 'Funcion', 'Area2', 'Area'], ['sub']),
+      ceco: Core.findCol(hd, [/^ce ?co$/, /ceco/, /cost cent/, /centro de cost/], ['host', 'home']),
       year: Core.findCol(hd, ['Year', 'Año', 'Ano']),
       mes: Core.findCol(hd, ['Mes', 'Month'])
     };
@@ -110,7 +127,9 @@
       const r = rows[i] || [];
       const k = str(r[ceco]).toUpperCase();
       if (!k) continue;
-      if (!map[k]) map[k] = str(r[soc]).toUpperCase();
+      const sv = str(r[soc]).toUpperCase();
+      if (!map[k]) map[k] = sv;
+      else if (sv && !map[k].split('/').includes(sv)) map[k] += '/' + sv; // CeCo dado de alta en más de una sociedad
     }
     return { map, cecoCol: ceco, socCol: soc, count: Object.keys(map).length };
   }
@@ -120,8 +139,9 @@
     if (!cecos) return { status: 'SIN_CATALOGO', text: 'Sin catálogo', soc: '' };
     const soc = cecos.map[k];
     if (soc === undefined) return { status: 'NO_EXISTE', text: 'No existe en All CeCos', soc: '' };
-    if (soc !== String(sociedad).toUpperCase()) return { status: 'OTRA_SOC', text: 'Pertenece a ' + soc + ' (debe ser ' + sociedad + ')', soc };
-    return { status: 'OK', text: soc, soc };
+    const target = String(sociedad).toUpperCase();
+    if (!soc.split('/').includes(target)) return { status: 'OTRA_SOC', text: 'Pertenece a ' + soc + ' (debe ser ' + sociedad + ')', soc };
+    return { status: 'OK', text: target, soc: target };
   }
 
   // ---------- Libros de salida ----------
@@ -257,17 +277,19 @@
     const C = Core.COLORS;
     const ws = wb.addWorksheet('Reclasificacion por CeCo', { views: [{ showGridLines: false }] });
     const lbl = (r, a, b) => { const x = ws.getCell(r, 1); x.value = a; x.font = { bold: true, color: { argb: 'FFC00000' } }; ws.getCell(r, 2).value = b; };
-    lbl(1, 'Sociedad', p.sociedad || 'MX15');
-    lbl(2, 'Cuenta', p.account || '5001208100 Other Staff Costs - Expat Recharge Exp');
-    lbl(3, 'Centro de costo origen', p.sourceCeco || 'MXCB7B0016 HR Recharges');
-    lbl(4, 'Proveedor', p.provider);
-    lbl(5, 'Periodo', Core.MESES[Number(p.month) - 1] + ' ' + p.year);
-    lbl(6, 'Tipo de cambio', p.exRate ? Core.round(p.exRate, 6) : 'N/D');
+    // Mismo acomodo que la Reclasificación que se envía a Planning
+    lbl(2, 'Sociedad', ' ' + (p.sociedad || 'MX15'));
+    lbl(3, 'Cuenta', p.account || '5001208100 Other Staff Costs - Expat Recharge Exp');
+    lbl(4, 'Centro de costos', p.sourceCeco || 'MXCB7B0016 HR Recharges');
+    lbl(6, 'Year', Number(p.year));
+    lbl(7, 'Tipo', p.provider);
+    lbl(8, 'Mes', Number(p.month));
     const piv = pivotByCeco(result.ok);
-    Core.writeTable(ws, 8, [
-      { header: 'Row Labels (CeCo destino)', width: 26 }, { header: 'Sum of Gross-Amount MXN', width: 24, numFmt: '"$"#,##0.00', total: true },
-      { header: 'Sum of Gross Amount (GBP)', width: 24, numFmt: '"£"#,##0.00', total: true }, { header: 'Cargos', width: 9, total: true }
-    ], piv.map((r) => [r.ceco, Core.round(r.mxn, 2), Core.round(r.gbp, 2), r.n]), { totals: true, totalsLabel: 'Grand Total' });
+    Core.writeTable(ws, 10, [
+      { header: 'Row Labels', width: 26 }, { header: 'Sum of Gross-Amount MXN', width: 24, numFmt: '"$"#,##0.00', total: true }
+    ], piv.map((r) => [r.ceco, Core.round(r.mxn, 2)]), { totals: true, totalsLabel: 'Grand Total' });
+    ws.getCell(2, 4).value = 'Tipo de cambio: ' + (p.exRate ? Core.round(p.exRate, 6) : 'N/D') + ' · el detalle en GBP está en la hoja "Detalle"';
+    ws.getCell(2, 4).font = { italic: true, size: 9, color: { argb: 'FF595959' } };
     ws.getColumn(1).width = 26;
     ws.getColumn(2).width = 48;
 

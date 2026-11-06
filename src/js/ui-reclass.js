@@ -49,7 +49,8 @@
     UI.clear(el);
     const c = S.sup.cols;
     UI.msg(el, S.sup.data.length + ' cargos · hoja ' + esc(sheet) + ' · nombre: <b>' + esc(S.sup.header[c.name]) + '</b>' + (c.amount >= 0 ? ' · monto: <b>' + esc(S.sup.header[c.amount]) + '</b>' : '') + (c.service >= 0 ? ' · servicio: <b>' + esc(S.sup.header[c.service]) + '</b>' : ''), 'ok');
-    if (c.amount < 0) UI.msg(el, 'No identifiqué la columna del monto; el paso C la necesita.', 'warn');
+    if (c.amount < 0) UI.msg(el, 'No identifiqué la columna del monto; elígela abajo (el paso C la necesita).', 'warn');
+    columnPickers(el, S.sup, () => { renderA(); renderC(); });
     updateFolder();
     renderA();
   }
@@ -73,11 +74,37 @@
     renderA();
   }
   async function onCecos(files) {
-    const { sheet, rows } = await rowsOf(files[0]);
-    S.cecos = RC.readCecos(rows);
     UI.clear('#rc-cecos-info');
-    UI.msg('#rc-cecos-info', S.cecos.count + ' CeCos en el catálogo (hoja ' + esc(sheet) + ', CeCo = columna ' + Core.colLetter(S.cecos.cecoCol) + ', Sociedad = columna ' + Core.colLetter(S.cecos.socCol) + ')', S.cecos.count ? 'ok' : 'bad');
+    UI.msg('#rc-cecos-info', 'Leyendo el catálogo… (el All CeCos completo tiene ~380 mil filas y puede tardar de 20 a 40 segundos; solo se hace una vez)', 'info');
+    await new Promise((r) => setTimeout(r, 50));
+    const buf = await Core.readFileAsArrayBuffer(files[0]);
+    const wb = Core.readWorkbook(new Uint8Array(buf), { dense: true, cellNF: false, cellText: false });
+    const sheet = wb.SheetNames[0];
+    S.cecos = RC.readCecos(Core.sheetRows(wb.Sheets[sheet]));
+    S.cecos.date = Core.stamp();
+    S.cecos.file = files[0].name;
+    const saved = await UI.saveCatalog({ map: S.cecos.map, count: S.cecos.count, cecoCol: S.cecos.cecoCol, socCol: S.cecos.socCol, date: S.cecos.date, file: S.cecos.file });
+    showCatalog(saved);
     renderA(); renderB(); renderC();
+  }
+  function showCatalog(saved) {
+    UI.clear('#rc-cecos-info');
+    if (!S.cecos) return;
+    const note = saved === true ? '<br><span class="small">Guardado en este navegador: la próxima vez no necesitas volver a cargarlo.</span>'
+      : saved === 'cache' ? '<br><span class="small">Catálogo guardado de una sesión anterior. Arrastra uno nuevo para actualizarlo.</span>' : '';
+    UI.msg('#rc-cecos-info', '<b>' + UI.num(S.cecos.count) + '</b> CeCos · ' + esc(S.cecos.file || '') + ' (' + esc(S.cecos.date || '') + ') · CeCo = columna ' + Core.colLetter(S.cecos.cecoCol) + ', Sociedad = columna ' + Core.colLetter(S.cecos.socCol) + note, S.cecos.count ? 'ok' : 'bad');
+  }
+  const decodeX = (t) => String(t || '').replace(/_x([0-9a-f]{4})_/gi, (m, x) => String.fromCharCode(parseInt(x, 16))).replace(/\s+/g, ' ');
+  /** Selectores para corregir la columna de monto / servicio / moneda si el proveedor cambia su formato. */
+  function columnPickers(el, sup, after) {
+    const opts = (sel) => '<option value="-1">— ninguna —</option>' + sup.header.map((h, i) => '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>' + Core.colLetter(i) + ' · ' + esc(decodeX(h)) + '</option>').join('');
+    const box = document.createElement('div');
+    box.className = 'grid g3';
+    box.innerHTML = '<label>Columna de monto<select data-c="amount">' + opts(sup.cols.amount) + '</select></label>' +
+      '<label>Columna de servicio<select data-c="service">' + opts(sup.cols.service) + '</select></label>' +
+      '<label>Columna de moneda<select data-c="currency">' + opts(sup.cols.currency) + '</select></label>';
+    el.appendChild(box);
+    UI.$$('select', box).forEach((x) => x.addEventListener('change', () => { sup.cols[x.dataset.c] = Number(x.value); after(); }));
   }
   function amountOf(sup, d) { return sup.cols.amount >= 0 ? Core.parseNum(d.raw[sup.cols.amount]) : null; }
   function previewTable(sup, enriched) {
@@ -136,6 +163,7 @@
     const c = S.ret.cols;
     UI.msg('#rc-b-info', S.ret.data.length + ' cargos · columnas: CeCo ' + (c.ceco >= 0 ? '✔' : '✖') + ' · HRBP ' + (c.hrbp >= 0 ? '✔' : '✖') + ' · Home Function ' + (c.func >= 0 ? '✔' : '✖'), c.ceco >= 0 ? 'ok' : 'bad');
     if (!S.cecos) UI.msg('#rc-b-info', 'Carga el catálogo “All CeCos - Approvers” en la pestaña A para validar.', 'warn');
+    columnPickers($('#rc-b-info'), S.ret, () => { renderB(); renderC(); });
     renderB(); renderC();
   }
   function renderB() {
@@ -276,6 +304,7 @@
     UI.options('#rc-month', Core.MESES.map((m, i) => ({ v: i + 1, t: Core.pad(i + 1) + '. ' + m })), d.getMonth() + 1);
     $('#rc-year').value = d.getFullYear();
     $('#rc-soc').value = UI.config().sociedad || 'MX15';
+    UI.loadCatalog().then((cat) => { if (cat && !S.cecos) { S.cecos = cat; showCatalog('cache'); renderA(); renderB(); renderC(); } });
     updateFolder();
     UI.$$('#rc-tabs button').forEach((b) => b.addEventListener('click', () => {
       UI.$$('#rc-tabs button').forEach((x) => x.classList.toggle('active', x === b));

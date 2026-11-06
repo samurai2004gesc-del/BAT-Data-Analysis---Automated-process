@@ -12,7 +12,7 @@
   const TYPES = {
     webi: 'Webi', jvu: 'JVU', accrual: 'Accrual', sc: 'Shopping Cart', supplier: 'Cargos de proveedor', sent: 'Sent to HRBPs',
     retrieved: 'Retrieved from HRBPs', reclass: 'Reclasificación por CeCo', ksb1: 'Export KSB1', cecos: 'All CeCos - Approvers',
-    hrinput: 'HR Input Report (BPC)', hcmaster: 'Maestro HC (aprobado)', estimate: 'Estimate Benefits', tracker: 'Tracker de recobros',
+    hrinput: 'HR Input Report (BPC)', hcmaster: 'Maestro HC (aprobado)', estimate: 'Estimate Benefits', tracker: 'Tracker de recobros', asignaciones: 'Listado de asignaciones',
     consolidado: 'Consolidado de cargos', 'msg-global': 'Correo de Global (cargo)', 'msg-hrbp': 'Correo respuesta HRBP', msg: 'Correo (.msg)',
     validacion: 'Validación de CeCos', historico: 'Filas para Histórico', excel: 'Excel no reconocido', otro: 'Otro archivo', error: 'No se pudo leer'
   };
@@ -24,7 +24,7 @@
   function pathContext(path) {
     const parts = String(path || '').split(/[\\/]/).filter(Boolean);
     const name = parts[parts.length - 1] || '';
-    const base = name.replace(/\.[^.]+$/, '');
+    const base = name.replace(/\.[^.]+$/, '').replace(/_+/g, ' ').replace(/\s+/g, ' ').trim(); // "2._Webi_Nombre" → "2. Webi Nombre"
     const ctx = { name, base, folder: parts.slice(0, -1).join('/'), ext: (name.match(/\.([^.]+)$/) || [, ''])[1].toLowerCase() };
     parts.forEach((seg) => {
       const n = norm(seg);
@@ -38,6 +38,7 @@
     });
     let m;
     if ((m = base.match(/^\s*(\d+)\.\s*(SC|Webi|JVU|Accrual)\s+(.+)$/i))) { ctx.key = m[1]; ctx.docKind = m[2]; ctx.employee = m[3].trim(); }
+    else if ((m = base.match(/^\s*(\d+)\.\s+(.+?)\s+H([12])\s*'?(\d{2,4})$/i))) { ctx.key = m[1]; ctx.employee = m[2].trim(); ctx.half = 'H' + m[3]; }
     else if (ctx.recFolder) {
       const empSeg = parts.slice(0, -1).reverse().find((s) => /^\d+\.\s+\S/.test(s));
       if (empSeg) { const mm = empSeg.match(/^(\d+)\.\s+(.+)$/); ctx.key = mm[1]; ctx.employee = mm[2].trim(); }
@@ -129,6 +130,8 @@
     const hasAmount = H.some((h) => /amount|monto|importe/.test(h));
     if (hasName && hasAmount) return H.includes('hrbp') && H.some((h) => /^ce ?co$/.test(h)) ? 'retrieved' : 'supplier';
     if (H.some((h) => /company code|sociedad/.test(h)) && H.some((h) => /cost cent|ceco/.test(h)) && rows.length > 5) return 'cecos';
+    if (R.readPreviousTracker(wb)) return 'tracker';
+    if (R.readAssignments(wb).assignments.length) return 'asignaciones';
     return 'excel';
   }
 
@@ -158,9 +161,16 @@
       func: c.func >= 0 ? str(d.raw[c.func]) : '', ceco: c.ceco >= 0 ? str(d.raw[c.ceco]).toUpperCase() : ''
     }));
   }
-  function reclassRows(wb) {
+  function reclassRows(wb, ctx) {
     const ws = (Core.getSheet(wb, ['Reclasificacion por CeCo']) || { ws: wb.Sheets[wb.SheetNames[0]] }).ws;
     const rows = Core.sheetRows(ws);
+    // Encabezado con Year / Tipo / Mes (filtros de la tabla dinámica)
+    rows.slice(0, 12).forEach((r) => {
+      const k = norm(r && r[0]), v = r && r[1];
+      if (ctx && k === 'tipo' && str(v) && !/all|multiple/i.test(String(v))) ctx.provider = ctx.provider || (PROVIDERS.find((x) => norm(x) === norm(v)) || str(v));
+      if (ctx && k === 'mes' && parseNum(v) >= 1 && parseNum(v) <= 12) ctx.month = ctx.month || parseNum(v);
+      if (ctx && k === 'year' && parseNum(v) > 2000) ctx.year = ctx.year || parseNum(v);
+    });
     const h = Core.findHeaderRow(rows, ['Row Labels', 'Sum of Gross', 'MXN', 'GBP'], 40);
     if (h < 0) return [];
     const hd = rows[h];
@@ -209,14 +219,16 @@
         if (!ctx.provider) { const p = PROVIDERS.find((x) => new RegExp('\\b' + x + '\\b', 'i').test(rec.data.subject)); if (p) ctx.provider = p; }
         return rec;
       }
-      const wb = Core.readWorkbook(f.data);
+      // Archivos grandes (p. ej. All CeCos, ~380 mil filas) se leen en modo compacto para usar menos memoria
+      const big = type === 'cecos' || (f.size || 0) > 8 * 1024 * 1024;
+      const wb = Core.readWorkbook(f.data, big ? { dense: true, cellNF: false, cellText: false } : undefined);
       if (!type) type = classifyByContent(wb, ctx);
       rec.type = type;
       rec.sheets = wb.SheetNames.length;
       switch (type) {
         case 'webi': case 'jvu': case 'accrual': case 'sc': rec.data = docInfo(type, wb); break;
         case 'supplier': case 'sent': case 'retrieved': rec.data = { rows: supplierRows(wb) }; break;
-        case 'reclass': rec.data = { rows: reclassRows(wb) }; break;
+        case 'reclass': rec.data = { rows: reclassRows(wb, ctx) }; break;
         case 'ksb1': rec.data = { lines: RC.readKSB1(Core.sheetRows(wb.Sheets[wb.SheetNames[0]])) }; break;
         case 'cecos': rec.data = RC.readCecos(Core.sheetRows(wb.Sheets[wb.SheetNames[0]])); break;
         case 'hrinput': rec.data = hrInputInfo(wb, opts.year || new Date().getFullYear()); break;
@@ -280,7 +292,8 @@
     });
 
     // All CeCos más reciente para validar
-    const cec = records.filter((r) => r.type === 'cecos' && r.data && r.data.count).sort((a, b) => (b.modified || 0) - (a.modified || 0))[0];
+    let cec = records.filter((r) => r.type === 'cecos' && r.data && r.data.count).sort((a, b) => (b.modified || 0) - (a.modified || 0))[0];
+    if (!cec && opts.cecosCatalog) cec = { path: 'Catálogo All CeCos guardado (' + (opts.cecosCatalog.date || '') + ')', data: opts.cecosCatalog };
     A.cecosSource = cec ? cec.path : '';
 
     // Cargos de proveedores y CeCos asignados

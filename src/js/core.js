@@ -15,6 +15,7 @@
   function norm(s) {
     if (s === null || s === undefined) return '';
     return String(s)
+      .replace(/_x([0-9a-fA-F]{4})_/g, (m, h) => String.fromCharCode(parseInt(h, 16))) // "inc_x002e_VAT" → "inc.VAT"
       .normalize('NFD').replace(/[̀-ͯ]/g, '')
       .replace(/[‘’´`]/g, "'")
       .replace(/\s+/g, ' ')
@@ -224,11 +225,12 @@
     }
     return out;
   }
-  /** Genera texto delimitado por tabuladores con fin de línea CRLF, como "Texto (delimitado por tabulaciones)" de Excel. */
+  /** Genera texto delimitado por tabuladores con fin de línea CRLF, como "Texto (delimitado por tabulaciones)" de Excel
+   *  (verificado byte por byte contra TXT aceptados por SAP: Excel entrecomilla los textos con comas). */
   function toTabText(rows) {
     return rows.map((r) => r.map((v) => {
       const s = v === null || v === undefined ? '' : String(v);
-      return /[\t\r\n"]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      return /[\t\r\n",]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
     }).join('\t')).join('\r\n') + '\r\n';
   }
   /** Quita filas vacías y columnas vacías al final (SAP rechaza líneas sin valores). */

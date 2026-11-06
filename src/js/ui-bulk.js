@@ -75,7 +75,7 @@
     $('#bk-cancel').classList.add('hidden');
     txt.textContent = (S.cancel ? 'Detenido. ' : 'Listo. ') + S.records.length + ' archivo(s) analizados en ' + Math.round((Date.now() - t0) / 1000) + ' s.';
     renderQueue();
-    S.A = Bulk.aggregate(S.records, { sociedad: UI.config().sociedad || 'MX15' });
+    S.A = Bulk.aggregate(S.records, { sociedad: UI.config().sociedad || 'MX15', cecosCatalog: await UI.loadCatalog() });
     renderResults();
   }
 

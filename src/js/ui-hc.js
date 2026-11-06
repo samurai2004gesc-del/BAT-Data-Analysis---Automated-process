@@ -84,7 +84,7 @@
     const p = prof();
     const eq = HC.readEquivalences(wb);
     let n = 0;
-    ['funcMapBPC', 'funcMapApp', 'entityMapBPC'].forEach((key) => Object.entries(eq[key]).forEach(([k, v]) => { if (!p[key][k]) { p[key][k] = v; n++; } }));
+    ['funcMapBPC', 'funcMapApp', 'entityMapBPC', 'entityMapApp'].forEach((key) => Object.entries(eq[key] || {}).forEach(([k, v]) => { if (!p[key][k]) { p[key][k] = v; n++; } }));
     UI.saveConfig();
     return n;
   }
@@ -314,7 +314,7 @@
       const p = UI.profile(market);
       if (master) {
         const eq = HC.readEquivalences(master.wb);
-        ['funcMapBPC', 'funcMapApp', 'entityMapBPC'].forEach((key) => Object.entries(eq[key]).forEach(([k, v]) => { if (!p[key][k]) p[key][k] = v; }));
+        ['funcMapBPC', 'funcMapApp', 'entityMapBPC', 'entityMapApp'].forEach((key) => Object.entries(eq[key] || {}).forEach(([k, v]) => { if (!p[key][k]) p[key][k] = v; }));
       } else warn.push(market + ': sin archivo de HC Aprobado (solo conteo de BPC).');
       const cfg = Object.assign({}, base, {
         market, multiEntity: p.multiEntity, splitMarketing: p.splitMarketing, marketingFieldSubfunction: p.fieldSub, gradeGroupMax: Number(p.gradeGroupMax) || null, entityName: p.entityName || 'Total',

@@ -23,14 +23,16 @@
     ['sociedad', 'Sociedad', [/sociedad/, /company code/, /^soc/]],
     ['ceco', 'CeCo', [/^ce\.? ?co(ste)?$/, /ce\.?co/, /cost cent/, /centro de cost/]],
     ['grade', 'Grade', [/grade/, /grado/]],
-    ['host', 'Host Country', [/host/, /pais destino/, /country/, /pais/]],
+    ['host', 'Host Country', [/host country/, /pais destino/, /^country$/, /^pais$/, /host(?!.*(hrbp|entity|region|gmsp|approver))/, /country/]],
     ['tipo', 'Tipo asignación', [/tipo/, /assignment type/, /type/]],
     ['desde', 'Desde', [/desde/, /^from$/, /start/, /inicio/]],
-    ['hasta', 'Hasta', [/hasta/, /^to$/, /end/, /fin/]],
+    ['hasta', 'Hasta', [/hasta/, /^to$/, /termino/, /end/, /fin/]],
     ['ic', 'IC code', [/ic code/, /receiving entity ic/, /^ic/, /intercompany/]],
     ['coder', 'Coder', [/receiving entity coder$/, /^coder$/, /coder(?!.*email)/, /aprobador/]],
     ['coderEmail', 'Coder email', [/coder.*e-?mail/, /e-?mail/, /correo/]],
-    ['hrbp', 'HRBP host', [/hrbp/]],
+    ['hrbp', 'HRBP', [/^hrbp$/, /hrbp/]],
+    ['currency', 'Moneda', [/^currency$/, /^moneda$/, /currency/]],
+    ['markup', 'Mark up', [/mark ?up/]],
     ['po', 'RRB PO', [/rrb ?po/, /rrb wbs/, /^po$/]]
   ];
   function guessAssignmentColumns(headers) {
@@ -50,20 +52,31 @@
   function readAssignments(wb) {
     const out = [];
     const sheets = [];
+    // Las hojas que parecen Tracker (Webi, PO, JVU…) no son la lista de asignaciones: se usan como "Tracker anterior"
+    const DETAIL = ['payroll', 'ceco', 'tipo', 'ic', 'coderEmail', 'grade', 'sociedad', 'desde', 'hasta'];
+    const hiddenSheets = new Set(((wb.Workbook && wb.Workbook.Sheets) || []).filter((x) => x.Hidden).map((x) => x.name));
+    const cands = [];
     wb.SheetNames.forEach((sn) => {
+      if (hiddenSheets.has(sn)) return;
       const rows = Core.sheetRows(wb.Sheets[sn]);
       const h = Core.findHeaderRow(rows, ['Nombre', 'Name', 'Payroll', 'CeCo', 'Ce.coste', 'Host Country', 'Key', 'NumNom', 'Sociedad'], 40);
       if (h < 0) return;
       const headers = rows[h] || [];
       const cols = guessAssignmentColumns(headers);
       if (cols.nombre < 0 || (cols.ceco < 0 && cols.payroll < 0 && cols.key < 0)) return;
+      cands.push({ sn, rows, h, headers, cols, score: DETAIL.filter((k) => cols[k] >= 0).length });
+    });
+    const best = cands.reduce((m, c) => Math.max(m, c.score), 0);
+    cands.filter((c) => c.score >= Math.min(3, best)).forEach(({ sn, rows, h, headers, cols }) => {
       sheets.push({ sheet: sn, headerRow: h + 1, cols, headers: Core.headerLabels(headers) });
       const areaFromSheet = GENERIC_SHEETS.test(norm(sn)) ? '' : sn.trim();
       for (let i = h + 1; i < rows.length; i++) {
         const r = rows[i] || [];
         const get = (k) => (cols[k] >= 0 ? r[cols[k]] : null);
         const nombre = str(get('nombre'));
-        if (!nombre || norm(nombre) === 'nombre') continue;
+        if (!nombre || /^(nombre|name|total|grand total|row labels|by status|status|\(blank\))$/.test(norm(nombre))) continue;
+        // Con columna Key, solo cuentan las filas con un KEY numérico (lo demás suelen ser tablas dinámicas debajo)
+        if (cols.key >= 0 && !/^\d+(\.0+)?$/.test(str(get('key')))) continue;
         const a = {};
         ASSIGN_FIELDS.forEach(([k]) => { a[k] = str(get(k)); });
         a.nombre = nombre;
@@ -130,7 +143,7 @@
     { header: 'Host Country', key: 'host', width: 14 }, { header: 'Tipo asignación', key: 'tipo', width: 12 },
     { header: 'Desde', key: 'desde', width: 9 }, { header: 'Hasta', key: 'hasta', width: 9 },
     { header: 'Receiving IC code', key: 'ic', width: 13 }, { header: 'Coder (aprobador Host)', key: 'coder', width: 20 },
-    { header: 'Coder email', key: 'coderEmail', width: 26 },
+    { header: 'Coder email', key: 'coderEmail', width: 26 }, { header: 'Moneda', key: 'currency', width: 8 }, { header: 'Mark up', key: 'markup', width: 8 },
     { header: 'Note Title (SAP)', key: 'noteTitle', width: 28 }, { header: 'Note Text (SAP)', key: 'noteText', width: 50 },
     { header: 'Estatus', key: 'estatus', width: 24 }, { header: 'Siguiente paso', key: 'next', width: 34 },
     { header: 'Recharge ID (Webi)', key: 'rid', width: 16 }, { header: 'Fecha carga Webi', key: 'f1', width: 12 },
@@ -145,12 +158,13 @@
   ];
   /** Columnas que se capturan a mano durante el semestre (se conservan al regenerar el Tracker). */
   const MANUAL_KEYS = ['estatus', 'rid', 'f1', 'ap1', 'ap2', 'ap3', 'po', 'mw', 'mp', 'jvu', 'f2', 'batch', 'acc', 'accid', 'fbl', 'com'];
-  const DATA_KEYS = ['payroll', 'area', 'sociedad', 'ceco', 'grade', 'host', 'tipo', 'desde', 'hasta', 'ic', 'coder', 'coderEmail'];
+  const DATA_KEYS = ['payroll', 'area', 'sociedad', 'ceco', 'grade', 'host', 'tipo', 'desde', 'hasta', 'ic', 'coder', 'coderEmail', 'currency', 'markup', 'hrbp'];
   const colIdx = (k) => TRACKER_COLS.findIndex((c) => c.key === k);
 
   /** Siguiente paso del proceso según lo capturado (misma lógica que la fórmula del Excel). */
   function nextStep(m) {
-    const v = (k) => !isBlank(m[k]);
+    // "NA", "N/A", "Pendiente", "Aprobación…" no cuentan como hecho
+    const v = (k) => !isBlank(m[k]) && !/^(n\/?a|na|no|-|pendiente|pending|aprobaci)/.test(norm(m[k]));
     const st = norm(m.estatus);
     if (st === 'cancelado' || st === 'rechazado') return '—';
     if (v('fbl')) return '✔ Terminado';
@@ -168,29 +182,44 @@
       'IF(AND(' + L('jvu') + '<>"",' + L('batch') + '=""),"Esperar BATCH ID","Validar en FBL5N")))))))';
   }
 
-  /** Lee un Tracker generado antes por la app (para conservar lo capturado). */
+  const TRACKER_SYNONYMS = {
+    nombre: ['name', 'nombre'], estatus: ['status'], rid: ['webi', 'req id', 'recharge id'], f1: ['webi upload'],
+    ap1: ['se approver'], ap2: ['aprobador'], ap3: ['re approver'], po: ['po', 'rrb wbs'], mw: ['costo total'], jvu: ['jvu'],
+    f2: ['jvu approval'], batch: ['batch', 'status jvu'], accid: ['accrual'], fbl: ['registered in sap', 'fbl5n', 'contabilidad'],
+    com: ['comment', 'comments', 'comentario'], host: ['country', 'pais'], area: ['area'], coder: ['coder'], ceco: ['ceco'], ic: ['ic code']
+  };
+  /** Lee un Tracker generado antes por la app, o un Tracker propio con columnas tipo Status / Webi / PO / JVU. */
   function readPreviousTracker(wb) {
     let best = null;
+    const hiddenSheets = new Set(((wb.Workbook && wb.Workbook.Sheets) || []).filter((x) => x.Hidden).map((x) => x.name));
     wb.SheetNames.forEach((sn) => {
-      if (best) return;
       const rows = Core.sheetRows(wb.Sheets[sn]);
-      const h = Core.findHeaderRow(rows, ['Key', 'Estatus', 'Recharge ID (Webi)', 'RRB WBS / PO', 'Nombre (Apellidos Nombre)'], 10);
+      const h = Core.findHeaderRow(rows, ['Key', 'Estatus', 'Status', 'Recharge ID (Webi)', 'Webi', 'RRB WBS / PO', 'PO', 'JVU', 'Nombre (Apellidos Nombre)'], 10);
       if (h < 0) return;
-      const hd = (rows[h] || []).map(norm);
-      if (!hd.includes(norm('Recharge ID (Webi)')) && !hd.includes('estatus')) return;
+      const hd = (rows[h] || []).map((x) => norm(x).replace(/\s+mm\/dd\/yyyy$/, ''));
       const map = {};
-      TRACKER_COLS.forEach((c) => { const i = hd.indexOf(norm(c.header)); if (i >= 0) map[c.key] = i; });
-      if (map.nombre === undefined) return;
+      // Los nombres van en orden de prioridad
+      const take = (key, names) => {
+        if (map[key] !== undefined) return;
+        for (const n of names) { const i = hd.findIndex((x, j) => x === n && !Object.values(map).includes(j)); if (i >= 0) { map[key] = i; return; } }
+      };
+      TRACKER_COLS.forEach((c) => take(c.key, [norm(c.header)]));
+      // Sinónimos de otros formatos de Tracker (p. ej. el que se usaba antes de la app)
+      Object.entries(TRACKER_SYNONYMS).forEach(([k, names]) => take(k, names));
+      if (map.nombre === undefined || (map.rid === undefined && map.po === undefined && map.jvu === undefined)) return;
       const out = [];
       rows.slice(h + 1).forEach((r) => {
         if (!r || isBlank(r[map.nombre])) return;
+        if (map.key !== undefined && !/^\d+(\.0+)?$/.test(str(r[map.key]))) return; // tablas dinámicas debajo
         const o = {};
         Object.keys(map).forEach((k) => { const v = r[map[k]]; o[k] = isBlank(v) ? '' : v; });
         ['key', 'nombre'].concat(DATA_KEYS).forEach((k) => { o[k] = str(o[k]); });
         if (o.com) o.com = String(o.com).replace(/^\[No viene en la lista nueva\]\s*/, '');
         out.push(o);
       });
-      best = { sheet: sn, rows: out };
+      const cand = { sheet: sn, rows: out, hidden: hiddenSheets.has(sn) };
+      // Preferir hojas visibles y, entre ellas, la que tenga más asignaciones
+      if (!best || (best.hidden && !cand.hidden) || (best.hidden === cand.hidden && cand.rows.length > best.rows.length)) best = cand;
     });
     return best;
   }
@@ -258,7 +287,7 @@
     });
     const t = Core.writeTable(ws, 3, cols, rows, { autoFilter: true });
     // Colores por bloque de información
-    const groups = [[1, colIdx('coderEmail') + 1, C.head], [colIdx('noteTitle') + 1, colIdx('noteText') + 1, 'FF7F6000'], [colIdx('estatus') + 1, colIdx('com') + 1, 'FF375623'], [colIdx('fsc') + 1, cols.length, 'FF595959']];
+    const groups = [[1, colIdx('markup') + 1, C.head], [colIdx('noteTitle') + 1, colIdx('noteText') + 1, 'FF7F6000'], [colIdx('estatus') + 1, colIdx('com') + 1, 'FF375623'], [colIdx('fsc') + 1, cols.length, 'FF595959']];
     groups.forEach(([a, b, color]) => { for (let c = a; c <= b; c++) { const cell = ws.getCell(3, c); cell.fill = Core.fill(color); } });
     const cE = colIdx('estatus') + 1, cA = colIdx('acc') + 1, cN = colIdx('next') + 1;
     for (let r = 4; r <= t.lastRow; r++) {

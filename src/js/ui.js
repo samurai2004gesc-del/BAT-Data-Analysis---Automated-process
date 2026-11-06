@@ -258,6 +258,9 @@
     for await (const [name, h] of dir.entries()) if (h.kind === 'file') names.push(name);
     return names;
   }
+  /** Catálogo All CeCos resumido (CeCo → sociedad): se guarda para no leer otra vez el archivo de ~20 MB. */
+  async function saveCatalog(cat) { try { await idb('readwrite', (st) => st.put(cat, 'cecosCatalog')); return true; } catch (e) { return false; } }
+  async function loadCatalog() { try { return (await idb('readonly', (st) => st.get('cecosCatalog'))) || null; } catch (e) { return null; } }
   /** Carpeta del año ({Año}) a partir de lo elegido; si eligieron Tracker, se usa esa misma. */
   async function yearDir(year) {
     const n = Core.norm(folder.name);
@@ -314,6 +317,6 @@
 
   root.UI = {
     $, $$, esc, num, toast, msg, clear, table, dropZone, withBusy, copy, copyable, options, readFile, loadConfig, saveConfig, config, profile, exportConfig, importConfig, resetConfig,
-    folderSupported, folderName, onFolderChange, loadFolder, pickFolder, forgetFolder, saveMode, save, listFolder, walkYear, wbFile, whereText, contacts, emailsFor, downloadEml
+    folderSupported, folderName, onFolderChange, loadFolder, pickFolder, forgetFolder, saveMode, save, listFolder, walkYear, saveCatalog, loadCatalog, wbFile, whereText, contacts, emailsFor, downloadEml
   };
 })(typeof self !== 'undefined' ? self : this);

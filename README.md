@@ -152,11 +152,19 @@ Para llenar "Para" a partir de los nombres de HRBP, captura en **Configuración 
 ## Qué sigue siendo manual
 Descargar de SAP BPC / SAP NEO, cargar en SAP NEO, enviar los correos y guardar los `.msg`. Ese trabajo vive en sistemas a los que un archivo del USB no puede (ni debe) conectarse.
 
-## Supuestos que hay que confirmar con archivos reales
-La app se construyó a partir de los manuales. Detecta las columnas por nombre y deja corregir todo desde la pantalla, pero conviene validar con un archivo real (puede ser con datos ficticios):
-- Los nombres de columna del catálogo de HC Aprobado y de *For Filters* / *Entidades* de cada mercado.
-- El layout exacto de las hojas `Webi creation`, `JVU - Recharge` y `Accrual` de Estimate Benefits, y cómo exporta los números el TXT.
-- Las columnas del archivo de cada proveedor (K2, EY, Deloitte) y del export KSB1.
+## Calibración con archivos reales (noviembre 2026)
+La app se probó con archivos reales del área. Esos archivos **no** se guardan en el repositorio; las pruebas usan copias ficticias con la misma estructura (`tests/real-formats.test.js`).
+
+| Proceso | Resultado |
+|---|---|
+| TXT de Webi, JVU y Accrual | **Idénticos byte por byte** a los que SAP aceptó (incluido el entrecomillado de textos con coma, por ejemplo `"Account(GL, AP, AR)"`). |
+| HC in BPC vs HC Approved (CAR) | En las **407 posiciones** coinciden con las macros el valor de cada posición, el conteo SOP/COPLAN, la función y la entidad (324 = 324). El HC aprobado por grado también coincide. Además detecta 2 grados con diferencias que se compensan, que el semáforo de Excel no mostraba. |
+| Estimate Benefits | Lee KEY, tipo, IC code y los cuatro formatos. El Webi y el JVU cuadran (partidas 40 y 50). |
+| K2 / Retrieved / Deloitte | Columnas reconocidas. Para Deloitte el monto es “Total Amount (inc. VAT) in GBP” y el servicio “Fee Type as per rate card”, y se pueden cambiar en pantalla. |
+| All CeCos - Approvers | ~380 mil filas leídas en ~11 s en el navegador. Se guarda resumido (39 mil CeCos) para no volver a cargarlo. Acepta CeCos dados de alta en más de una sociedad. |
+| Listado de Recharges y Tracker propio | Distingue el listado de los Trackers (incluso ocultos) y de las tablas dinámicas. Importa el Tracker propio como “Tracker anterior” (Webi, SE/RE Approver, PO, JVU, Status JVU, Registered in SAP). |
+
+**Pendiente de confirmar:** cómo se registra Deloitte en el Histórico K2. Parece que cada cargo se separa en servicio y “Disbursements”, con otro tipo de cambio.
 
 ## Ejemplos
 `ejemplos/` tiene archivos **ficticios** con la estructura de los reportes reales, para probar cada pantalla. El JVU/Accrual de ejemplo trae una fecha fija, así que en otro día verás el aviso de "debe crearse y cargarse el mismo día". Es a propósito: así se ve ese aviso. Para regenerarlos: `node tests/fixtures.js`.

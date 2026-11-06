@@ -180,7 +180,8 @@
     return {
       grade: pick(/grad[eo]|pay ?grade|nivel/),
       func: pick(/home function short|function|funcion|area|departamento/, /sub/),
-      entity: pick(/entidad|entity|pais|country|mercado|market|unidad/),
+      // Preferir la columna con el nombre de la entidad ("Entidad") sobre códigos de país ("Country": T&T, JAM…)
+      entity: (() => { const e = H.findIndex((h) => h === 'entidad' || h === 'entity'); return e >= 0 ? e : pick(/entidad|entity|pais|country|mercado|market|unidad/, /entidad2|sub/); })(),
       sop: lastMatch(/sop/),
       coplan: lastMatch(/coplan|co-plan/)
     };
@@ -250,9 +251,11 @@
     const list = [];
     const add = (tipo, detalle, accion) => list.push({ tipo, detalle, accion });
     const uniq = (arr) => Array.from(new Set(arr)).filter(Boolean);
-    const fBPC = uniq(positions.map((p) => p.func)).filter((f) => cfg.funcMapBPC && Object.keys(cfg.funcMapBPC).length && !hasMap(cfg.funcMapBPC, f));
+    // Un valor que ya es un nombre corto (aparece como destino de la equivalencia) no necesita equivalencia
+    const isTarget = (mapObj, v) => !!mapObj && Object.values(mapObj).some((x) => norm(x) === norm(v));
+    const fBPC = uniq(positions.map((p) => p.func)).filter((f) => cfg.funcMapBPC && Object.keys(cfg.funcMapBPC).length && !hasMap(cfg.funcMapBPC, f) && !isTarget(cfg.funcMapBPC, f));
     if (fBPC.length) add('Función sin equivalencia (BPC)', fBPC.join(', '), 'Agrégala en Configuración › Equivalencias de función BPC.');
-    const fApp = uniq(approved.map((a) => a.funcRaw)).filter((f) => cfg.funcMapApp && Object.keys(cfg.funcMapApp).length && !hasMap(cfg.funcMapApp, f));
+    const fApp = uniq(approved.map((a) => a.funcRaw)).filter((f) => cfg.funcMapApp && Object.keys(cfg.funcMapApp).length && !hasMap(cfg.funcMapApp, f) && !isTarget(cfg.funcMapApp, f) && !isTarget(cfg.funcMapBPC, f));
     if (fApp.length) add('Función sin equivalencia (Aprobado)', fApp.join(', '), 'Agrégala en Configuración › Equivalencias de función del HC Aprobado.');
     const fb = new Set(positions.map((p) => p.funcShort)), fa = new Set(approved.map((a) => a.funcShort));
     const onlyB = [...fb].filter((f) => !fa.has(f)), onlyA = [...fa].filter((f) => !fb.has(f));
@@ -261,7 +264,8 @@
     if (cfg.multiEntity) {
       const eb = uniq(positions.filter((p) => !hasMap(cfg.entityMapBPC, p.entityCode)).map((p) => p.entityCode));
       if (eb.length) add('Unidad BPC sin entidad', eb.join(', '), 'Agrega el código de 11 caracteres en Configuración › Entidades BPC.');
-      const ea = uniq(approved.filter((a) => !hasMap(cfg.entityMapApp, a.entityRaw)).map((a) => a.entityRaw));
+      const bpcEntities = new Set(positions.map((p) => norm(p.entity)));
+      const ea = uniq(approved.filter((a) => !hasMap(cfg.entityMapApp, a.entityRaw) && !bpcEntities.has(norm(a.entityRaw))).map((a) => a.entityRaw));
       if (ea.length) add('Entidad del Aprobado sin equivalencia', ea.join(', '), 'Agrégala en Configuración › Entidades del HC Aprobado.');
     }
     const noEnd = positions.filter((p) => p.total && p.endSerial === null);
@@ -447,7 +451,14 @@
   // ---------- Catálogo aprobado y equivalencias desde el archivo maestro ----------
   /** Lee las hojas "For Filters" y "Entidades" del maestro. */
   function readEquivalences(wb) {
-    const out = { funcMapBPC: {}, funcMapApp: {}, entityMapBPC: {} };
+    const out = { funcMapBPC: {}, funcMapApp: {}, entityMapBPC: {}, entityMapApp: {} };
+    const cat = Core.getSheet(wb, ['HC_YTD (Grade) (HC Tool Approv)', 'hc_ytd']);
+    if (cat) {
+      const rows = Core.sheetRows(cat.ws);
+      const hr = rows[0] || [];
+      const gi = hr.findIndex((x, j) => norm(x) === 'grupo' && norm(hr[j + 1]) === 'entidad'), ei = gi + 1;
+      if (gi >= 0 && ei >= 0) rows.slice(1).forEach((r) => { const k = str(r && r[gi]), v = str(r && r[ei]); if (k && v) out.entityMapApp[k] = v; });
+    }
     const ff = Core.getSheet(wb, ['For Filters']);
     if (ff) {
       Core.sheetRows(ff.ws).forEach((r) => {
