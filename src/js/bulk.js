@@ -149,10 +149,12 @@
     const amount = R.amountForCompare(kind === 'jvu' ? 'JVU' : 'Webi', an);
     return { lines: Math.max(0, grid.length - 1), amount, currency: cur, ic, coderEmail: email, po, docDate: an.dates[0] || null };
   }
-  function supplierRows(wb) {
+  function supplierRows(wb, keepRaw) {
     const rows = Core.sheetRows(wb.Sheets[wb.SheetNames[0]]);
     const sup = RC.detectSupplier(rows);
     const c = sup.cols;
+    // Para el aprendizaje se conserva el archivo original (encabezados y filas)
+    if (keepRaw) keepRaw.raw = { header: sup.header, rows: sup.data.map((d) => d.raw), nameCol: c.name };
     const hdrCur = c.amount >= 0 ? (String(sup.header[c.amount] || '').match(/\b(GBP|USD|MXN|EUR)\b/i) || [, ''])[1].toUpperCase() : '';
     return sup.data.map((d) => ({
       name: d.name, amount: c.amount >= 0 ? parseNum(d.raw[c.amount]) : null,
@@ -160,6 +162,27 @@
       service: c.service >= 0 ? str(d.raw[c.service]) : '', hrbp: c.hrbp >= 0 ? str(d.raw[c.hrbp]) : '',
       func: c.func >= 0 ? str(d.raw[c.func]) : '', ceco: c.ceco >= 0 ? str(d.raw[c.ceco]).toUpperCase() : ''
     }));
+  }
+  /** Renglones del Histórico K2 (lo registrado): nombre, GBP, CeCo, proveedor, servicio, tipo de cambio, mes y año. */
+  function historicRows(rows) {
+    const h = Core.findHeaderRow(rows, ['Gross Amount (GBP)', 'Ceco', 'Tipo', 'Servicio', 'ExRate', 'Mes', 'Year'], 20);
+    if (h < 0) return [];
+    const hd = rows[h];
+    const col = (names, ex) => Core.findCol(hd, names, ex);
+    let name = col(['Assignee Name', 'Nombre', 'Name'], ['hrbp']);
+    if (name < 0) name = 0;
+    const c = { gbp: col([/gross amount \(gbp\)/, /gbp/], ['mxn']), ceco: col([/^ce ?co$/, /ceco/]), tipo: col(['Tipo']), servicio: col(['Servicio', 'Service']), ex: col(['ExRate', 'Tipo de cambio']),
+      mes: col(['Mes', 'Month']), year: col(['Year', 'Año']), func: col(['Area2', 'Home Function', 'Area']) };
+    const out = [];
+    for (let i = h + 1; i < rows.length; i++) {
+      const r = rows[i] || [];
+      const nm = str(r[name]);
+      const g = c.gbp >= 0 ? parseNum(r[c.gbp]) : null;
+      if (!nm || g === null) continue;
+      out.push({ name: nm, gbp: g, ceco: c.ceco >= 0 ? str(r[c.ceco]).toUpperCase() : '', tipo: c.tipo >= 0 ? str(r[c.tipo]) : '', servicio: c.servicio >= 0 ? str(r[c.servicio]) : '',
+        exRate: c.ex >= 0 ? parseNum(r[c.ex]) : null, mes: c.mes >= 0 ? parseNum(r[c.mes]) : null, year: c.year >= 0 ? parseNum(r[c.year]) : null, func: c.func >= 0 ? str(r[c.func]) : '' });
+    }
+    return out;
   }
   function reclassRows(wb, ctx) {
     const ws = (Core.getSheet(wb, ['Reclasificacion por CeCo']) || { ws: wb.Sheets[wb.SheetNames[0]] }).ws;
@@ -227,14 +250,14 @@
       rec.sheets = wb.SheetNames.length;
       switch (type) {
         case 'webi': case 'jvu': case 'accrual': case 'sc': rec.data = docInfo(type, wb); break;
-        case 'supplier': case 'sent': case 'retrieved': rec.data = { rows: supplierRows(wb) }; break;
+        case 'supplier': case 'sent': case 'retrieved': { const k = {}; rec.data = { rows: supplierRows(wb, type === 'supplier' ? k : null) }; if (k.raw) rec.data.raw = k.raw; break; }
         case 'reclass': rec.data = { rows: reclassRows(wb, ctx) }; break;
         case 'ksb1': rec.data = { lines: RC.readKSB1(Core.sheetRows(wb.Sheets[wb.SheetNames[0]])) }; break;
         case 'cecos': rec.data = RC.readCecos(Core.sheetRows(wb.Sheets[wb.SheetNames[0]])); break;
         case 'hrinput': rec.data = hrInputInfo(wb, opts.year || new Date().getFullYear()); break;
         case 'tracker': { const t = R.readPreviousTracker(wb); rec.data = t ? { rows: t.rows } : null; break; }
         case 'estimate': { const s = Core.getSheet(wb, ['People']); rec.data = { people: s ? Core.sheetRows(s.ws).filter((r) => r && !isBlank(r[0])).length - 1 : 0 }; break; }
-        case 'consolidado': { const s = Core.getSheet(wb, ['Histórico K2', 'Historico K2']); rec.data = { rows: s ? RC.readSource(Core.sheetRows(s.ws), 'Histórico').length : 0 }; break; }
+        case 'consolidado': { const s = Core.getSheet(wb, ['Histórico K2', 'Historico K2']); const hist = s ? historicRows(Core.sheetRows(s.ws)) : []; rec.data = { rows: hist.length, hist }; break; }
         default: break;
       }
     } catch (e) {

@@ -1,7 +1,7 @@
 /* Pantalla: Reclasificación de costos de movilidad */
 (function (root) {
   'use strict';
-  const { Core, Reclass: RC, UI } = root;
+  const { Core, Reclass: RC, UI, Learn } = root;
   const { $, esc } = UI;
   const S = { sup: null, supName: '', hist: [], dir: [], cecos: null, ret: null, retName: '', ksb1: null, sel: new Set(), manualRate: false };
 
@@ -39,14 +39,26 @@
   }
 
   // ---------- A ----------
+  /** Directorio aprendido en Bulk (se suma al Histórico como fuente). */
+  function histAll() { const K = UI.config().knowledge; return S.hist.concat(K ? Learn.directoryRecords(K) : []); }
+  function learnedRule() { const K = UI.config().knowledge; const r = K && K.providers && K.providers[params().provider]; return r && r.found ? r : null; }
   async function onSupplier(files) {
     const { f, sheet, rows } = await rowsOf(files[0]);
-    S.sup = RC.detectSupplier(rows);
+    S.supBase = RC.detectSupplier(rows);
+    S.sup = S.supBase;
     S.supName = f.name;
     const guess = ['K2', 'EY', 'Deloitte', 'SIRVA'].find((p) => new RegExp('\\b' + p + '\\b', 'i').test(f.name));
     if (guess) $('#rc-provider').value = guess;
     const el = $('#rc-sup-info');
     UI.clear(el);
+    // Regla aprendida del Bulk para este proveedor
+    const rule = learnedRule();
+    const applied = rule ? Learn.applyRule(S.supBase, rule) : null;
+    if (applied) {
+      S.sup = applied;
+      UI.msg(el, '🧠 Apliqué lo aprendido: ' + esc(Learn.explain(params().provider, rule)) + ' <label class="check" style="display:inline-flex"><input type="checkbox" id="rc-use-rule" checked> usar esta regla</label>', 'info');
+      setTimeout(() => { const cb = $('#rc-use-rule'); if (cb) cb.addEventListener('change', () => { S.sup = cb.checked ? applied : S.supBase; renderA(); renderC(); }); });
+    }
     const c = S.sup.cols;
     UI.msg(el, S.sup.data.length + ' cargos · hoja ' + esc(sheet) + ' · nombre: <b>' + esc(S.sup.header[c.name]) + '</b>' + (c.amount >= 0 ? ' · monto: <b>' + esc(S.sup.header[c.amount]) + '</b>' : '') + (c.service >= 0 ? ' · servicio: <b>' + esc(S.sup.header[c.service]) + '</b>' : ''), 'ok');
     if (c.amount < 0) UI.msg(el, 'No identifiqué la columna del monto; elígela abajo (el paso C la necesita).', 'warn');
@@ -123,7 +135,7 @@
   }
   function renderA() {
     if (!S.sup) return;
-    S.enrA = RC.enrich(S.sup, S.hist, S.dir);
+    S.enrA = RC.enrich(S.sup, histAll(), S.dir);
     $('#rc-a-preview').innerHTML = previewTable(S.sup, S.enrA);
     const miss = S.enrA.filter((e) => !e.ceco).length;
     if (miss) $('#rc-a-preview').insertAdjacentHTML('afterbegin', '<div class="msg warn">' + miss + ' cargo(s) sin CeCo en el histórico: quedarán en amarillo para que el HRBP lo complete.</div>');
@@ -169,7 +181,7 @@
   function renderB() {
     if (!S.ret) return;
     const p = params();
-    S.enrB = RC.enrich(S.ret, S.hist, S.dir);
+    S.enrB = RC.enrich(S.ret, histAll(), S.dir);
     $('#rc-b-preview').innerHTML = previewTable(S.ret, S.enrB);
     $('#rc-b-download').disabled = !S.cecos;
     const box = $('#rc-b-emails');
@@ -203,7 +215,7 @@
   }
 
   // ---------- C ----------
-  function base() { return S.ret ? { sup: S.ret, enr: S.enrB || RC.enrich(S.ret, S.hist, S.dir) } : S.sup ? { sup: S.sup, enr: S.enrA || RC.enrich(S.sup, S.hist, S.dir) } : null; }
+  function base() { return S.ret ? { sup: S.ret, enr: S.enrB || RC.enrich(S.ret, histAll(), S.dir) } : S.sup ? { sup: S.sup, enr: S.enrA || RC.enrich(S.sup, histAll(), S.dir) } : null; }
   async function onKSB1(files) {
     const { rows } = await rowsOf(files[0]);
     S.ksb1 = RC.readKSB1(rows);
@@ -254,9 +266,13 @@
       '<div class="block"><div class="muted small">A reclasificar (MXN)</div><h2>' + UI.num(res.ok.reduce((a, r) => a + (r.mxn || 0), 0), 2) + '</h2><span class="muted small">' + res.ok.length + ' cargos</span></div></div>';
     if (res.excluded.length) html += '<div class="msg bad"><b>' + res.excluded.length + ' cargo(s) excluidos:</b> ' + res.excluded.map((r) => esc(r.name) + ' (' + esc(r.motivo) + ')').join(' · ') + '</div>';
     if (!S.cecos) html += '<div class="msg warn">Sin catálogo All CeCos no se valida la sociedad de los CeCos.</div>';
+    const lr = !S.ksb1 && Learn.rateFor(UI.config().knowledge, p.provider, p.year, p.month);
+    if (lr) html += '<div class="msg info">🧠 Tipo de cambio registrado para ' + esc(lr.provider) + ' en ' + Core.MESES[lr.month - 1] + ' ' + lr.year + ': <b>' + UI.num(lr.rate, 4) + '</b> (aprendido de tu Histórico). Para este mes lo correcto es el del cargo en KSB1. <button class="mini" id="rc-use-rate">Usar como referencia</button></div>';
     const piv = RC.pivotByCeco(res.ok);
     html += UI.table([{ h: 'CeCo destino', k: 'ceco' }, { h: 'MXN', k: 'mxn', num: true, d: 2 }, { h: 'Moneda original', k: 'gbp', num: true, d: 2 }, { h: 'Cargos', k: 'n', num: true }], piv, { total: true, totalLabel: 'Grand Total' });
     sum.innerHTML = html;
+    const ub = $('#rc-use-rate');
+    if (ub) ub.addEventListener('click', () => { $('#rc-rate').value = lr.rate; S.manualRate = true; renderC(); });
   }
   async function downloadC() {
     const p = Object.assign(params(), { exRate: Number($('#rc-rate').value) });
@@ -304,6 +320,8 @@
     UI.options('#rc-month', Core.MESES.map((m, i) => ({ v: i + 1, t: Core.pad(i + 1) + '. ' + m })), d.getMonth() + 1);
     $('#rc-year').value = d.getFullYear();
     $('#rc-soc').value = UI.config().sociedad || 'MX15';
+    const K = UI.config().knowledge;
+    if (K && K.directory && K.directory.length) UI.msg('#rc-hist-info', '🧠 Además uso lo aprendido en Bulk: ' + UI.num(K.directory.length) + ' personas (HRBP / función / CeCo).', 'info');
     UI.loadCatalog().then((cat) => { if (cat && !S.cecos) { S.cecos = cat; showCatalog('cache'); renderA(); renderB(); renderC(); } });
     updateFolder();
     UI.$$('#rc-tabs button').forEach((b) => b.addEventListener('click', () => {

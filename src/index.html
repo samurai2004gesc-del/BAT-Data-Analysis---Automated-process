@@ -43,6 +43,7 @@
         <a class="card link" data-goto="pbi"><h3>📈 Power BI</h3><p>Convierte lo que analizaste (o cualquier Excel) en un proyecto de Power BI con páginas diseñadas, modelo, medidas DAX y tema.</p><span class="tag">Datos → proyecto .pbip listo para abrir</span></a>
         <a class="card link" data-goto="reclass"><h3>💱 Reclasificación de movilidad</h3><p>Completa HRBP / función / CeCo desde el histórico, valida que los CeCos sean de MX15, calcula el tipo de cambio con KSB1 y genera la Reclasificación por CeCo.</p><span class="tag">Archivo del proveedor → Sent to HRBPs → Reclasificación</span></a>
       </div>
+      <div class="note guide-note"><strong>📘 ¿Primera vez?</strong> Lee la guía paso a paso: qué archivo poner en cada sección y de dónde sacarlo. <button class="mini primary" data-guide="open">Abrir guía (PDF)</button> <button class="mini" data-guide="download">Descargar</button></div>
       <div class="note"><strong>Primera vez:</strong> ve a <a data-goto="config">Configuración</a>, captura tu OneID y guarda la configuración en el USB (botón “Exportar configuración”) para no perder las equivalencias si cambias de computadora.</div>
     </section>
 
@@ -190,6 +191,19 @@
         <span class="muted small save-where" id="sap-where"></span>
       </div>
       <div id="sap-log" class="info"></div>
+
+      <div class="card" style="margin-top:22px">
+        <h2>⚡ Todos los KEY de una vez (macro para Estimate Benefits)</h2>
+        <p>En vez de cambiar el KEY a mano, esta macro recorre <b>todos los KEY</b> (o los que elijas) dentro de Estimate Benefits y guarda los formatos (SC + Webi, JVU y Accrual) en .xlsx y .txt, con las mismas carpetas y nombres que usa la app. Al final crea un resumen con el monto de cada formato.</p>
+        <ol class="steps-list">
+          <li>Descarga la macro con el botón de abajo (archivo <code>HRSS_FormatosSAP.bas</code>).</li>
+          <li>Abre <b>Estimate Benefits</b> → <b>Alt + F11</b> → menú <b>Archivo → Importar archivo…</b> → elige el .bas. (Solo la primera vez; se queda guardada en el .xlsm.)</li>
+          <li>Cierra el editor, presiona <b>Alt + F8</b> → <b>GenerarFormatosSAP</b> → Ejecutar.</li>
+          <li>Escribe <code>TODOS</code> o los KEY (ej. <code>1-5, 8, 12</code>), elige los formatos (1 = SC+Webi, 2 = JVU, 3 = Accrual) y la carpeta destino (por ejemplo tu carpeta <i>Recharges\H2'26</i>).</li>
+        </ol>
+        <div class="msg warn">La primera vez pruébala con 2 o 3 KEY y compara contra tus archivos de siempre. Tus macros actuales (GuardarSC, GuardarWebi…) no se tocan.</div>
+        <div class="actions"><button class="primary" id="sap-macro">⬇ Descargar macro (.bas)</button></div>
+      </div>
     </section>
 
     <!-- ================= RECLASIFICACIÓN ================= -->
@@ -351,7 +365,9 @@
         <label>CC de la reclasificación<input id="cfg-reclass-cc" placeholder="Line Manager de Planning; HR Data Analyst LM"></label>
       </div>
       <label><span>Directorio de correos (una persona por renglón: <code>Nombre; correo</code>). Se usa para llenar “Para” a partir de los nombres de HRBP.</span>
-        <textarea id="cfg-contacts" style="min-height:140px" placeholder="Camila Iglesias; camila_iglesias@empresa.com&#10;Eugenia Juarez; eugenia_juarez@empresa.com"></textarea></label>
+        <textarea id="cfg-contacts" style="min-height:140px" placeholder="Ana López; ana_lopez@empresa.com&#10;Luis Pérez; luis_perez@empresa.com"></textarea></label>
+      <h3>Lo que la app aprendió de Bulk</h3>
+      <div id="cfg-learned"></div>
       <h3>Equivalencias guardadas por mercado (Headcount)</h3>
       <div id="cfg-profiles"></div>
       <div class="actions">
@@ -365,6 +381,7 @@
     <!-- ================= AYUDA ================= -->
     <section class="page" id="page-help">
       <h1>Ayuda</h1>
+      <div class="note guide-note"><strong>📘 Guía paso a paso (PDF)</strong> — qué poner en cada sección, de dónde sacar cada archivo y qué te entrega la app. <button class="mini primary" data-guide="open">Abrir guía</button> <button class="mini" data-guide="download">Descargar PDF</button></div>
       <div class="help">
         <h3>Cómo se usa</h3>
         <ol>
@@ -394,6 +411,8 @@
           <li><b>Tracker que se actualiza:</b> arrastra el Tracker anterior y se conserva lo capturado; la columna “Siguiente paso” dice qué falta.</li>
           <li><b>Headcount:</b> varios mercados a la vez y comparación contra la corrida anterior.</li>
           <li><b>Bulk:</b> analiza todos los archivos del año de una vez y genera el consolidado anual con alertas.</li>
+          <li><b>La app aprende de Bulk:</b> al analizar tus archivos del año aprende el directorio de personas (HRBP / función / CeCo), cómo registras cada proveedor en el Histórico y los tipos de cambio; Reclasificación lo usa solo.</li>
+          <li><b>Macro para todos los KEY:</b> en Formatos SAP descarga la macro que genera SC, Webi, JVU y Accrual de todos los KEY desde Estimate Benefits.</li>
           <li><b>Power BI:</b> convierte lo analizado (o cualquier Excel) en un proyecto de Power BI con páginas diseñadas, modelo y medidas DAX.</li>
         </ul>
         <h3>Privacidad</h3>

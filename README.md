@@ -11,7 +11,8 @@ App portátil para automatizar los procesos repetitivos del puesto de **HR Data 
 1. Descarga `dist/HRSS-Automatizador.html` desde este repositorio (en GitHub: abre el archivo y usa **Download raw file**).
 2. Cópialo al USB. Si quieres probar la app, copia también la carpeta `ejemplos/`.
 3. En la laptop, haz doble clic en el archivo. Si no abre en el navegador, usa clic derecho → *Abrir con* → Microsoft Edge.
-4. La primera vez, ve a **Configuración**, captura tu OneID y pulsa **Exportar configuración**. Guarda el `.json` en el USB: así conservas las equivalencias aunque cambies de computadora. En otra laptop usa **Importar configuración**.
+4. ¿Primera vez? Abre la **guía paso a paso en PDF** desde *Inicio* o *Ayuda* (también está en `docs/Guia-HRSS-Automatizador.pdf`): explica qué archivo poner en cada sección y de dónde sacarlo.
+5. La primera vez, ve a **Configuración**, captura tu OneID y pulsa **Exportar configuración**. Guarda el `.json` en el USB: así conservas las equivalencias aunque cambies de computadora. En otra laptop usa **Importar configuración**.
 
 ## Qué hace cada módulo
 
@@ -56,6 +57,8 @@ En Estimate Benefits elige el KEY y el tipo, guarda el archivo y arrástralo a l
 - Cuadra los montos: Webi contra JVU, y partidas 40 contra 50.
 - Avisa si el JVU o el Accrual no tiene la fecha de hoy.
 - Muestra Note Title/Text listos para copiar, el mes a marcar con "X" y los valores de *Exception* (16 / 05).
+
+**Todos los KEY de una vez (macro).** En la misma pantalla está el botón **Descargar macro (.bas)** (`tools/macros/HRSS_FormatosSAP.bas`). Se importa en Estimate Benefits (Alt+F11 → Archivo → Importar archivo) y se ejecuta con Alt+F8 → `GenerarFormatosSAP`. Pide los KEY (`TODOS`, `1-5, 8`…), los formatos (1 = SC + Webi, 2 = JVU, 3 = Accrual) y la carpeta. Para cada KEY cambia `Consolidado(#)!A2` e `IDX!B14`, recalcula y guarda el .xlsx y el .txt con la misma nomenclatura y carpetas que la app: valores + formatos, sin filas vacías. El JVU solo se genera para los KEY con RRBPO en *People*. Al final crea un resumen con el monto de cada formato. Deja `A2` y `B14` como estaban y no toca las macros que ya tiene el archivo. Se descarga en Windows-1252 con CRLF, porque el editor de VBA no importa UTF-8. *No se pudo ejecutar aquí (no hay Excel), así que conviene probarla primero con 2 o 3 KEY.*
 
 ### 💱 Reclasificación de costos de movilidad (K2 / EY / Deloitte)
 - **A.** Completa HRBP / Home Function / CeCo desde la hoja *Histórico K2*. Reconoce el nombre aunque venga como "Nombre Apellido" o como "Apellido, Nombre". Luego genera `Sent to HRBPs - MX15 K2.xlsx` y el texto del correo.
@@ -112,6 +115,14 @@ Con eso arma el **Consolidado anual**, con estas hojas:
 
 Con 800 archivos de prueba tardó 2 segundos. Con archivos reales, que pesan más, calcula de 1 a 3 minutos. Los archivos de más de 40 MB solo se registran en el inventario.
 
+#### 🧠 La app aprende de Bulk
+Al analizar los archivos del año, la app aprende tres cosas y las guarda en la configuración (se exportan con ella; se ven y se borran en *Configuración*):
+- **Directorio de personas**: HRBP, Home Function y CeCo, de los *Sent* / *Retrieved* y del *Histórico K2*. La pestaña A de Reclasificación lo usa aunque no arrastres el histórico.
+- **Regla de cada proveedor**: compara el archivo original del proveedor (carpeta `Suppliers\MM. Mes\Proveedor`) contra lo que quedó registrado en el *Histórico K2* para ese mes y proveedor, y deduce qué columna es el monto. Detecta si el monto sale de una sola columna, si se suman dos columnas o si cada línea se divide en dos renglones (p. ej. servicio + *Disbursements*). También deduce de dónde sale el texto de “Servicio”. Al cargar ese proveedor en Reclasificación se aplica sola (se puede desactivar).
+- **Tipos de cambio** por proveedor y mes, como referencia en la pestaña C.
+
+Solo aprende una regla si encuentra el archivo del proveedor **y** el mismo mes registrado en el Histórico, y si cuadra en la mayoría de las personas. Si no, lo dice en lugar de adivinar.
+
 ### 📈 Power BI
 Convierte información en un **proyecto de Power BI** (`.pbip`) que abre directo en Power BI Desktop. Puedes partir de dos fuentes:
 - **Lo que ya analizaste en la app** (Bulk y Headcount). Genera cinco páginas diseñadas: *Resumen*, *Recobros*, *CeCos y SAP*, *Calidad de datos* y *Headcount*.
@@ -164,7 +175,7 @@ La app se probó con archivos reales del área. Esos archivos **no** se guardan 
 | All CeCos - Approvers | ~380 mil filas leídas en ~11 s en el navegador. Se guarda resumido (39 mil CeCos) para no volver a cargarlo. Acepta CeCos dados de alta en más de una sociedad. |
 | Listado de Recharges y Tracker propio | Distingue el listado de los Trackers (incluso ocultos) y de las tablas dinámicas. Importa el Tracker propio como “Tracker anterior” (Webi, SE/RE Approver, PO, JVU, Status JVU, Registered in SAP). |
 
-**Pendiente de confirmar:** cómo se registra Deloitte en el Histórico K2. Parece que cada cargo se separa en servicio y “Disbursements”, con otro tipo de cambio.
+**Deloitte en el Histórico:** en lugar de fijar la regla a mano, la app la aprende de Bulk (ver “La app aprende de Bulk”). Con los archivos de prueba no se pudo aprender todavía, porque el Histórico llegaba a julio y los archivos del proveedor eran de otros meses. Al meter el año completo en Bulk sí la encuentra.
 
 ## Ejemplos
 `ejemplos/` tiene archivos **ficticios** con la estructura de los reportes reales, para probar cada pantalla. El JVU/Accrual de ejemplo trae una fecha fija, así que en otro día verás el aviso de "debe crearse y cargarse el mismo día". Es a propósito: así se ve ese aviso. Para regenerarlos: `node tests/fixtures.js`.
@@ -181,6 +192,7 @@ npm test
 ```
 - El código fuente está en `src/`: `index.html`, `styles.css` y `js/`. La lógica (`core.js`, `hc.js`, `recharges.js`, `reclass.js`) funciona igual en el navegador y en Node.
 - `npm run build` genera `dist/HRSS-Automatizador.html`, que lleva todo incrustado.
+- `npm run guide` regenera `docs/Guia-HRSS-Automatizador.pdf` desde `docs/guia/guia.html`, con capturas de la app (Playwright). Después corre `npm run build` otra vez para meter el PDF en la app.
 - `npm test` corre las pruebas de lógica. `tests/e2e.js` prueba la app completa en Chromium con Playwright.
 - Librerías incluidas: SheetJS 0.18.5 (lectura), ExcelJS 4.4.0 (escritura con formato) y JSZip 3.10.1. También el tema base de Power BI `CY24SU06` (de microsoft/semantic-link-labs, licencia MIT).
 - `tests/pbir-schemas`: esquemas oficiales de Power BI (de microsoft/json-schemas y microsoft/powerbi-desktop-samples, licencia MIT), usados solo en las pruebas.

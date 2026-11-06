@@ -1,7 +1,7 @@
 /* Pantalla: Archivo anual (Bulk) */
 (function (root) {
   'use strict';
-  const { Core, Bulk, UI, Chart } = root;
+  const { Core, Bulk, UI, Chart, Learn } = root;
   const { $, esc } = UI;
   const S = { items: [], records: [], A: null, cancel: false, running: false };
   const MAX_MB = 40;
@@ -76,6 +76,12 @@
     txt.textContent = (S.cancel ? 'Detenido. ' : 'Listo. ') + S.records.length + ' archivo(s) analizados en ' + Math.round((Date.now() - t0) / 1000) + ' s.';
     renderQueue();
     S.A = Bulk.aggregate(S.records, { sociedad: UI.config().sociedad || 'MX15', cecosCatalog: await UI.loadCatalog() });
+    try {
+      const c = UI.config();
+      c.knowledge = Learn.merge(c.knowledge, Learn.learn(S.records));
+      UI.saveConfig();
+      S.learned = c.knowledge;
+    } catch (e) { console.error(e); }
     renderResults();
   }
 
@@ -105,9 +111,25 @@
     if (A.evidence.length) html += '<h3>Evidencia por mes y proveedor</h3>' + UI.table([
       { h: 'Mes', f: (e) => Core.pad(e.month) + '. ' + Core.MESES[e.month - 1] }, { h: 'Proveedor', k: 'provider' }, { h: 'Completas', f: (e) => e.ok + ' de 6', cls: (e) => (e.ok === 6 ? 'okc' : 'badc') }, { h: 'Falta', k: 'missing' }
     ], A.evidence);
+    html += learnedHtml();
     el.innerHTML = html;
     renderChart();
     $('#bk-download').disabled = false;
+  }
+
+  // ---------- Lo que aprendí ----------
+  function learnedHtml() {
+    const K = S.learned || UI.config().knowledge;
+    if (!K) return '';
+    const provs = Object.entries(K.providers || {});
+    const last = (K.exRates || []).slice(-8);
+    return '<div class="block learned"><h3>🧠 Lo que aprendí de tus archivos</h3>' +
+      '<p class="muted small">Guardado en esta computadora (y en “Exportar configuración”). La Reclasificación ya lo usa: llena HRBP / función / CeCo, aplica la regla de cada proveedor y sugiere el tipo de cambio.</p>' +
+      '<ul class="small">' +
+      '<li><b>' + UI.num((K.directory || []).length) + '</b> personas en el directorio · ' + (K.directory || []).filter((d) => d.hrbp).length + ' con HRBP · ' + (K.directory || []).filter((d) => d.ceco).length + ' con CeCo</li>' +
+      provs.map(([pv, r]) => '<li>' + (r.found ? '✅ ' : '➖ ') + esc(Learn.explain(pv, r)) + '</li>').join('') +
+      (last.length ? '<li>Tipos de cambio registrados: ' + last.map((r) => esc(r.provider) + ' ' + Core.MESES[r.month - 1].slice(0, 3) + ' ' + r.year + ' = ' + UI.num(r.rate, 4)).join(' · ') + '</li>' : '') +
+      '</ul>' + (provs.some(([, r]) => !r.found) ? '<p class="muted small">Para aprender la regla de un proveedor necesito, del mismo mes, su archivo original (carpeta Suppliers\\MM. Mes\\Proveedor) y el ConsolidadoCharges con lo registrado en el Histórico.</p>' : '') + '</div>';
   }
 
   // ---------- Gráfica: cargos por mes ----------

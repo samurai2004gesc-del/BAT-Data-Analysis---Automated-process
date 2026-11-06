@@ -149,3 +149,9 @@ table.t tr.gone td { color: #8a949e; font-style: italic; }
 .pbi-page { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; margin: 4px 0 12px; background: #F4F6F9; }
 #pbi-files-list select { padding: 1px 2px; font-size: 11px; }
 #pbi-files-list .pill { margin: 2px; }
+.learned { margin: 14px 0; border-left: 4px solid var(--accent); }
+.learned ul { margin: 6px 0 4px 18px; padding: 0; }
+.learned li { margin: 4px 0; }
+.guide-note { margin: 14px 0; }
+.guide-note button { margin-left: 6px; }
+.steps-list li { margin: 4px 0; }

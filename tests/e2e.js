@@ -253,6 +253,8 @@ const shots = process.argv[2];
   await page.waitForFunction(() => /\d+<\/b> archivo/.test(document.querySelector('#bk-queue').innerHTML));
   await page.click('#bk-run');
   await page.waitForSelector('#bk-results .block');
+  const learnedTxt = (await page.textContent('#bk-results .learned').catch(() => '')) || '';
+  check(/Lo que aprendí/.test(learnedTxt) && /\d+ personas/.test(learnedTxt), 'Bulk: muestra lo aprendido (' + (learnedTxt.match(/\d+ personas[^·]*/) || [''])[0].trim() + ')');
   check(/Sent to HRBPs/.test(await page.textContent('#bk-results')), 'Bulk: escanea la carpeta del año (' + (await page.textContent('#bk-progress-text')) + ')');
   // Volver a guardar pregunta antes de reemplazar (el diálogo se acepta)
   await page.click('#nav a[data-page=sap]');
@@ -268,6 +270,17 @@ const shots = process.argv[2];
   const cfg = JSON.parse(fs.readFileSync(cfgFile.path, 'utf8'));
   check(cfg.oneId === '12345678' && cfg.hc.profiles.CAR.entityMapApp.GY === 'Guyana', 'Config: exporta equivalencias guardadas');
   await shot('09-config');
+
+  // ---- Macro y guía incluidas ----
+  await page.click('#nav a[data-page=sap]');
+  const bas = await download('#sap-macro');
+  const basBytes = fs.readFileSync(bas.path);
+  const basText = basBytes.toString('latin1');
+  check(bas.name === 'HRSS_FormatosSAP.bas' && /^Attribute VB_Name = "HRSS_FormatosSAP"\r\n/.test(basText) && /Sub GenerarFormatosSAP/.test(basText) && !/\n(?<!\r)/.test(basText.replace(/\r\n/g, '')) && !basBytes.includes(Buffer.from([0xC3, 0xA1])),
+    'Macro .bas: ANSI (Windows-1252) con CRLF');
+  await page.click('#nav a[data-page=help]');
+  const pdf = await download('#page-help [data-guide=download]');
+  check(/\.pdf$/.test(pdf.name) && fs.readFileSync(pdf.path).subarray(0, 5).toString() === '%PDF-', 'Guía PDF incluida (' + (fs.statSync(pdf.path).size / 1024).toFixed(0) + ' KB)');
 
   check(errors.length === 0, 'Sin errores de JavaScript' + (errors.length ? ': ' + errors.join(' | ') : ''));
   await browser.close();

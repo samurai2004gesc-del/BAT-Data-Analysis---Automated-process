@@ -32,6 +32,10 @@
     $('#cfg-reclass-cc').value = c.reclassCc || '';
     $('#cfg-contacts').value = c.contacts || '';
     renderFolder();
+    const K = c.knowledge;
+    $('#cfg-learned').innerHTML = K ? '<div class="msg info">🧠 Aprendido el ' + esc(K.date) + ': ' + (K.directory || []).length + ' personas · ' + Object.values(K.providers || {}).filter((r) => r.found).length + ' regla(s) de proveedor · ' + (K.exRates || []).length + ' tipos de cambio. <button class="mini danger" id="cfg-forget-learned">Olvidar lo aprendido</button></div>' : '<p class="muted small">Aún no hay aprendizaje. Se genera al analizar tus archivos en Bulk.</p>';
+    const fb = $('#cfg-forget-learned');
+    if (fb) fb.addEventListener('click', () => { if (confirm('¿Olvidar todo lo aprendido de Bulk?')) { delete c.knowledge; UI.saveConfig(); renderConfig(); } });
     $('#cfg-oneid').value = c.oneId || '';
     $('#cfg-soc').value = c.sociedad || 'MX15';
     $('#cfg-dateorder').value = c.dateOrder || 'dmy';
@@ -65,6 +69,8 @@
     root.PageReclass.init();
     root.PageBulk.init();
     root.PagePBI.init();
+    $('#sap-macro').addEventListener('click', downloadMacro);
+    $$('[data-guide]').forEach((b) => b.addEventListener('click', () => openGuide(b.dataset.guide === 'download')));
     $('#cfg-oneid').addEventListener('change', () => { UI.config().oneId = $('#cfg-oneid').value.trim(); UI.saveConfig(); $('#tr-oneid').value = UI.config().oneId; showWho(); });
     $('#cfg-soc').addEventListener('change', () => { UI.config().sociedad = $('#cfg-soc').value.trim().toUpperCase(); UI.saveConfig(); });
     $('#cfg-dateorder').addEventListener('change', () => { UI.config().dateOrder = $('#cfg-dateorder').value; UI.saveConfig(); });
@@ -107,6 +113,32 @@
     window.addEventListener('error', (e) => UI.toast('Error: ' + e.message, 'bad', 8000));
     window.addEventListener('unhandledrejection', (e) => UI.toast('Error: ' + (e.reason && e.reason.message || e.reason), 'bad', 8000));
   }
+  // ---------- Archivos incluidos: macro .bas y guía PDF ----------
+  const assets = () => root.HRSS_ASSETS || {};
+  function downloadMacro() {
+    const text = (assets().macroBas || '').replace(/\r?\n/g, '\r\n');
+    if (!text) { UI.toast('La macro no está incluida en esta versión.', 'bad'); return; }
+    // El editor de VBA importa los .bas en ANSI (Windows-1252), no en UTF-8
+    root.Core.downloadBlob(new Blob([root.Core.encodeCP1252(text)], { type: 'text/plain' }), 'HRSS_FormatosSAP.bas');
+  }
+  function guideBlob() {
+    const b64 = assets().guidePdf;
+    if (!b64) { UI.toast('La guía no está incluida en esta versión.', 'bad'); return null; }
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: 'application/pdf' });
+  }
+  function openGuide(download) {
+    const blob = guideBlob();
+    if (!blob) return;
+    if (download) { root.Core.downloadBlob(blob, 'Guia HRSS Automatizador.pdf'); return; }
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, '_blank');
+    if (!w) root.Core.downloadBlob(blob, 'Guia HRSS Automatizador.pdf');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+
   function showWho() { const c = UI.config(); $('#who').textContent = c.oneId ? 'OneID ' + c.oneId : ''; }
 
   document.addEventListener('DOMContentLoaded', init);

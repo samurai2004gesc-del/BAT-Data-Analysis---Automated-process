@@ -151,3 +151,54 @@ test('Bulk: nombres reales con guiones bajos y patrón "16. Nombre H1 2026"', ()
   const b = B.pathContext('2026/x/16._Soto_Ruiz_Laura_Elena_H1_2026.xlsx');
   assert.deepStrictEqual([b.key, b.employee, b.half], ['16', 'Soto Ruiz Laura Elena', 'H1']);
 });
+
+test('Aprendizaje desde Bulk: deduce reglas por proveedor, directorio y tipos de cambio', () => {
+  const L = require('../src/js/learn.js');
+  const people = ['Lopez Diaz Ana', 'Perez Soto Juan', 'Ruiz Vega Maria', 'Gomez Paz Luis', 'Diaz Mora Elena'];
+  // K2: el Histórico registra la columna Gross Amount (GBP)
+  const kHead = ['Assignee Name', 'Description', 'Net Amount (GBP)', 'Tax Amount (GBP)', 'Gross Amount (GBP)'];
+  const kRows = people.map((p, i) => [p, 'Servicio K2 ' + i, 100 + i, 20, 120 + i]);
+  // Deloitte: cada cargo se separa en honorario (Legal amount GBP) y "Disbursements" (Total Disbursements GBP); el servicio se traduce
+  const dHead = ['Assignee Name\r\n(Surname, first name)', 'Fee Type as per rate card', 'Fee Type', 'Legal amount+Local Sales Tax(GBP)', 'Total Disbursements Amount (GBP)', 'Total Amount(inc_x002e_VAT) in GBP'];
+  const fees = ['Standard Assessment', 'Renewal: Temporary Residence Permit'];
+  const dRows = people.map((p, i) => [p.split(' ').reverse().join(', '), fees[i % 2], 'tipo ' + i, 300 + i, i % 2 ? 12.5 + i : 0, (312.5 + 2 * i) * 1.2]);
+  // EY: mismo cargo pero con otro tipo de cambio (factor 0.97)
+  const eHead = ['Employee Name', 'Service', 'Amount (GBP)'];
+  const eRows = people.map((p, i) => [p, 'Tax', 200 + 10 * i]);
+  const hist = [];
+  kRows.forEach((r) => hist.push({ name: r[0], gbp: r[4], tipo: 'K2', servicio: r[1], mes: 5, year: 2026, exRate: 23.3, ceco: 'MXCB0000' + r[0].length, func: 'Finance' }));
+  const svc = { 'Standard Assessment': 'Standard Assessment fee', 'Renewal: Temporary Residence Permit': 'Temp Resident ID Card Renewal' };
+  dRows.forEach((r) => { hist.push({ name: r[0], gbp: r[3], tipo: 'Deloitte', servicio: svc[r[1]], mes: 5, year: 2026, exRate: 23.3 }); if (r[4]) hist.push({ name: r[0], gbp: r[4], tipo: 'Deloitte', servicio: 'Disbursements', mes: 5, year: 2026, exRate: 23.3 }); });
+  eRows.forEach((r) => hist.push({ name: r[0], gbp: Core.round(r[2] * 0.97, 4), tipo: 'EY', servicio: 'Tax', mes: 6, year: 2026, exRate: 22.9 }));
+  const sup = (prov, month, head, rows) => ({ type: 'supplier', name: prov + '.xlsx', ctx: { provider: prov, month, year: 2026 }, data: { rows: [], raw: { header: head, rows, nameCol: 0 } } });
+  const records = [
+    sup('K2', 5, kHead, kRows), sup('Deloitte', 5, dHead, dRows), sup('EY', 6, eHead, eRows),
+    { type: 'consolidado', ctx: {}, data: { hist } },
+    { type: 'retrieved', ctx: { month: 6, year: 2026 }, data: { rows: [{ name: 'Lopez Diaz Ana', hrbp: 'HRBP Ficticio', func: 'Finance', ceco: 'MXCB2H2011' }] } }
+  ];
+  const K = L.learn(records);
+  assert.strictEqual(K.providers.K2.mode, 'column');
+  assert.deepStrictEqual(K.providers.K2.headers, ['Gross Amount (GBP)']);
+  assert.strictEqual(K.providers.K2.serviceHeader, 'Description');
+  assert.strictEqual(K.providers.Deloitte.mode, 'split');
+  assert.deepStrictEqual(K.providers.Deloitte.headers, ['Legal amount+Local Sales Tax(GBP)', 'Total Disbursements Amount (GBP)']);
+  assert.strictEqual(K.providers.Deloitte.secondService, 'Disbursements');
+  assert.strictEqual(K.providers.Deloitte.serviceMap['Standard Assessment'], 'Standard Assessment fee');
+  assert.strictEqual(K.providers.EY.mode, 'proportional');
+  assert.ok(Math.abs(K.providers.EY.factor - 0.97) < 0.001);
+  assert.match(L.explain('Deloitte', K.providers.Deloitte), /dos renglones/);
+  // Directorio: el Retrieved más reciente aporta el HRBP; el Histórico el CeCo
+  const ana = K.directory.find((d) => d.name === 'Lopez Diaz Ana');
+  assert.deepStrictEqual([ana.hrbp, ana.ceco], ['HRBP Ficticio', 'MXCB2H2011']);
+  assert.ok(L.rateFor(K, 'Deloitte', 2026, 6).rate === 23.3);
+  // Aplicar la regla de Deloitte a un archivo nuevo: renglones separados y servicio traducido
+  const s = RC.detectSupplier([dHead].concat(dRows));
+  const applied = L.applyRule(s, K.providers.Deloitte);
+  assert.strictEqual(applied.data.length, 5 + 2);
+  const disb = applied.data.filter((d) => d.raw[applied.cols.service] === 'Disbursements');
+  assert.strictEqual(disb.length, 2);
+  assert.strictEqual(applied.data[0].raw[applied.cols.service], 'Standard Assessment fee');
+  // Sin coincidencias suficientes, no inventa una regla
+  const none = L.inferRule({ header: kHead, rows: kRows, nameCol: 0 }, kRows.map((r) => ({ name: r[0], gbp: 999.99, servicio: 'x' })));
+  assert.strictEqual(none.found, false);
+});

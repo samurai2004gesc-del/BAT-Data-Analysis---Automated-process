@@ -1,11 +1,12 @@
 {
   "name": "hrss-automatizador",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "private": true,
   "description": "App portátil (un solo HTML) para automatizar procesos de HRSS: Headcount BPC vs Aprobado, Recobros intercompañía y Reclasificación de costos de movilidad.",
   "scripts": {
     "build": "node build.js",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "guide": "node tools/guia/generar-guia.js"
   },
   "devDependencies": {
     "ajv": "^8.17.1",

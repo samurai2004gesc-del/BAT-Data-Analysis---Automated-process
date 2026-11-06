@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Guía rápida — HRSS Automatizador</title>
+<!-- Fuente de la guía PDF. Se convierte con: npm run guide  (tools/guia/generar-guia.js) -->
+<style>
+  @page { size: Letter; margin: 16mm 16mm 18mm; }
+  :root { --navy: #0e2841; --blue: #1f4e79; --accent: #0a84c6; --line: #dde3ea; --text: #1d2733; --muted: #5d6976; --soft: #eef4fa; --warn: #8a5200; --warnbg: #fff4d6; --ok: #1e7b34; --okbg: #e3f4e7; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, "Segoe UI", Arial, sans-serif; font-size: 10.5pt; line-height: 1.45; color: var(--text); margin: 0; }
+  h1 { font-size: 20pt; color: var(--navy); margin: 0 0 4px; letter-spacing: -.3px; }
+  h2 { font-size: 13pt; color: var(--blue); margin: 18px 0 6px; }
+  h3 { font-size: 11pt; color: var(--navy); margin: 14px 0 4px; }
+  p { margin: 4px 0 8px; }
+  code, .path { font-family: "JetBrains Mono", Consolas, monospace; font-size: 8.8pt; background: #eef2f6; padding: 0 4px; border-radius: 3px; }
+  .path { display: block; padding: 5px 8px; margin: 4px 0 8px; word-break: break-all; }
+  .chapter { break-before: page; }
+  .kicker { text-transform: uppercase; letter-spacing: 1.2px; font-size: 8.5pt; color: var(--accent); font-weight: 700; }
+  .lead { color: var(--muted); font-size: 11pt; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 9.5pt; }
+  th { text-align: left; background: var(--navy); color: #fff; font-weight: 600; padding: 5px 8px; }
+  td { border-bottom: 1px solid var(--line); padding: 5px 8px; vertical-align: top; }
+  tr { break-inside: avoid; }
+  ol.steps { counter-reset: s; list-style: none; padding: 0; margin: 6px 0 10px; }
+  ol.steps > li { counter-increment: s; position: relative; padding: 2px 0 6px 30px; break-inside: avoid; }
+  ol.steps > li::before { content: counter(s); position: absolute; left: 0; top: 1px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; font-size: 9pt; display: grid; place-items: center; }
+  .box { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 8px 0 10px; break-inside: avoid; }
+  .box h3 { margin-top: 2px; }
+  .from { background: var(--soft); border-color: #cfe0ef; }
+  .tip { background: var(--okbg); border-color: #bfe3c8; }
+  .warn { background: var(--warnbg); border-color: #f0d68f; }
+  .label { font-weight: 700; font-size: 8.5pt; text-transform: uppercase; letter-spacing: .8px; }
+  .from .label { color: var(--blue); } .tip .label { color: var(--ok); } .warn .label { color: var(--warn); }
+  .io { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .io > div { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; break-inside: avoid; }
+  .io .in { border-top: 4px solid var(--accent); } .io .out { border-top: 4px solid var(--ok); }
+  .io ul { margin: 4px 0; padding-left: 16px; }
+  .shot { margin: 8px 0 12px; break-inside: avoid; }
+  .shot img { width: 100%; max-height: 82mm; object-fit: contain; object-position: left top; border: 1px solid var(--line); border-radius: 6px; display: block; }
+  .shot figcaption { font-size: 8.5pt; color: var(--muted); margin-top: 3px; }
+  .menu { font-weight: 600; color: var(--navy); }
+  .cover { height: 225mm; display: flex; flex-direction: column; justify-content: space-between; }
+  .cover-top { background: var(--navy); color: #fff; border-radius: 12px; padding: 34px 32px; }
+  .cover-top h1 { color: #fff; font-size: 28pt; margin: 6px 0 8px; }
+  .cover-top p { color: #c5d3e2; font-size: 12pt; margin: 0; }
+  .logo { width: 46px; height: 46px; border-radius: 10px; background: var(--accent); display: grid; place-items: center; font-weight: 800; font-size: 14pt; }
+  .toc { columns: 2; column-gap: 24px; padding: 0; list-style: none; font-size: 10.5pt; }
+  .toc li { padding: 5px 0; border-bottom: 1px dotted var(--line); break-inside: avoid; }
+  .toc b { color: var(--accent); display: inline-block; width: 22px; }
+  .small { font-size: 9pt; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- ======================= PORTADA ======================= -->
+<section class="cover">
+  <div>
+    <div class="cover-top">
+      <div class="logo">HR</div>
+      <h1>Guía rápida<br>HRSS Automatizador</h1>
+      <p>Qué archivo poner en cada sección, de dónde sacarlo y qué te entrega la app.</p>
+    </div>
+    <h2 style="margin-top:28px">Contenido</h2>
+    <ul class="toc">
+      <li><b>1</b> Antes de empezar (una sola vez)</li>
+      <li><b>2</b> Mapa rápido: qué uso para qué</li>
+      <li><b>3</b> HC in BPC vs HC Approved</li>
+      <li><b>4</b> Tracker de Recobros</li>
+      <li><b>5</b> Formatos SAP (Webi, JVU, Accrual)</li>
+      <li><b>6</b> Reclasificación de movilidad</li>
+      <li><b>7</b> Bulk: todo el año (y lo que la app aprende)</li>
+      <li><b>8</b> Power BI</li>
+      <li><b>9</b> Si algo no sale</li>
+    </ul>
+  </div>
+  <div class="box tip">
+    <div class="label">La regla de oro</div>
+    La app hace el trabajo repetitivo, pero <b>tú revisas</b> antes de enviar un correo o cargar algo en SAP. Todo lo que ves en pantalla (alertas, montos, totales) está ahí para que esa revisión tome minutos y no horas.
+  </div>
+  <p class="small">HRSS Automatizador v{{VERSION}} · Funciona sin internet: tus archivos no salen de tu laptop.</p>
+</section>
+
+<!-- ======================= 1 ======================= -->
+<section class="chapter">
+  <div class="kicker">Paso 1</div>
+  <h1>Antes de empezar (una sola vez)</h1>
+  <p class="lead">Cinco minutos de configuración y después solo arrastras archivos.</p>
+
+  <h2>Abrir la app</h2>
+  <ol class="steps">
+    <li>Conecta el USB y abre la carpeta <b>dist</b> (o donde copiaste la app).</li>
+    <li>Doble clic en <code>HRSS-Automatizador.html</code>. Se abre en <b>Edge o Chrome</b>. No se instala nada y no necesita internet.</li>
+    <li>Si se abre en otro navegador: clic derecho → <span class="menu">Abrir con → Microsoft Edge</span>. (Firefox funciona, pero no puede guardar directo en carpetas.)</li>
+  </ol>
+
+  <h2>Configuración (menú izquierdo → General → Configuración)</h2>
+  <table>
+    <tr><th style="width:30%">Campo</th><th>Qué pongo</th></tr>
+    <tr><td>OneID</td><td>Tu número de empleado. Se usa en el Tracker y en los nombres de archivo.</td></tr>
+    <tr><td>Sociedad por defecto</td><td><code>MX15</code> (BAT Servicios).</td></tr>
+    <tr><td>Dónde guardar los resultados</td><td>Elige <b>“Directo en mi carpeta Tracker”</b> → <span class="menu">Elegir carpeta Tracker…</span> y selecciona:
+      <span class="path">C:\Users\&lt;tu usuario&gt;\BAT\Gerencia HRSS-Organización - General\2026\Tracker</span>
+      Así cada archivo cae en su subcarpeta (Recharges, Suppliers…) sin ZIP. Si prefieres revisar primero, deja “Descargas”.</td></tr>
+    <tr><td>Correos</td><td>CC por defecto (tu Line Manager), el Intern de Planning (para la reclasificación) y el directorio de correos: una persona por renglón, <code>Nombre; correo</code>. Con eso los borradores salen con destinatarios.</td></tr>
+  </table>
+
+  <div class="box tip">
+    <div class="label">Respaldo</div>
+    Al terminar, pulsa <b>💾 Exportar configuración</b> y guarda el .json en el USB. Si cambias de laptop o se borra el navegador, lo recuperas con <b>Importar configuración</b> (incluye equivalencias de HC y lo aprendido de Bulk).
+  </div>
+
+  <figure class="shot"><img src="{{img:config}}"><figcaption>Configuración: carpeta Tracker, correos y lo aprendido.</figcaption></figure>
+</section>
+
+<!-- ======================= 2 ======================= -->
+<section class="chapter">
+  <div class="kicker">Paso 2</div>
+  <h1>Mapa rápido: qué uso para qué</h1>
+  <p class="lead">Busca lo que quieres hacer, ve a esa sección y arrastra los archivos de la columna del medio.</p>
+  <table>
+    <tr><th style="width:25%">Quiero…</th><th style="width:42%">Arrastro</th><th>Me entrega</th></tr>
+    <tr><td><b>Revisar el HC de un mercado</b><br><span class="small">Headcount</span></td><td>HR Input Report de BPC + el archivo maestro del mercado (el .xlsm con el HC aprobado)</td><td>Reporte de variaciones SOP / COPLAN por grado, función y entidad + correo al HRBP</td></tr>
+    <tr><td><b>Armar el Tracker del semestre</b><br><span class="small">Recobros → Tracker</span></td><td>Lista de asignaciones (Listado Recharges) + Tracker anterior (opcional)</td><td>Tracker H1/H2 con Note Title, Note Text, mes a marcar y “Siguiente paso”</td></tr>
+    <tr><td><b>Sacar Webi / SC / JVU / Accrual</b><br><span class="small">Recobros → Formatos SAP</span></td><td>Estimate Benefits (con el KEY puesto) — o usa la macro para todos los KEY</td><td>Excel + TXT tabulados, sin filas vacías, con nombre y carpeta correctos</td></tr>
+    <tr><td><b>Reclasificar el cargo de K2 / EY / Deloitte / SIRVA</b><br><span class="small">Costos de movilidad</span></td><td>Archivo del proveedor, ConsolidadoCharges, All CeCos, Retrieved, export de KSB1</td><td>Sent to HRBPs, validación MX15, Reclasificación por CeCo, filas para el Histórico, correos, checklist</td></tr>
+    <tr><td><b>Ver todo el año</b><br><span class="small">Archivo anual → Bulk</span></td><td>La carpeta <code>2026</code> completa (o “Escanear mi carpeta”)</td><td>Consolidado anual con alertas y gráfica; la app aprende para Reclasificación</td></tr>
+    <tr><td><b>Hacer un Power BI</b><br><span class="small">Reportes → Power BI</span></td><td>Lo que ya analizaste o cualquier Excel</td><td>Proyecto .pbip listo para abrir en Power BI Desktop</td></tr>
+  </table>
+  <figure class="shot"><img src="{{img:home}}"><figcaption>Pantalla de inicio: cada tarjeta te lleva a su sección.</figcaption></figure>
+</section>
+
+<!-- ======================= 3 HC ======================= -->
+<section class="chapter">
+  <div class="kicker">Headcount</div>
+  <h1>HC in BPC vs HC Approved</h1>
+  <p class="lead">Reemplaza los 6 archivos con macros. No hay que pegar el reporte como valores.</p>
+
+  <div class="io">
+    <div class="in"><div class="label">Pones</div><ul><li><b>HR Input Report</b> de SAP BPC (del mercado)</li><li><b>Archivo maestro del mercado</b> (p. ej. <code>3.1 CAR Check HC in BPC Template.xlsm</code>), que trae la hoja <code>HC_YTD (Grade) (HC Tool Approv)</code></li></ul></div>
+    <div class="out"><div class="label">Te da</div><ul><li>Comparación SOP y COPLAN por grado con semáforo</li><li>Excel con Resumen, Detalle por función, Posiciones BPC (con motivo), Alertas</li><li>Borrador de correo (.eml) para el HRBP</li></ul></div>
+  </div>
+
+  <div class="box from">
+    <div class="label">De dónde saco el HR Input Report</div>
+    <ol class="steps">
+      <li>Abre Excel → pestaña <span class="menu">EPM</span> → <span class="menu">Log On</span>.</li>
+      <li>Clic en la carpeta <span class="menu">Open</span> → <span class="menu">Open Server Input Form Folder</span> → <b>“1. Headcount Tracker”</b> → Open (tarda 1–3 min).</li>
+      <li>Llena los campos amarillos: <b>Category</b> = <code>BHI</code> · <b>Entity</b> = código del mercado (tabla abajo) · <b>Function</b> = <code>POS_TOTAL</code> · <b>Cost Centre Function group</b> = <code>All Functions</code> → <span class="menu">Select</span>.</li>
+      <li>Copia la hoja a un libro nuevo (pega primero <b>valores</b> y luego <b>formato</b>) y guárdalo. Ese archivo es el que arrastras. La app lo lee con o sin las filas de arriba.</li>
+    </ol>
+  </div>
+
+  <table>
+    <tr><th>Mercado</th><th>Comercial</th><th>Operaciones</th></tr>
+    <tr><td>México</td><td><code>MXC00L</code></td><td><code>MXO02L</code></td></tr>
+    <tr><td>Colombia</td><td colspan="2"><code>COC00L</code> (mismo código para ambos)</td></tr>
+    <tr><td>Venezuela</td><td colspan="2"><code>C00MVE</code> (mismo código para ambos)</td></tr>
+    <tr><td>Trinidad y Tobago</td><td><code>TTC00L</code></td><td><code>TTO02L</code></td></tr>
+    <tr><td>Honduras</td><td><code>HNC00L</code></td><td>TAHSA <code>HNO02L</code> · TISA <code>CTC03L_HN13</code></td></tr>
+    <tr><td>Jamaica · Costa Rica · Guyana</td><td><code>C00MJM</code> · <code>C00MCR</code> · <code>C00MGY</code></td><td>—</td></tr>
+    <tr><td>Panamá</td><td><code>CTC03L_PA13</code></td><td>—</td></tr>
+  </table>
+
+  <h2>En la app</h2>
+  <ol class="steps">
+    <li><b>Mercado y ejercicio:</b> elige el mercado y el año; revisa las etiquetas SOP / COPLAN vigentes.</li>
+    <li><b>HR Input Report:</b> arrastra el archivo de BPC.</li>
+    <li><b>HC Aprobado:</b> arrastra el maestro del mercado. Si trae las hojas <i>For Filters</i> y <i>Entidades</i>, las equivalencias se cargan solas.</li>
+    <li><b>Equivalencias:</b> solo corrige lo que salga en amarillo (función o entidad sin pareja). Se guardan para la próxima vez.</li>
+    <li>Pulsa <b>▶ Generar comparación</b>, revisa las <b>Alertas</b> y descarga el reporte. En “Enviar al HRBP” baja el borrador de correo.</li>
+  </ol>
+  <div class="box tip"><div class="label">Varios mercados</div>Cuando ya configuraste cada mercado una vez, usa la pestaña <b>“Varios mercados a la vez”</b>: arrastra todos los HR Input y maestros juntos y sale un reporte consolidado, con los cambios contra la corrida anterior.</div>
+  <figure class="shot"><img src="{{img:hc}}"><figcaption>Headcount: los pasos 1 a 4 en la misma pantalla.</figcaption></figure>
+</section>
+
+<!-- ======================= 4 TRACKER ======================= -->
+<section class="chapter">
+  <div class="kicker">Recobros intercompañía</div>
+  <h1>Tracker de Recobros</h1>
+  <p class="lead">Arma el Tracker del semestre con todo lo que SAP NEO te pide escribir.</p>
+  <div class="io">
+    <div class="in"><div class="label">Pones</div><ul><li><b>Lista de asignaciones</b>: el Listado Recharges del semestre (una o varias hojas, p. ej. por área) o la hoja <i>People</i> de Estimate Benefits</li><li>Opcional: el <b>Tracker anterior</b> para conservar lo ya capturado</li></ul></div>
+    <div class="out"><div class="label">Te da</div><ul><li>Tracker H1/H2 con Note Title y Note Text listos para copiar</li><li>Mes a marcar con “X”, nombres de archivo y carpetas</li><li>Columna <b>“Siguiente paso”</b>: qué falta en cada recobro</li></ul></div>
+  </div>
+  <div class="box from">
+    <div class="label">De dónde lo saco</div>
+    El Listado y los Trackers viven en la carpeta del semestre:
+    <span class="path">…\2026\Tracker\Recharges\H2'26\</span>
+    Arrastra el Tracker del semestre anterior (o la versión más reciente del actual): la app respeta lo que ya capturaste (PO, JVU, aprobadores, comentarios) y solo agrega lo nuevo.
+  </div>
+  <h2>En la app</h2>
+  <ol class="steps">
+    <li><b>Periodo:</b> semestre, año y tu OneID.</li>
+    <li><b>Lista de asignaciones:</b> arrastra el archivo. Revisa los avisos de datos faltantes (CeCo, Coder, IC code…).</li>
+    <li><b>Tracker anterior</b> (opcional) y descarga el Tracker nuevo. Con carpeta configurada se guarda en <code>Recharges\H2'26</code>.</li>
+  </ol>
+  <figure class="shot"><img src="{{img:tracker}}"><figcaption>Tracker: lista de asignaciones y Tracker anterior.</figcaption></figure>
+</section>
+
+<!-- ======================= 5 SAP ======================= -->
+<section class="chapter">
+  <div class="kicker">Recobros intercompañía</div>
+  <h1>Formatos SAP: SC, Webi, JVU y Accrual</h1>
+  <p class="lead">Dos formas: un KEY a la vez desde la app, o todos los KEY de golpe con la macro.</p>
+  <div class="io">
+    <div class="in"><div class="label">Pones</div><ul><li><b>Estimate Benefits</b> (<code>Estimate.Benefits_2026_H2.xlsm</code>) con el KEY en <code>Consolidado(#)!A2</code> y el tipo en <code>IDX!B14</code> (Recharge o Accrual), <b>guardado</b></li></ul></div>
+    <div class="out"><div class="label">Te da</div><ul><li><code>{KEY}. SC {Nombre}</code>, <code>{KEY}. Webi {Nombre}</code> (.xlsx + .txt), JVU y Accrual</li><li>Sin filas vacías y en TXT tabulado como lo acepta SAP</li><li>En sus carpetas: <code>Webis | JVUs | Accruals\{KEY}. {Nombre}</code></li></ul></div>
+  </div>
+  <div class="box from">
+    <div class="label">De dónde lo saco</div>
+    Estimate Benefits está en la carpeta de Recharges del semestre. El KEY de cada persona está en la hoja <b>People</b>, columna <b>Key</b>.
+  </div>
+
+  <h2>Opción A · Un KEY a la vez (en la app)</h2>
+  <ol class="steps">
+    <li>En Estimate Benefits pon el KEY en <code>Consolidado(#)!A2</code>, el tipo en <code>IDX!B14</code> y <b>guarda</b>.</li>
+    <li>Arrástralo a <b>Formatos SAP</b> (puedes soltar varias copias, una por KEY). Llena Host Country si la app lo pide.</li>
+    <li>Revisa el cuadre de montos y pulsa <b>⬇ Descargar</b> (o se guarda directo en tu carpeta).</li>
+  </ol>
+
+  <h2>Opción B · Todos los KEY de una vez (macro)</h2>
+  <ol class="steps">
+    <li>En <b>Formatos SAP</b> pulsa <b>⬇ Descargar macro (.bas)</b>.</li>
+    <li>Abre Estimate Benefits → <b>Alt + F11</b> → <span class="menu">Archivo → Importar archivo…</span> → elige <code>HRSS_FormatosSAP.bas</code>. Solo la primera vez.</li>
+    <li>Cierra el editor → <b>Alt + F8</b> → <b>GenerarFormatosSAP</b> → Ejecutar.</li>
+    <li>Escribe <code>TODOS</code> o los KEY (<code>1-5, 8, 12</code>), los formatos (<code>1</code> SC+Webi, <code>2</code> JVU, <code>3</code> Accrual) y la carpeta destino (p. ej. <code>Recharges\H2'26</code>).</li>
+    <li>Al final se abre un <b>Resumen</b> con el monto de cada formato. Compáralo contra el Tracker.</li>
+  </ol>
+  <div class="box warn"><div class="label">Importante</div>
+    <b>Prueba la macro primero con 2 o 3 KEY</b> y compárala con tus archivos de siempre. · Los <b>JVU y Accrual</b> llevan fórmulas con la fecha: créalos <b>el mismo día</b> que los cargas a SAP. · Revisa las <b>cut off dates</b> de Finanzas antes de un Accrual.
+  </div>
+
+  <h2>Después, en SAP NEO</h2>
+  <p><span class="menu">Requisition To Pay → Portal Form Initiator → Request RRB PO Recharge</span>. SE Company Code <code>IC-00-MX15</code>, el Cost Center, Recharge Frequency <code>Single</code> y la “X” en el mes siguiente (el Tracker te dice cuál). En <i>File Upload</i> sube el <b>Webi .txt</b> y en <i>Add Attachment</i> el <b>Shopping Cart</b>.</p>
+  <figure class="shot"><img src="{{img:sap}}"><figcaption>Formatos SAP: arrastra Estimate Benefits o descarga la macro.</figcaption></figure>
+</section>
+
+<!-- ======================= 6 RECLASS ======================= -->
+<section class="chapter">
+  <div class="kicker">Costos de movilidad · cada mes, por proveedor</div>
+  <h1>Reclasificación de movilidad</h1>
+  <p class="lead">Arriba eliges proveedor, mes y año; luego avanzas por las pestañas A → D.</p>
+
+  <table>
+    <tr><th style="width:24%">Archivo</th><th>De dónde lo saco</th></tr>
+    <tr><td><b>Archivo del proveedor</b><br><code>K2 MX15.xlsx</code></td><td>Adjunto del correo de Global (“K2 costs - Non-PO billing MX15…”). Guárdalo en <code>Tracker\Suppliers\06. Junio\K2</code> y guarda también el correo como <b>.msg</b>.</td></tr>
+    <tr><td><b>Histórico</b><br><code>ConsolidadoCharges_SIRVA-K2_2026.xlsx</code></td><td>En la raíz de <code>Tracker</code>. La app usa la hoja “Histórico K2”.</td></tr>
+    <tr><td><b>All CeCos - Approvers</b></td><td>En la raíz de <code>Tracker</code>. Es pesado: la primera vez tarda ~10 s y después la app lo recuerda.</td></tr>
+    <tr><td><b>Retrieved From HRBPs</b></td><td>El Excel que te regresan los HRBPs con los CeCos confirmados. Los de meses pasados sirven como directorio.</td></tr>
+    <tr><td><b>Export de KSB1</b><br><code>mm-dd-aaaa EXPORT.XLSX</code></td><td>SAP NEO → transacción <b>KSB1</b> → área de control <code>BAT1</code> → Cost Center <code>MXCB7B0016</code>, Posting Date = rango del periodo, Layout <code>/OVERHEADS_</code> → <b>F8</b> → <span class="menu">More → Spreadsheet</span>. Guárdalo en <code>Tracker\Reportes SAP 2026 K2</code> con la fecha de descarga.</td></tr>
+  </table>
+
+  <h2>Las 4 pestañas</h2>
+  <ol class="steps">
+    <li><b>A · Preparar envío a HRBPs:</b> arrastra el archivo del proveedor, el Histórico y (recomendado) All CeCos y Retrieved anteriores. La app llena HRBP, Home Function y CeCo. Descarga <code>Sent to HRBPs - MX15 K2.xlsx</code> y el borrador de correo.</li>
+    <li><b>B · Validar respuesta:</b> arrastra el <i>Retrieved From HRBPs</i>. Cada CeCo se valida contra All CeCos: debe ser <b>MX15</b>. Si alguno no, baja el correo para pedir la corrección.</li>
+    <li><b>C · Reclasificación:</b> arrastra el export de KSB1 y marca el cargo del proveedor del periodo. La app calcula el tipo de cambio (MXN ÷ GBP), te dice si cuadra y genera <code>Reclasificacion por CeCo.xlsx</code>, las filas para pegar en el Histórico y el correo para Planning.</li>
+    <li><b>D · Checklist:</b> arrastra los archivos de la carpeta del mes y ve cuál de los 6 documentos de evidencia falta.</li>
+  </ol>
+  <div class="box tip"><div class="label">Si ya corriste Bulk</div>La app ya conoce a las personas (HRBP / función / CeCo), cómo registras a cada proveedor en el Histórico y el tipo de cambio de meses anteriores. Lo verás como <b>“🧠 Apliqué lo aprendido”</b>; si una regla no aplica ese mes, desmarca la casilla “usar esta regla”.</div>
+  <figure class="shot"><img src="{{img:reclass}}"><figcaption>Reclasificación: proveedor y mes arriba, pestañas A–D.</figcaption></figure>
+</section>
+
+<!-- ======================= 7 BULK ======================= -->
+<section class="chapter">
+  <div class="kicker">Archivo anual</div>
+  <h1>Bulk: todo el año (y lo que la app aprende)</h1>
+  <p class="lead">Mete cientos de archivos mezclados. La app reconoce cada uno por su nombre, carpeta y contenido.</p>
+  <div class="io">
+    <div class="in"><div class="label">Pones</div><ul><li>La carpeta <code>2026</code> completa (Recharges, Suppliers, Reportes SAP, Trackers, correos .msg…)</li><li>Tres formas: <b>🔎 Escanear mi carpeta</b> (usa la carpeta de Configuración), <b>📁 Elegir una carpeta</b> o arrastrar</li></ul></div>
+    <div class="out"><div class="label">Te da</div><ul><li>Consolidado anual en Excel con gráfica de cargos por mes</li><li>Alertas: lo que falta o no cuadra</li><li><b>Lo que aprendí</b>, que después usa Reclasificación</li></ul></div>
+  </div>
+  <h2>En la app</h2>
+  <ol class="steps">
+    <li>Elige el año y agrega los archivos.</li>
+    <li>Pulsa <b>▶ Analizar archivos</b>. Con ~800 archivos tarda unos minutos; puedes detenerlo.</li>
+    <li>Revisa las alertas y pulsa <b>⬇ Descargar consolidado anual</b>.</li>
+  </ol>
+  <h2>Qué aprende</h2>
+  <table>
+    <tr><th style="width:32%">Aprende</th><th>Para qué lo usa</th></tr>
+    <tr><td>Directorio de personas</td><td>Llenar HRBP, Home Function y CeCo en la pestaña A de Reclasificación, aunque la persona no esté en el Histórico.</td></tr>
+    <tr><td>Regla de cada proveedor</td><td>Cómo pasas el archivo del proveedor al Histórico: qué columna es el monto, si una línea se divide en dos o se suman columnas, y qué texto va en “Servicio”.</td></tr>
+    <tr><td>Tipos de cambio</td><td>Referencia del tipo de cambio de meses anteriores por proveedor.</td></tr>
+  </table>
+  <div class="box warn"><div class="label">Para que aprenda la regla de un proveedor</div>En Bulk deben estar <b>el archivo del proveedor de un mes</b> y el <b>ConsolidadoCharges con ese mismo mes ya registrado</b> en el Histórico. Si no los encuentra juntos, no inventa la regla: lo dice.</div>
+  <p>Lo aprendido se ve y se borra en <b>Configuración → Lo que la app aprendió de Bulk</b>, y se guarda al exportar la configuración. Cada vez que corres Bulk se actualiza.</p>
+  <figure class="shot"><img src="{{img:bulk}}"><figcaption>Bulk: escanea tu carpeta del año o arrastra archivos.</figcaption></figure>
+</section>
+
+<!-- ======================= 8 PBI ======================= -->
+<section class="chapter">
+  <div class="kicker">Reportes</div>
+  <h1>Power BI</h1>
+  <p class="lead">Convierte lo que analizaste, o cualquier Excel, en un reporte de Power BI ya diseñado.</p>
+  <div class="io">
+    <div class="in"><div class="label">Pones</div><ul><li><b>Lo que ya analicé en la app</b> (Bulk y Headcount), o</li><li><b>Mis archivos</b>: cualquier Excel / CSV con una fila de encabezados</li></ul></div>
+    <div class="out"><div class="label">Te da</div><ul><li>Carpeta con un proyecto <code>.pbip</code>: páginas, modelo, calendario, medidas DAX y tema</li><li>Los datos van dentro: no hay rutas que configurar</li></ul></div>
+  </div>
+  <ol class="steps">
+    <li>Elige la fuente, revisa la vista previa de las páginas y ponle nombre.</li>
+    <li>Pulsa <b>⬇ Generar proyecto Power BI</b>.</li>
+    <li>Abre el <code>.pbip</code> con doble clic en <b>Power BI Desktop</b> (2024 o más reciente) y pulsa <b>Actualizar</b>.</li>
+    <li>Para entregar un solo archivo: <span class="menu">Archivo → Guardar como → .pbix</span>.</li>
+  </ol>
+  <div class="box from"><div class="label">Si Power BI pide una función en vista previa</div><span class="menu">Archivo → Opciones → Características en versión preliminar</span> → activa “Power BI Project (.pbip) save option” y “Store reports using enhanced metadata format (PBIR)”.</div>
+  <figure class="shot"><img src="{{img:pbi}}"><figcaption>Power BI: fuente de datos y vista previa de páginas.</figcaption></figure>
+</section>
+
+<!-- ======================= 9 FAQ ======================= -->
+<section class="chapter">
+  <div class="kicker">Ayuda</div>
+  <h1>Si algo no sale</h1>
+  <table>
+    <tr><th style="width:36%">Pasa esto…</th><th>Haz esto</th></tr>
+    <tr><td>“No encontré la columna…”</td><td>Debajo del archivo aparecen selectores de columna: elige la correcta. La app la recuerda.</td></tr>
+    <tr><td>El navegador pide permiso para la carpeta</td><td>Es normal: lo pide una vez por sesión. Pulsa <b>Permitir</b> / <b>Editar archivos</b>.</td></tr>
+    <tr><td>“No encontré la carpeta 2026\Tracker”</td><td>En Configuración vuelve a elegir la carpeta <code>…\2026\Tracker</code> (o la carpeta <i>General</i>).</td></tr>
+    <tr><td>Un archivo no se reemplaza</td><td>Ciérralo en Excel; un archivo abierto está bloqueado.</td></tr>
+    <tr><td>Cambié de laptop o se borró todo</td><td>Configuración → <b>Importar configuración</b> con el .json que guardaste en el USB.</td></tr>
+    <tr><td>El HC no coincide con el dashboard de Excel</td><td>Revisa que el filtro de Entidad/Función sea el mismo. La app usa uno solo para SOP y COPLAN; el Excel podía tener dos distintos.</td></tr>
+    <tr><td>Un CeCo sale “no es MX15”</td><td>Está dado de alta en otra sociedad o no existe en All CeCos. Usa el correo de la pestaña B para pedir el correcto. No reclasifiques sin corregir.</td></tr>
+    <tr><td>La macro dice “no se puede ejecutar”</td><td>Habilita macros en Estimate Benefits (barra amarilla → Habilitar contenido) y guarda como .xlsm.</td></tr>
+    <tr><td>El total de SAP no cuadra con el proveedor</td><td>Revisa en la pestaña C qué cargos marcaste en KSB1 y si hay renglones excluidos en la hoja “Excluidos”.</td></tr>
+  </table>
+  <div class="box tip"><div class="label">Privacidad</div>La app no se conecta a internet: todo se procesa en la memoria del navegador de tu laptop y no sube archivos a ningún lado.</div>
+  <h2>Lo que sigue siendo manual</h2>
+  <p>Descargar de SAP BPC y SAP NEO, cargar en SAP NEO, seguir las aprobaciones, enviar los correos y guardar los .msg. Son sistemas a los que un archivo del USB no puede (ni debe) conectarse.</p>
+</section>
+
+</body>
+</html>
