@@ -1,6 +1,7 @@
 import React from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { C, FONT, MONO } from '../theme';
+import { ChevronDown, CircleCheck, Download, FolderOpen } from 'lucide-react';
 import { Sfx } from './Shot';
 
 const clamp = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
@@ -96,10 +97,10 @@ export const RequestForm: React.FC<{ desc: number; fields: number; area: number 
         <div style={{ flex: 1, padding: 26 }}>
           <div style={{ fontSize: 24, fontWeight: 700, borderBottom: '2px solid #ccc', paddingBottom: 8 }}>Request Details</div>
           <div style={{ marginTop: 14 }}>
-            <Field label="Request Type" hi={hi(fields, fields + 30)}>{pick(fields, 'New Account')} <span style={{ marginLeft: 'auto', color: '#666' }}>⌄</span></Field>
-            <Field label="Request For" hi={hi(fields + 30, area)}>{pick(fields + 30, 'Self')} <span style={{ marginLeft: 'auto', color: '#666' }}>⌄</span></Field>
+            <Field label="Request Type" hi={hi(fields, fields + 30)}>{pick(fields, 'New Account')} <Chev /></Field>
+            <Field label="Request For" hi={hi(fields + 30, area)}>{pick(fields + 30, 'Self')} <Chev /></Field>
             <Field label="User" hi={0}><span style={{ color: '#666' }}>12345678</span></Field>
-            <Field label="Functional Area" hi={hi(area, area + 60)}>{pick(area, 'Human Resources')} <span style={{ marginLeft: 'auto', color: '#666' }}>⌄</span></Field>
+            <Field label="Functional Area" hi={hi(area, area + 60)}>{pick(area, 'Human Resources')} <Chev /></Field>
           </div>
         </div>
       </div>
@@ -127,7 +128,7 @@ export const UserDetails: React.FC<{ company: number; fn: number }> = ({ company
         </div>
         <div style={{ flex: 1.2, position: 'relative' }}>
           <div style={{ fontSize: 22, fontWeight: 700, borderBottom: '2px solid #ccc', paddingBottom: 6 }}>Company</div>
-          <Field label="Company" w={300} hi={f >= company && f < fn ? 1 : 0}>{chosen ? 'BAT [Your market]' : ''}<span style={{ marginLeft: 'auto', color: '#666' }}>⌄</span></Field>
+          <Field label="Company" w={300} hi={f >= company && f < fn ? 1 : 0}>{chosen ? 'BAT [Your market]' : ''}<Chev /></Field>
           <Field label="Function" w={300} hi={f >= fn ? 1 : 0}><TypeText text="HR" at={fn + 10} speed={0.3} /></Field>
           {open > 0 && (
             <div style={{ position: 'absolute', left: 224, top: 108, width: 300, background: '#fff', border: '1px solid #999', boxShadow: '0 10px 30px rgba(0,0,0,0.25)', opacity: open, transform: `scaleY(${open})`, transformOrigin: 'top', fontSize: 20 }}>
@@ -142,18 +143,19 @@ export const UserDetails: React.FC<{ company: number; fn: number }> = ({ company
 
 /** Lista de roles por mercado (de la guía de SAP Access Request). */
 export const ROLES: [string, string, string][] = [
-  ['🇲🇽', 'Mexico', 'ZBPC_HDCT_HR_BP_MA_C00MMX_W'],
-  ['🇨🇴', 'Colombia', 'ZBPC_HDCT_HR_BP_MA_C00MCO_W'],
-  ['🇻🇪', 'Venezuela', 'ZBPC_HDCT_HR_BP_MA_C00MVE_W'],
-  ['🇹🇹', 'Trinidad & Tobago', 'ZBPC_HDCT_HR_BP_MA_C00MTT_W'],
-  ['🇯🇲', 'Jamaica', 'ZBPC_HDCT_HR_BP_MA_C00MJM_W'],
-  ['🇬🇾', 'Guyana', 'ZBPC_HDCT_HR_BP_MA_C00MGY_W'],
-  ['🇵🇦', 'Panama', 'ZBPC_HDCT_HR_BP_MA_C00MPA_W'],
-  ['🇬🇹', 'Guatemala', 'ZBPC_HDCT_HR_BP_MA_C00MGT_W'],
-  ['🇭🇳', 'Honduras', 'ZBPC_HDCT_HR_BP_MA_C00MHN_W'],
-  ['🇨🇷', 'Costa Rica', 'ZBPC_HDCT_HR_BP_MA_C00MCR_W'],
-  ['🇳🇮', 'Nicaragua', 'ZBPC_HDCT_HR_BP_MA_C00MNI_W'],
+  ['MX', 'Mexico', 'ZBPC_HDCT_HR_BP_MA_C00MMX_W'],
+  ['CO', 'Colombia', 'ZBPC_HDCT_HR_BP_MA_C00MCO_W'],
+  ['VE', 'Venezuela', 'ZBPC_HDCT_HR_BP_MA_C00MVE_W'],
+  ['TT', 'Trinidad & Tobago', 'ZBPC_HDCT_HR_BP_MA_C00MTT_W'],
+  ['JM', 'Jamaica', 'ZBPC_HDCT_HR_BP_MA_C00MJM_W'],
+  ['GY', 'Guyana', 'ZBPC_HDCT_HR_BP_MA_C00MGY_W'],
+  ['PA', 'Panama', 'ZBPC_HDCT_HR_BP_MA_C00MPA_W'],
+  ['GT', 'Guatemala', 'ZBPC_HDCT_HR_BP_MA_C00MGT_W'],
+  ['HN', 'Honduras', 'ZBPC_HDCT_HR_BP_MA_C00MHN_W'],
+  ['CR', 'Costa Rica', 'ZBPC_HDCT_HR_BP_MA_C00MCR_W'],
+  ['NI', 'Nicaragua', 'ZBPC_HDCT_HR_BP_MA_C00MNI_W'],
 ];
+const Chev: React.FC = () => <ChevronDown size={20} color="#5b6b7d" style={{ marginLeft: 'auto' }} />;
 
 export const RolesGrid: React.FC<{ at: number }> = ({ at }) => {
   const f = useCurrentFrame();
@@ -161,12 +163,12 @@ export const RolesGrid: React.FC<{ at: number }> = ({ at }) => {
   const sel = Math.floor(Math.max(0, f - at - 40) / 9) % ROLES.length;
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 28px', width: 1500, margin: '0 auto' }}>
-      {ROLES.map(([flag, name, role], i) => {
+      {ROLES.map(([code, name, role], i) => {
         const p = spring({ frame: f - at - i * 3, fps, config: { damping: 15 } });
         const on = f > at + 40 && i === sel;
         return (
           <div key={role} style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '12px 20px', borderRadius: 14, background: on ? 'rgba(0,177,235,0.22)' : 'rgba(255,255,255,0.07)', border: `2px solid ${on ? C.cyan : 'rgba(255,255,255,0.12)'}`, opacity: p, transform: `translateY(${(1 - p) * 30}px) scale(${on ? 1.03 : 1})` }}>
-            <span style={{ fontSize: 38 }}>{flag}</span>
+            <span style={{ width: 54, height: 38, borderRadius: 8, display: 'grid', placeItems: 'center', background: on ? C.cyan : 'rgba(255,255,255,0.14)', fontFamily: FONT, fontWeight: 800, fontSize: 18, color: on ? C.navy : '#fff', letterSpacing: 1 }}>{code}</span>
             <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: 24, color: '#fff', width: 240 }}>{name}</span>
             <span style={{ fontFamily: MONO, fontSize: 23, color: on ? '#fff' : C.sky }}>{role}</span>
           </div>
@@ -198,7 +200,7 @@ export const PathBar: React.FC<{ at: number; oneid: number }> = ({ at, oneid }) 
   const a = shown.slice(0, before.length), b = shown.slice(before.length, before.length + id.length), c = shown.slice(before.length + id.length);
   return (
     <div style={{ width: 1500, display: 'flex', alignItems: 'center', gap: 16, padding: '18px 22px', background: '#fff', borderRadius: 14, boxShadow: '0 30px 90px rgba(0,0,0,0.5)', fontFamily: MONO }}>
-      <span style={{ fontSize: 30 }}>📁</span>
+      <FolderOpen size={36} color={C.blue} />
       <div style={{ flex: 1, border: `2px solid ${C.cyan}`, borderRadius: 8, padding: '12px 16px', fontSize: 34, color: '#1b1b1b', whiteSpace: 'nowrap' }}>
         {a}
         <span style={{ background: `rgba(253,185,19,${0.55 * glow})`, borderRadius: 6, padding: glow ? '0 6px' : 0, outline: glow ? `3px solid rgba(240,129,0,${glow})` : 'none' }}>{swap && b ? '12345678' : b}</span>
@@ -225,7 +227,7 @@ export const DownloadCard: React.FC<{ at: number }> = ({ at }) => {
             <div style={{ width: `${p * 100}%`, height: '100%', background: `linear-gradient(90deg, ${C.cyan}, ${C.green})` }} />
           </div>
         </div>
-        <div style={{ fontSize: 40 }}>{p >= 1 ? '✅' : '⬇️'}</div>
+        {p >= 1 ? <CircleCheck size={44} color={C.green} strokeWidth={2.4} /> : <Download size={44} color={C.blue} strokeWidth={2.4} />}
       </div>
     </div>
   );

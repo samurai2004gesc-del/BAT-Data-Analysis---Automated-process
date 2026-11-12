@@ -1,6 +1,7 @@
 import React from 'react';
 import { AbsoluteFill, Img, interpolate, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import { C, FONT, MONO } from '../theme';
+import { Check, type LucideIcon } from 'lucide-react';
 import { Sfx } from './Shot';
 
 const clamp = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
@@ -75,7 +76,7 @@ export const ProgressRail: React.FC<{ step: number; opacity: number }> = ({ step
           <React.Fragment key={s}>
             {i > 0 && <div style={{ width: 46, height: 3, background: done || active ? C.cyan : 'rgba(255,255,255,0.18)' }} />}
             <div style={{ position: 'relative', width: active ? 44 : 30, height: active ? 44 : 30, borderRadius: '50%', display: 'grid', placeItems: 'center', background: done ? C.cyan : active ? '#fff' : 'rgba(255,255,255,0.12)', border: active ? `3px solid ${C.cyan}` : 'none', boxShadow: active ? `0 0 ${18 + Math.sin(f / 6) * 6}px ${C.cyan}` : 'none' }}>
-              <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: active ? 19 : 14, color: done ? C.navy : active ? C.navy : C.muted }}>{done ? '✓' : i + 1}</span>
+              {done ? <Check size={18} strokeWidth={3.2} color={C.navy} /> : <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: active ? 19 : 14, color: active ? C.navy : C.muted }}>{i + 1}</span>}
               {active && <div style={{ position: 'absolute', top: 54, whiteSpace: 'nowrap', fontFamily: FONT, fontWeight: 700, fontSize: 15, color: '#fff', letterSpacing: 1 }}>{s.toUpperCase()}</div>}
             </div>
           </React.Fragment>
@@ -108,9 +109,9 @@ export const Captions: React.FC<{ segs: { t: string; start: number; end: number 
   );
 };
 
-export const Chip: React.FC<{ icon?: string; text: string; color?: string; size?: number }> = ({ icon, text, color = C.cyan, size = 30 }) => (
+export const Chip: React.FC<{ icon?: LucideIcon; text: string; color?: string; size?: number }> = ({ icon: Icon, text, color = C.cyan, size = 30 }) => (
   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 14, padding: '14px 26px', borderRadius: 999, background: 'rgba(255,255,255,0.08)', border: `2px solid ${color}`, boxShadow: `0 0 30px ${color}44`, fontFamily: FONT, fontWeight: 700, fontSize: size, color: '#fff', whiteSpace: 'nowrap' }}>
-    {icon && <span style={{ fontSize: size * 1.1 }}>{icon}</span>}
+    {Icon && <Icon size={size * 1.15} color={color} strokeWidth={2.2} />}
     {text}
   </div>
 );

@@ -6,12 +6,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { SCRIPT, SCENES, VOICES } from '../src/script.ts';
+import { SCRIPT, SCENES, VOICES, speak } from '../src/script.ts';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const KEY = process.env.ELEVENLABS_API_KEY || 'proxy-injected';
 const MODEL = 'eleven_multilingual_v2';
-const langs = process.argv[2] ? [process.argv[2]] : ['es', 'en'];
+const langs = process.argv[2] ? [process.argv[2]] : ['en'];
 const only = process.argv.slice(3);
 
 const settings = { stability: 0.5, similarity_boost: 0.8, style: 0.15, use_speaker_boost: true, speed: 1.0 };
@@ -37,7 +37,8 @@ for (const lang of langs) {
   const data = fs.existsSync(jsonPath) ? JSON.parse(fs.readFileSync(jsonPath, 'utf8')) : {};
   fs.mkdirSync(path.join(ROOT, 'public', 'voice', lang), { recursive: true });
   fs.mkdirSync(path.dirname(jsonPath), { recursive: true });
-  const spoken = (id) => SCRIPT[lang][id].map((s) => s.say || s.t).join(' ');
+  const said = (s) => speak(s.say || s.t);
+  const spoken = (id) => SCRIPT[lang][id].map(said).join(' ');
   for (let i = 0; i < SCENES.length; i++) {
     const id = SCENES[i];
     if (only.length && !only.includes(id)) continue;
@@ -53,7 +54,7 @@ for (const lang of langs) {
     // Inicio de cada segmento: posición de su primer carácter en el texto hablado
     let pos = 0;
     const out = segs.map((s) => {
-      const sp = s.say || s.t;
+      const sp = said(s);
       const a = pos, b = pos + sp.length - 1;
       pos += sp.length + 1;
       return { t: s.t, cue: s.cue || null, start: +starts[Math.min(a, starts.length - 1)].toFixed(3), end: +ends[Math.min(b, ends.length - 1)].toFixed(3) };

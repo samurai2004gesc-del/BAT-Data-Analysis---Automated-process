@@ -8,7 +8,7 @@ Video en inglés (~4.5 min, 1920×1080) que explica a los Line Managers los 5 pa
 4. Reemplazar **Connections.xml** en `C:\Users\<OneID>\AppData\Local\EPMOfficeClient`.
 5. Abrir Analysis y EPM add-in → EPM → Log On → `P52 - BAT_HCT - HCT (SSO)` → Set as Default → Log On.
 
-Hecho con [Remotion](https://www.remotion.dev/) (React). Voz: ElevenLabs (`Matilda`, modelo `eleven_multilingual_v2`). Música y efectos sintetizados aquí mismo (`scripts/sfx.py`), sin licencias de terceros.
+Hecho con [Remotion](https://www.remotion.dev/) (React). Voz: ElevenLabs (`Brian`, id `nPczCjzI2devNBz1zQrb`, modelo `eleven_multilingual_v2`). NEO, SAP y BAT se pronuncian como palabra y BPC se deletrea (función `speak` en `src/script.ts`). Íconos: Lucide. Música y efectos sintetizados aquí mismo (`scripts/sfx.py`), sin licencias de terceros.
 
 ## Cambiar el contacto de la escena final
 En `src/Root.tsx`, cambia `contact: 'HRSS Team'` por tu nombre o correo y vuelve a renderizar.

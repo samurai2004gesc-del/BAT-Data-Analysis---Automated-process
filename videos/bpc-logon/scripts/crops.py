@@ -3,7 +3,7 @@ Uso: python3 -I scripts/crops.py <carpeta_png_raw> <carpeta_salida>
 Las coordenadas están en px de la diapositiva (1456 o 1333 de ancho) y se multiplican x2.
 Las cajas 'blur' difuminan datos personales (fotos, OneID)."""
 import sys, os
-from PIL import Image, ImageFilter
+from PIL import Image, ImageFilter, ImageDraw, ImageFont
 
 RAW, OUT = sys.argv[1], sys.argv[2]
 os.makedirs(OUT, exist_ok=True)
@@ -15,6 +15,7 @@ C = {
   'acc_roles':     ('acc-04.png', (108, 262, 823, 670), []),
   'acc_neo':       ('acc-05.png', (80, 270, 595, 637), []),
   'acc_quick':     ('acc-05.png', (960, 315, 1297, 525), []),
+  'acc_reqdetails':('acc-06.png', (785, 465, 1065, 648), []),
   'acc_arc':       ('acc-06.png', (110, 165, 630, 388), []),
   'acc_addsys':    ('acc-07.png', (105, 162, 960, 497), []),
   'acc_p52':       ('acc-08.png', (110, 222, 530, 668), []),
@@ -45,6 +46,13 @@ for name, (f, box, blurs) in C.items():
         bb = tuple(v * 2 for v in b)
         im.paste(im.crop(bb).filter(ImageFilter.GaussianBlur(14)), bb[:2])
     crop = im.crop(tuple(v * 2 for v in box))
+    if name == 'acc_reqdetails':
+        # Reemplaza el OneID real del campo User por uno ficticio
+        d = ImageDraw.Draw(crop)
+        bg = crop.getpixel((470, 212))
+        d.rectangle((280, 190, 495, 232), fill=bg)
+        font = ImageFont.truetype('/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf', 25)
+        d.text((285, 198), '12345678', fill=(50, 54, 58), font=font)
     crop.save(os.path.join(OUT, name + '.png'), optimize=True)
     manifest[name] = {'ox': box[0], 'oy': box[1], 'w': crop.size[0], 'h': crop.size[1], 'scale': 2}
     print(name, crop.size)

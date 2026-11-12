@@ -5,6 +5,7 @@ import { useCue, useScene } from '../timing';
 import { Shot, sb, Sfx } from '../components/Shot';
 import { Big, CheckBurst, Chip, Confetti, Keycap, Logo, Panel, Pop, ProgressRail, StepHeader, STEPS } from '../components/ui';
 import { Certificate, DownloadCard, IdLookup, PathBar, RequestForm, RolesGrid, UserDetails } from '../components/Mock';
+import { BookOpen, Camera, CircleCheck, ClipboardPaste, Clock, FolderCog, GraduationCap, Hash, KeyRound, LogIn, Mail, MonitorDown, Send, Target, Trash2, TriangleAlert, UserCheck, X } from 'lucide-react';
 
 const clamp = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
 const TOP = 200; // debajo del encabezado
@@ -57,8 +58,8 @@ export const Intro: React.FC = () => {
         <Pop at={t + 26}><div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 38, color: C.soft, marginTop: 6 }}>Setup guide for Line Managers · 5 steps</div></Pop>
       </div>
       <div style={{ position: 'absolute', top: 760, width: '100%', display: 'flex', justifyContent: 'center', gap: 30 }}>
-        <Pop at={ask + 4} from="scale" sound><Chip icon="🎯" text="Your goal" color={C.yellow} /></Pop>
-        <Pop at={shot} from="scale" sound><Chip icon="📸" text="1 screenshot of your BPC log on" color={C.green} /></Pop>
+        <Pop at={ask + 4} from="scale" sound><Chip icon={Target} text="Your goal" color={C.yellow} /></Pop>
+        <Pop at={shot} from="scale" sound><Chip icon={Camera} text="1 screenshot of your BPC log on" color={C.green} /></Pop>
       </div>
     </AbsoluteFill>
   );
@@ -66,11 +67,11 @@ export const Intro: React.FC = () => {
 
 // ===================================================================== ROADMAP
 const NODES = [
-  { x: 270, y: 760, icon: '🎓', label: 'BPC course', sub: 'SuccessFactors' },
-  { x: 640, y: 560, icon: '🔐', label: 'SAP access', sub: 'NEO request' },
-  { x: 1000, y: 650, icon: '💻', label: 'Analysis app', sub: 'Company Portal' },
-  { x: 1340, y: 430, icon: '📁', label: 'Connections', sub: 'EPMOfficeClient' },
-  { x: 1660, y: 290, icon: '🚀', label: 'Log On', sub: 'EPM · P52 HCT' },
+  { x: 270, y: 760, icon: GraduationCap, label: 'BPC course', sub: 'SuccessFactors' },
+  { x: 640, y: 560, icon: KeyRound, label: 'SAP access', sub: 'NEO request' },
+  { x: 1000, y: 650, icon: MonitorDown, label: 'Analysis app', sub: 'Company Portal' },
+  { x: 1340, y: 430, icon: FolderCog, label: 'Connections', sub: 'EPMOfficeClient' },
+  { x: 1660, y: 290, icon: LogIn, label: 'Log On', sub: 'EPM · P52 HCT' },
 ];
 export const Roadmap: React.FC = () => {
   const f = useCurrentFrame();
@@ -99,7 +100,7 @@ export const Roadmap: React.FC = () => {
         return (
           <div key={i} style={{ position: 'absolute', left: n.x, top: n.y, opacity: Math.min(1, p * 1.5) }}>
             <div style={{ position: 'absolute', left: -62, top: -62, width: 124, height: 124, borderRadius: '50%', background: on ? `linear-gradient(135deg, ${C.cyan}, ${C.blue})` : 'rgba(255,255,255,0.14)', border: '4px solid #fff', display: 'grid', placeItems: 'center', transform: `scale(${p * (on ? 1.12 : 1)})`, boxShadow: on ? `0 0 ${40 + Math.sin(f / 5) * 10}px ${C.cyan}` : '0 10px 30px rgba(0,0,0,0.4)' }}>
-              <span style={{ fontSize: 58 }}>{n.icon}</span>
+              <n.icon size={56} color="#fff" strokeWidth={2} />
             </div>
             <div style={{ position: 'absolute', left: -150, width: 300, top: up ? -200 : 80, textAlign: 'center', transform: `translateY(${(1 - p) * (up ? 30 : -30)}px)` }}>
               <div style={{ fontFamily: FONT, fontWeight: 900, fontSize: 22, color: C.cyan, letterSpacing: 3 }}>STEP {i + 1}</div>
@@ -136,9 +137,9 @@ export const Course: React.FC = () => {
           <Shot name="sf_course" maxW={1050} maxH={420} title="BPC HR Online Learning" focus={[{ at: 10, box: sb('sf_course', 618, 136, 713, 167), click: true, label: 'Start / Continue Course', labelSide: 'bottom', zoom: 1.6 }]} />
         </div>
         <div style={{ position: 'absolute', left: 1260, top: TOP + 110, display: 'flex', flexDirection: 'column', gap: 26 }}>
-          <Pop at={6} from="right" sound><Chip icon="📚" text="4 modules" /></Pop>
-          <Pop at={26} from="right" sound><Chip icon="⏱️" text="Up to 3 hours" color={C.yellow} /></Pop>
-          <Pop at={c('quiz') - co} from="right" sound><Chip icon="✅" text="Quiz: modules 1 & 4" color={C.green} /></Pop>
+          <Pop at={6} from="right" sound><Chip icon={BookOpen} text="4 modules" /></Pop>
+          <Pop at={26} from="right" sound><Chip icon={Clock} text="Up to 3 hours" color={C.yellow} /></Pop>
+          <Pop at={c('quiz') - co} from="right" sound><Chip icon={CircleCheck} text="Quiz: modules 1 & 4" color={C.green} /></Pop>
         </div>
       </Panel>
       <Panel from={ce} to={s.frames} kind="zoom">
@@ -159,7 +160,7 @@ const CertShot: React.FC<{ sendAt: number }> = ({ sendAt }) => {
           <div style={{ position: 'absolute', inset: -24 * frame, border: `4px dashed rgba(255,255,255,${frame})`, borderRadius: 20 }} />
         </div>
         <div style={{ marginLeft: 70 }}>
-          <Pop at={sendAt} from="right" sound><Chip icon="✉️" text="Send it to HRSS" color={C.green} size={36} /></Pop>
+          <Pop at={sendAt} from="right" sound><Chip icon={Mail} text="Send it to HRSS" color={C.green} size={36} /></Pop>
         </div>
       </Center>
       <AbsoluteFill style={{ background: '#fff', opacity: flash * 0.8 }} />
@@ -203,7 +204,8 @@ export const Check: React.FC = () => {
 export const Request: React.FC = () => {
   const c = useCue();
   const s = useScene();
-  const q = c('quick'), arc = c('arc'), fo = c('form');
+  const q = c('quick'), arc = c('arc'), fo = c('form'), fi = c('fields');
+  const ty = s.cues.type ?? fi + 60, ar = c('area');
   return (
     <Step n={2} title="Request access in NEO" sub="SAP access">
       <Panel from={0} to={q}>
@@ -220,8 +222,21 @@ export const Request: React.FC = () => {
       <Panel from={arc} to={fo}>
         <Center><Shot name="acc_arc" maxW={1100} maxH={560} title="NEO · My Profile" focus={[{ at: 4, box: sb('acc_arc', 143, 260, 282, 279), click: true, label: 'Access Request Creation', labelSide: 'right', zoom: 1.6 }]} /></Center>
       </Panel>
-      <Panel from={fo} to={s.frames}>
-        <Center><RequestForm desc={0} fields={c('fields') - fo} area={c('area') - fo} /></Center>
+      <Panel from={fo} to={fi}>
+        <Center><RequestForm desc={0} fields={99999} area={99999} /></Center>
+      </Panel>
+      <Panel from={fi} to={s.frames}>
+        <div style={{ position: 'absolute', left: 140, top: TOP + 40 }}>
+          <Shot name="acc_reqdetails" maxW={900} maxH={620} title="Request Details · example" focus={[
+            { at: ty - fi, box: [272, 76, 262, 46], label: 'New Account', labelSide: 'bottom', zoom: 1.3 },
+            { at: ty - fi + 40, box: [272, 133, 262, 46], label: 'Self', labelSide: 'bottom', zoom: 1.3 },
+            { at: ar - fi, box: [272, 245, 262, 46], label: 'Your own area', labelSide: 'bottom', zoom: 1.3 },
+          ]} />
+        </div>
+        <div style={{ position: 'absolute', left: 1140, top: TOP + 170, display: 'flex', flexDirection: 'column', gap: 26 }}>
+          <Pop at={10} from="right"><Big size={50}>Enter the details<br />that <span style={{ color: C.cyan }}>apply to you</span></Big></Pop>
+          <Pop at={ar - fi + 10} from="right" sound><Chip icon={UserCheck} text="Example: Human Resources" color={C.yellow} size={28} /></Pop>
+        </div>
       </Panel>
     </Step>
   );
@@ -250,7 +265,7 @@ export const SysRole: React.FC = () => {
         <div style={{ position: 'absolute', left: 1080, top: TOP + 30 }}>
           <Panel from={ok - p52 - 14} to={ar} sfx={false} x={0} w={760}>
             <Shot name="acc_p52sel" maxW={700} maxH={680} title="Selected" focus={[
-              { at: 4, box: sb('acc_p52sel', 718, 264, 1072, 286), label: 'Selected ✓', labelSide: 'bottom', zoom: 1.2 },
+              { at: 4, box: sb('acc_p52sel', 718, 264, 1072, 286), label: 'Selected', labelSide: 'bottom', zoom: 1.2 },
               { at: 22, box: sb('acc_p52sel', 1012, 655, 1048, 680), click: true, label: 'OK', labelSide: 'top', zoom: 1.3 },
             ]} />
           </Panel>
@@ -277,7 +292,7 @@ export const SysRole: React.FC = () => {
       <Panel from={av} to={s.frames}>
         <Center><Shot name="acc_roleavail" maxW={1400} maxH={560} title="Available roles" focus={[
           { at: 6, box: sb('acc_roleavail', 108, 543, 782, 565), click: true, label: 'System Description: P52 Client 100', labelSide: 'bottom', zoom: 1.2 },
-          { at: 56, box: sb('acc_roleavail', 113, 648, 137, 670), click: true, label: 'Move down ⌄', labelSide: 'right', zoom: 1.5 },
+          { at: 56, box: sb('acc_roleavail', 113, 648, 137, 670), click: true, label: 'Move down', labelSide: 'right', zoom: 1.5 },
         ]} /></Center>
       </Panel>
     </Step>
@@ -292,7 +307,10 @@ export const Details: React.FC = () => {
   return (
     <Step n={2} title="Your details, then Submit" sub="SAP access">
       <Panel from={0} to={us}>
-        <Center><UserDetails company={c('details') + 8} fn={c('function')} /></Center>
+        <Center h={600}><UserDetails company={c('details') + 8} fn={c('function')} /></Center>
+        <div style={{ position: 'absolute', left: 0, right: 0, top: TOP + 600, display: 'flex', justifyContent: 'center' }}>
+          <Pop at={c('function') + 6} from="up" sound><Chip icon={UserCheck} text="Use your own company and function" color={C.yellow} size={28} /></Pop>
+        </div>
       </Panel>
       <Panel from={us} to={gr}>
         <Center><Shot name="acc_usersys" maxW={1400} maxH={420} title="Access Request · User System Details" focus={[
@@ -304,7 +322,7 @@ export const Details: React.FC = () => {
         <div style={{ position: 'absolute', left: 260, top: TOP + 10 }}>
           <Shot name="acc_group" maxW={700} maxH={700} title="User Group" focus={[
             { at: 4, box: sb('acc_group', 790, 238, 982, 277), label: '*Your country*', labelSide: 'bottom', zoom: 1.4 },
-            { at: c('hr') - gr, box: sb('acc_group', 638, 426, 992, 450), click: true, label: '… HR', labelSide: 'bottom', zoom: 1.3 },
+            { at: c('hr') - gr, box: sb('acc_group', 638, 426, 992, 450), click: true, label: 'Group for your area', labelSide: 'bottom', zoom: 1.3 },
             { at: c('hr') - gr + 34, box: sb('acc_group', 922, 673, 953, 697), click: true, label: 'OK', labelSide: 'top', zoom: 1.4 },
           ]} />
         </div>
@@ -318,7 +336,7 @@ export const Details: React.FC = () => {
           <Shot name="acc_submit" maxW={1600} maxH={380} title="Access Request" focus={[{ at: 6, box: sb('acc_submit', 1203, 648, 1252, 674), click: true, label: 'Submit', labelSide: 'top', zoom: 2 }]} />
         </div>
         <div style={{ position: 'absolute', left: 0, right: 0, top: TOP + 520, display: 'flex', justifyContent: 'center' }}>
-          <Pop at={c('sent') - sub} from="scale" sound><Chip icon="📨" text="Request sent for approval" color={C.green} size={36} /></Pop>
+          <Pop at={c('sent') - sub} from="scale" sound><Chip icon={Send} text="Request sent for approval" color={C.green} size={36} /></Pop>
         </div>
       </Panel>
     </Step>
@@ -343,7 +361,7 @@ export const Install: React.FC = () => {
         <Center><Shot name="an_popup" maxW={1300} maxH={620} title="Software Request Guidelines" focus={[{ at: 6, box: sb('an_popup', 846, 546, 1110, 582), click: true, label: 'BAT Company Portal', labelSide: 'top', zoom: 1.5 }]} /></Center>
       </Panel>
       <Panel from={pt} to={re}>
-        <Center><Shot name="an_portal" maxW={1500} maxH={620} title="BAT Company Portal" focus={[{ at: 6, box: sb('an_portal', 630, 246, 970, 284), type: 'Analysis ⏎', label: 'Search: Analysis', labelSide: 'bottom', zoom: 1.6 }]} /></Center>
+        <Center><Shot name="an_portal" maxW={1500} maxH={620} title="BAT Company Portal" focus={[{ at: 6, box: sb('an_portal', 630, 246, 970, 284), type: 'Analysis', label: 'Search: Analysis', labelSide: 'bottom', zoom: 1.6 }]} /></Center>
       </Panel>
       <Panel from={re} to={ab}>
         <div style={{ position: 'absolute', left: 140, top: TOP + 20 }}>
@@ -389,7 +407,7 @@ const Restart: React.FC = () => {
       </Pop>
       <div style={{ marginLeft: 90 }}>
         <Pop at={8} from="right"><Big size={64}>Install, then<br /><span style={{ color: C.cyan }}>restart</span> your PC</Big></Pop>
-        <Pop at={40} from="right" sound><div style={{ marginTop: 28 }}><Chip icon="⚠️" text="Don't skip this step" color={C.orange} /></div></Pop>
+        <Pop at={40} from="right" sound><div style={{ marginTop: 28 }}><Chip icon={TriangleAlert} text="Don't skip this step" color={C.orange} /></div></Pop>
       </div>
     </Center>
   );
@@ -414,7 +432,7 @@ export const Connections: React.FC = () => {
         </div>
         <div style={{ position: 'absolute', top: TOP + 260, width: '100%', display: 'flex', justifyContent: 'center' }}><PathBar at={10} oneid={c('oneid') - pa} /></div>
         <div style={{ position: 'absolute', top: TOP + 420, width: '100%', display: 'flex', justifyContent: 'center' }}>
-          <Pop at={c('oneid') - pa + 8} from="up" sound><Chip icon="🔢" text="OneID = your employee number" color={C.yellow} /></Pop>
+          <Pop at={c('oneid') - pa + 8} from="up" sound><Chip icon={Hash} text="OneID = your employee number" color={C.yellow} /></Pop>
         </div>
       </Panel>
       <Panel from={rp} to={s.frames}>
@@ -422,8 +440,8 @@ export const Connections: React.FC = () => {
           <Shot name="con_folder" maxW={1450} maxH={420} title="EPMOfficeClient" focus={[{ at: 6, box: sb('con_folder', 412, 671, 760, 695), label: 'Connections.xml', labelSide: 'bottom', zoom: 1.4 }]} />
         </div>
         <div style={{ position: 'absolute', left: 0, right: 0, top: TOP + 560, display: 'flex', justifyContent: 'center', gap: 40 }}>
-          <Pop at={30} from="scale" sound><Chip icon="🗑️" text="Delete the old one" color={C.magenta} /></Pop>
-          <Pop at={60} from="scale" sound><Chip icon="📥" text="Paste the new one" color={C.green} /></Pop>
+          <Pop at={30} from="scale" sound><Chip icon={Trash2} text="Delete the old one" color={C.magenta} /></Pop>
+          <Pop at={60} from="scale" sound><Chip icon={ClipboardPaste} text="Paste the new one" color={C.green} /></Pop>
         </div>
       </Panel>
     </Step>
@@ -440,14 +458,14 @@ const CloseExcel: React.FC<{ at: number }> = ({ at }) => {
         return (
           <div key={i} style={{ width: 380, height: 260, margin: '0 -30px', borderRadius: 16, background: '#fff', boxShadow: '0 30px 80px rgba(0,0,0,0.45)', transform: `translateY(${(1 - inn) * 80 + i * 30 - 30}px) rotate(${(i - 1) * 6}deg) scale(${1 - out})`, opacity: inn * (1 - out), overflow: 'hidden' }}>
             <div style={{ height: 50, background: '#107C41', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', color: '#fff', fontFamily: FONT, fontWeight: 700, fontSize: 20 }}>
-              <span>X  Book{i + 1}.xlsx</span><span style={{ fontSize: 26 }}>✕</span>
+              <span>Book{i + 1}.xlsx</span><X size={26} color="#fff" strokeWidth={2.6} />
             </div>
             <div style={{ backgroundImage: 'linear-gradient(#ddd 1px, transparent 1px), linear-gradient(90deg, #ddd 1px, transparent 1px)', backgroundSize: '60px 26px', height: 210 }} />
             <Sfx at={at + 10 + i * 9} src="pop" volume={0.3} />
           </div>
         );
       })}
-      <div style={{ position: 'absolute', bottom: 60 }}><Pop at={at + 30}><Chip icon="✖️" text="Close every Excel window" /></Pop></div>
+      <div style={{ position: 'absolute', bottom: 60 }}><Pop at={at + 30}><Chip icon={X} text="Close every Excel window" /></Pop></div>
     </Center>
   );
 };
@@ -478,7 +496,7 @@ export const Launch: React.FC = () => {
             { at: 6, box: sb('epm_ribbon', 874, 260, 916, 287), label: 'EPM', labelSide: 'bottom', zoom: 1.8 },
             { at: 34, box: sb('epm_ribbon', 1152, 260, 1215, 287), label: 'Analysis', labelSide: 'bottom', zoom: 1.8 },
             { at: 62, box: sb('epm_ribbon', 1232, 260, 1345, 287), label: 'Analysis Design', labelSide: 'bottom', zoom: 1.8 },
-            { at: 100, box: sb('epm_ribbon', 860, 255, 1350, 292), label: 'All three tabs ✓', labelSide: 'bottom', zoom: 1.2 },
+            { at: 100, box: sb('epm_ribbon', 860, 255, 1350, 292), label: 'All three tabs', labelSide: 'bottom', zoom: 1.2 },
           ]} />
         </div>
       </Panel>
@@ -539,7 +557,7 @@ export const Evidence: React.FC<{ contact: string }> = ({ contact }) => {
       <Panel from={sn} to={se}>
         <SnipFrame keysAt={ke - sn} />
         <div style={{ position: 'absolute', left: 0, right: 0, top: 760, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 26 }}>
-          {['⊞ Win', 'Shift', 'S'].map((k, i) => (
+          {['Win', 'Shift', 'S'].map((k, i) => (
             <React.Fragment key={k}>
               {i > 0 && <span style={{ fontFamily: FONT, fontSize: 60, color: '#fff', fontWeight: 800 }}>+</span>}
               <Pop at={ke - sn + i * 6} from="up"><Keycap k={k} down={press(ke - sn + 20 + i * 4)} /></Pop>
@@ -576,9 +594,9 @@ const SendCard: React.FC<{ contact: string }> = ({ contact }) => {
   return (
     <Center top={100} h={860}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 34 }}>
-        <div style={{ fontSize: 150, transform: `translate(${fly * 900}px, ${-fly * 400}px) rotate(${fly * 25}deg) scale(${1 - fly * 0.5})`, opacity: 1 - fly * 0.9 }}>📸</div>
+        <div style={{ transform: `translate(${fly * 900}px, ${-fly * 400}px) rotate(${fly * 25}deg) scale(${1 - fly * 0.5})`, opacity: 1 - fly * 0.9 }}><Camera size={150} color="#fff" strokeWidth={1.6} /></div>
         <Pop at={4}><Big size={72} style={{ textAlign: 'center' }}>Send your screenshot to</Big></Pop>
-        <Pop at={16} from="scale" sound><div style={{ padding: '22px 48px', borderRadius: 999, background: `linear-gradient(135deg, ${C.cyan}, ${C.blue})`, fontFamily: FONT, fontWeight: 800, fontSize: 56, color: '#fff', boxShadow: `0 0 60px ${C.cyan}88` }}>✉️ {contact}</div></Pop>
+        <Pop at={16} from="scale" sound><div style={{ padding: '22px 48px', borderRadius: 999, background: `linear-gradient(135deg, ${C.cyan}, ${C.blue})`, fontFamily: FONT, fontWeight: 800, fontSize: 56, color: '#fff', boxShadow: `0 0 60px ${C.cyan}88`, display: 'flex', alignItems: 'center', gap: 20 }}><Mail size={56} color="#fff" strokeWidth={2.2} />{contact}</div></Pop>
         <Pop at={30}><div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 30, color: C.soft }}>That's how we confirm your BPC access.</div></Pop>
       </div>
       <Sfx at={30} src="whoosh" volume={0.4} />
