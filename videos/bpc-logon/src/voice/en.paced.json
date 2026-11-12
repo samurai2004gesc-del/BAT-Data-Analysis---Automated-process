@@ -1,0 +1,511 @@
+{
+  "intro": {
+    "duration": 11.958,
+    "segs": [
+      {
+        "t": "Hi. In this video you will set up your access to SAP BPC",
+        "cue": "title",
+        "start": 0.0,
+        "end": 3.669
+      },
+      {
+        "t": "in five simple steps.",
+        "cue": null,
+        "start": 4.098,
+        "end": 5.666
+      },
+      {
+        "t": "At the end, we only need one thing from you:",
+        "cue": "ask",
+        "start": 6.653,
+        "end": 8.65
+      },
+      {
+        "t": "a screenshot that shows you were able to log in.",
+        "cue": "shot",
+        "start": 9.102,
+        "end": 11.958
+      }
+    ]
+  },
+  "roadmap": {
+    "duration": 21.112,
+    "segs": [
+      {
+        "t": "Here is the path.",
+        "cue": null,
+        "start": 0.0,
+        "end": 0.871
+      },
+      {
+        "t": "One: the BPC course in SuccessFactors.",
+        "cue": "r1",
+        "start": 1.951,
+        "end": 5.063
+      },
+      {
+        "t": "Two: the SAP access request.",
+        "cue": "r2",
+        "start": 5.923,
+        "end": 8.523
+      },
+      {
+        "t": "Three: install SAP Analysis for Office.",
+        "cue": "r3",
+        "start": 9.685,
+        "end": 12.75
+      },
+      {
+        "t": "Four: the connections file.",
+        "cue": "r4",
+        "start": 13.668,
+        "end": 15.479
+      },
+      {
+        "t": "And five: log on to BPC.",
+        "cue": "r5",
+        "start": 16.293,
+        "end": 18.696
+      },
+      {
+        "t": "Let's go step by step.",
+        "cue": "go",
+        "start": 19.556,
+        "end": 21.112
+      }
+    ]
+  },
+  "course": {
+    "duration": 27.149,
+    "segs": [
+      {
+        "t": "Step one: the course.",
+        "cue": null,
+        "start": 0.0,
+        "end": 1.881
+      },
+      {
+        "t": "Go to SuccessFactors and click View My Learning.",
+        "cue": "quick",
+        "start": 2.81,
+        "end": 5.829
+      },
+      {
+        "t": "Search for BPC HR Online Learning and open the course.",
+        "cue": "search",
+        "start": 6.689,
+        "end": 10.892
+      },
+      {
+        "t": "It has four modules and can take up to three hours.",
+        "cue": "course",
+        "start": 11.879,
+        "end": 15.014
+      },
+      {
+        "t": "Modules one and four end with a quiz you need to pass.",
+        "cue": "quiz",
+        "start": 16.002,
+        "end": 19.113
+      },
+      {
+        "t": "When you finish module four, take a screenshot of your certificate",
+        "cue": "cert",
+        "start": 20.101,
+        "end": 23.642
+      },
+      {
+        "t": "and send it to the HRSS team.",
+        "cue": "send",
+        "start": 24.27,
+        "end": 27.149
+      }
+    ]
+  },
+  "check": {
+    "duration": 28.493,
+    "segs": [
+      {
+        "t": "Step two: SAP access.",
+        "cue": null,
+        "start": 0.0,
+        "end": 2.322
+      },
+      {
+        "t": "First, check whether you already have it.",
+        "cue": null,
+        "start": 3.31,
+        "end": 5.167
+      },
+      {
+        "t": "In the NEO portal, go to Support, Access Management, IDLookup.",
+        "cue": "support",
+        "start": 6.097,
+        "end": 9.986
+      },
+      {
+        "t": "Type your name exactly as it appears in Teams,",
+        "cue": "lookup",
+        "start": 10.846,
+        "end": 13.667
+      },
+      {
+        "t": "click Bulk Search, and then click your ID.",
+        "cue": "bulk",
+        "start": 14.317,
+        "end": 17.568
+      },
+      {
+        "t": "If you see bat-sapRoles-P52 with your market role,",
+        "cue": "p52",
+        "start": 18.846,
+        "end": 23.931
+      },
+      {
+        "t": "you already have access: skip to step three.",
+        "cue": "skip",
+        "start": 24.511,
+        "end": 28.493
+      }
+    ]
+  },
+  "request": {
+    "duration": 28.367,
+    "segs": [
+      {
+        "t": "If you don't, open NEO.",
+        "cue": "neo",
+        "start": 0.0,
+        "end": 1.637
+      },
+      {
+        "t": "Under Quick Links, open Access Requests",
+        "cue": "quick",
+        "start": 2.567,
+        "end": 5.051
+      },
+      {
+        "t": "and then Access Request Creation.",
+        "cue": "arc",
+        "start": 5.086,
+        "end": 7.048
+      },
+      {
+        "t": "In Description, write your name, your role and why you need access.",
+        "cue": "form",
+        "start": 7.978,
+        "end": 12.61
+      },
+      {
+        "t": "Then fill in the request details that apply to you.",
+        "cue": "fields",
+        "start": 13.47,
+        "end": 16.129
+      },
+      {
+        "t": "Request Type: New Account. Request For: Self.",
+        "cue": "type",
+        "start": 17.302,
+        "end": 22.468
+      },
+      {
+        "t": "And your own Functional Area. In this example, Human Resources.",
+        "cue": "area",
+        "start": 23.328,
+        "end": 28.367
+      }
+    ]
+  },
+  "sysrole": {
+    "duration": 29.703,
+    "segs": [
+      {
+        "t": "In the User Access tab, click Add and choose System.",
+        "cue": "addsys",
+        "start": 0.0,
+        "end": 3.971
+      },
+      {
+        "t": "Find P52 Client 100 and move it to Selected with the arrow.",
+        "cue": "p52",
+        "start": 4.9,
+        "end": 9.811
+      },
+      {
+        "t": "Click OK.",
+        "cue": "ok",
+        "start": 10.671,
+        "end": 11.937
+      },
+      {
+        "t": "Now Add again, and this time choose Role.",
+        "cue": "addrole",
+        "start": 12.75,
+        "end": 15.745
+      },
+      {
+        "t": "Copy the role for your market from this list.",
+        "cue": "roles",
+        "start": 16.733,
+        "end": 19.125
+      },
+      {
+        "t": "Paste it in Role / Profile Name and click Search.",
+        "cue": "search",
+        "start": 20.112,
+        "end": 23.433
+      },
+      {
+        "t": "Select the one that says P52 Client 100 and move it down with the arrow.",
+        "cue": "avail",
+        "start": 24.362,
+        "end": 29.703
+      }
+    ]
+  },
+  "details": {
+    "duration": 30.13,
+    "segs": [
+      {
+        "t": "In User Details, choose the company for your market",
+        "cue": "details",
+        "start": 0.0,
+        "end": 2.984
+      },
+      {
+        "t": "and type your function, for example HR.",
+        "cue": "function",
+        "start": 3.03,
+        "end": 5.991
+      },
+      {
+        "t": "In User System Details, open the User Group picker.",
+        "cue": "usersys",
+        "start": 6.851,
+        "end": 10.171
+      },
+      {
+        "t": "Search for your country between asterisks, for example *Mexico*,",
+        "cue": "group",
+        "start": 11.159,
+        "end": 17.033
+      },
+      {
+        "t": "choose the group for your area, for example Mexico - HR, and click OK.",
+        "cue": "hr",
+        "start": 17.683,
+        "end": 23.766
+      },
+      {
+        "t": "Finally, click Submit.",
+        "cue": "submit",
+        "start": 24.754,
+        "end": 26.089
+      },
+      {
+        "t": "Your request goes out for approval.",
+        "cue": "sent",
+        "start": 27.019,
+        "end": 30.13
+      }
+    ]
+  },
+  "install": {
+    "duration": 34.347,
+    "segs": [
+      {
+        "t": "Step three: install SAP Analysis for Office.",
+        "cue": null,
+        "start": 0.0,
+        "end": 3.669
+      },
+      {
+        "t": "Open the Windows menu, type BAT Company Portal and open it.",
+        "cue": "start",
+        "start": 4.633,
+        "end": 8.836
+      },
+      {
+        "t": "If this window pops up, choose BAT Company Portal.",
+        "cue": "popup",
+        "start": 9.8,
+        "end": 13.086
+      },
+      {
+        "t": "In the portal search box, type Analysis and press Enter.",
+        "cue": "portal",
+        "start": 13.923,
+        "end": 17.418
+      },
+      {
+        "t": "Choose the 64 or 32-bit version: the same one as your Excel.",
+        "cue": "results",
+        "start": 18.545,
+        "end": 23.537
+      },
+      {
+        "t": "To check, in Excel go to File, Account, About Excel.",
+        "cue": "about",
+        "start": 24.35,
+        "end": 28.716
+      },
+      {
+        "t": "Install the app and restart your computer. Don't skip this step.",
+        "cue": "restart",
+        "start": 29.703,
+        "end": 34.347
+      }
+    ]
+  },
+  "connections": {
+    "duration": 22.701,
+    "segs": [
+      {
+        "t": "Step four: the connections file.",
+        "cue": null,
+        "start": 0.0,
+        "end": 2.403
+      },
+      {
+        "t": "Close every Excel window.",
+        "cue": "close",
+        "start": 3.391,
+        "end": 5.04
+      },
+      {
+        "t": "Download the Connections file from the Library Resources module on SharePoint.",
+        "cue": "download",
+        "start": 5.899,
+        "end": 10.288
+      },
+      {
+        "t": "Open File Explorer and paste this path into the address bar.",
+        "cue": "path",
+        "start": 11.357,
+        "end": 14.84
+      },
+      {
+        "t": "Replace OneID with your employee number.",
+        "cue": "oneid",
+        "start": 15.827,
+        "end": 18.393
+      },
+      {
+        "t": "Delete the existing Connections file and paste the new one.",
+        "cue": "replace",
+        "start": 19.323,
+        "end": 22.701
+      }
+    ]
+  },
+  "launch": {
+    "duration": 18.543,
+    "segs": [
+      {
+        "t": "Step five: log on.",
+        "cue": null,
+        "start": 0.0,
+        "end": 1.974
+      },
+      {
+        "t": "From the Windows menu, open Analysis for Microsoft Excel and wait for it to load.",
+        "cue": "analysis",
+        "start": 2.822,
+        "end": 8.105
+      },
+      {
+        "t": "Then open EPM add-in for Excel.",
+        "cue": "epm",
+        "start": 9.011,
+        "end": 11.89
+      },
+      {
+        "t": "Excel should now show the EPM, Analysis and Analysis Design tabs.",
+        "cue": "ribbon",
+        "start": 13.029,
+        "end": 18.543
+      }
+    ]
+  },
+  "logon": {
+    "duration": 17.277,
+    "segs": [
+      {
+        "t": "Go to the EPM tab and click Log On.",
+        "cue": "logon",
+        "start": 0.0,
+        "end": 2.577
+      },
+      {
+        "t": "Click the three-dots button.",
+        "cue": "dots",
+        "start": 3.437,
+        "end": 4.912
+      },
+      {
+        "t": "Find P52 - BAT_HCT - HCT (SSO),",
+        "cue": "manager",
+        "start": 5.725,
+        "end": 12.575
+      },
+      {
+        "t": "set it as default and click OK.",
+        "cue": "default",
+        "start": 13.062,
+        "end": 15.059
+      },
+      {
+        "t": "And now: Log On.",
+        "cue": "final",
+        "start": 15.873,
+        "end": 17.277
+      }
+    ]
+  },
+  "evidence": {
+    "duration": 12.367,
+    "segs": [
+      {
+        "t": "Done! You're in BPC.",
+        "cue": "done",
+        "start": 0.0,
+        "end": 1.312
+      },
+      {
+        "t": "Take a screenshot that shows the connection.",
+        "cue": "snip",
+        "start": 2.125,
+        "end": 4.308
+      },
+      {
+        "t": "Windows + Shift + S makes it quick.",
+        "cue": "keys",
+        "start": 5.296,
+        "end": 8.094
+      },
+      {
+        "t": "Send it to HRSS to confirm your access.",
+        "cue": "send",
+        "start": 9.023,
+        "end": 12.367
+      }
+    ]
+  },
+  "outro": {
+    "duration": 8.07,
+    "segs": [
+      {
+        "t": "Course, access, Analysis, connections and Log On.",
+        "cue": "recap",
+        "start": 0.0,
+        "end": 3.622
+      },
+      {
+        "t": "If anything goes wrong along the way, reach out. Thank you!",
+        "cue": "thanks",
+        "start": 4.482,
+        "end": 8.07
+      }
+    ]
+  }
+}

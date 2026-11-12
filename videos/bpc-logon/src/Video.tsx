@@ -43,21 +43,21 @@ const TRANSITIONS = [
 // Subtítulos y momentos con voz en tiempo absoluto
 const ALL_SEGS = TIMELINE.flatMap((t) => t.segs.map((s) => ({ t: s.t, start: t.from + s.start, end: t.from + s.end })));
 
-const Music: React.FC = () => {
-  return (
-    <Audio
-      src={staticFile('sfx/music.wav')}
-      loop
-      volume={(f) => {
-        const speaking = ALL_SEGS.some((s) => f >= s.start - 8 && f <= s.end + 8);
-        const fadeIn = Math.min(1, f / 45);
-        const last = TIMELINE[TIMELINE.length - 1];
-        const fadeOut = Math.min(1, Math.max(0, (last.from + last.frames - f) / 60));
-        return (speaking ? 0.07 : 0.16) * fadeIn * fadeOut;
-      }}
-    />
-  );
+// Música: un solo nivel parejo debajo de toda la narración. Solo sube (suave) en la
+// entrada del logo y en la despedida. Sin "ducking" frase por frase y sin loop.
+const MUSIC_UNDER = 0.08, MUSIC_OPEN = 0.26;
+const smooth = (x: number) => { const c = Math.min(1, Math.max(0, x)); return c * c * (3 - 2 * c); };
+const FIRST_VOICE = TIMELINE[0].from + TIMELINE[0].cues.voiceStart;
+const LAST = TIMELINE[TIMELINE.length - 1];
+const LAST_VOICE = LAST.from + LAST.cues.voiceEnd;
+const END = LAST.from + LAST.frames;
+export const musicVolume = (f: number) => {
+  const down = smooth((f - (FIRST_VOICE - 50)) / 45);      // baja antes de la primera frase
+  const up = smooth((f - (LAST_VOICE + 6)) / 45);          // sube al terminar la última
+  const level = MUSIC_OPEN + (MUSIC_UNDER - MUSIC_OPEN) * down + (MUSIC_OPEN - MUSIC_UNDER) * up;
+  return level * smooth(f / 30) * smooth((END - f) / 75);  // entrada y salida
 };
+const Music: React.FC = () => <Audio src={staticFile('sfx/music.wav')} volume={musicVolume} />;
 
 export const Video: React.FC<VideoProps> = (props) => {
   const children: React.ReactNode[] = [];
@@ -78,11 +78,11 @@ export const Video: React.FC<VideoProps> = (props) => {
       <Background />
       <TransitionSeries>{children}</TransitionSeries>
       {/* Voz: fuera de las transiciones para que nunca se recorte */}
-      {TIMELINE.flatMap((t) => t.pieces.map((p, i) => (
-        <Sequence key={'v' + t.id + i} from={t.from + p.from} durationInFrames={p.trimAfter - p.trimBefore} layout="none">
-          <Audio src={staticFile(`voice/en/${t.id}.mp3`)} trimBefore={p.trimBefore} trimAfter={p.trimAfter} />
+      {TIMELINE.map((t) => (
+        <Sequence key={'v' + t.id} from={t.from + t.cues.voiceStart} layout="none">
+          <Audio src={staticFile(`voice/en-paced/${t.id}.mp3`)} />
         </Sequence>
-      )))}
+      ))}
       <Music />
       {props.captions && <Captions segs={ALL_SEGS} />}
     </AbsoluteFill>

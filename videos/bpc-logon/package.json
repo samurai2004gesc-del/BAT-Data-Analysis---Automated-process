@@ -10,7 +10,9 @@
     "sfx": "python3 scripts/sfx.py",
     "studio": "remotion studio",
     "render": "remotion render BpcLogon out/BPC-Logon-Setup.mp4",
-    "thumbnail": "remotion still BpcLogon out/thumbnail.png --frame=300"
+    "thumbnail": "remotion still BpcLogon out/thumbnail.png --frame=300",
+    "pace": "python3 scripts/pace.py",
+    "master": "python3 scripts/master.py"
   },
   "dependencies": {
     "@fontsource/jetbrains-mono": "5.2.8",

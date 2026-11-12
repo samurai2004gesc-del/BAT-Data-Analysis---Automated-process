@@ -88,53 +88,95 @@ b = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-tt * 2.2)
 shimmer = lowpass(rng.standard_normal(len(tt)), 7000) * np.exp(-tt * 1.5) * 0.25
 save('impact', b + shimmer - lowpass(shimmer, 2500))
 
-# ---------- Música de fondo: pad ambiental en loop (Cmaj9 - Am9 - Fmaj9 - G6/9) ----------
-BPM = 96
-beat = 60 / BPM
-bar = beat * 4
+# ---------- Música de fondo: pad ambiental continuo ----------
+# Se genera un ciclo de 40 s que es periódico por construcción (todo se escribe con
+# índice módulo N: colas de acordes, arpegio, reverb y filtro), se repite hasta cubrir
+# el video y se guarda como UNA pista larga: sin loop en el reproductor y sin costuras.
+# Los acordes se cruzan con fundidos de potencia constante y al final un nivelador
+# deja el volumen parejo (variación < 3 dB), para que no "respire" entre acordes.
+import subprocess, sys
+
+MUSIC_SECONDS = float(sys.argv[1]) if len(sys.argv) > 1 else 400.0
+D = 5.0            # segundos por acorde
+T = 2.6            # duración del fundido cruzado entre acordes
 chords = [
     [48, 55, 64, 71, 74],   # Cmaj9
     [45, 52, 60, 67, 71],   # Am9
     [41, 48, 57, 64, 67],   # Fmaj9
-    [43, 50, 59, 64, 69],   # G6/9
+    [43, 50, 59, 62, 69],   # G6/9
+    [40, 52, 59, 62, 67],   # Em7
+    [45, 52, 60, 64, 71],   # Am9
+    [38, 50, 57, 60, 65],   # Dm7
+    [43, 50, 57, 62, 67],   # Gsus4
 ]
-total = bar * 2 * len(chords) * 2  # 16 compases (~40 s)
-N = int(SR * total)
+N = int(SR * D * len(chords))
 L = np.zeros(N); R = np.zeros(N)
 mtof = lambda m: 440 * 2 ** ((m - 69) / 12)
-for rep in range(2):
-    for ci, ch in enumerate(chords):
-        start = (rep * len(chords) + ci) * bar * 2
-        n0 = int(SR * start); dur = bar * 2 + 0.6
-        tt = t(dur); n = min(len(tt), N - n0)
-        e = env(len(tt), 0.9, 1.2)
-        for j, m in enumerate(ch):
-            fr = mtof(m)
-            v = 0
-            for d in (-0.08, 0.0, 0.08):  # leve desafinación = pad ancho
-                v = v + np.sin(2 * np.pi * fr * (1 + d / 100) * tt + d * 3) + 0.25 * np.sin(2 * np.pi * 2 * fr * (1 + d / 100) * tt)
-            v *= e * (0.22 if j == 0 else 0.13)
-            pl = (j / (len(ch) - 1)) * 0.6 + 0.2
-            L[n0:n0 + n] += v[:n] * (1 - pl); R[n0:n0 + n] += v[:n] * pl
-        # Arpegio suave en corcheas
-        arp = ch[1:] + ch[2:4][::-1]
-        for k in range(16):
-            m = arp[k % len(arp)] + 12
-            st = start + k * beat / 2
-            a0 = int(SR * st); tn = t(0.9); nn = min(len(tn), N - a0)
-            if nn <= 0: continue
-            note = np.sin(2 * np.pi * mtof(m) * tn) * np.exp(-tn * 5) * 0.07
-            pl = 0.3 + 0.4 * ((k % 4) / 3)
-            L[a0:a0 + nn] += note[:nn] * (1 - pl); R[a0:a0 + nn] += note[:nn] * pl
-# Reverb sencilla (ecos atenuados) y suavizado
-for d, g in ((0.113, 0.35), (0.197, 0.28), (0.293, 0.2), (0.417, 0.14)):
+
+
+def add(buf, start, x):
+    """Suma x en buf empezando en start, dando la vuelta al final (periódico)."""
+    idx = (start + np.arange(len(x))) % N
+    np.add.at(buf, idx, x)
+
+
+for ci, ch in enumerate(chords):
+    n0 = int(SR * (ci * D - T / 2))
+    tt = t(D + T)
+    e = np.ones(len(tt))
+    k = int(SR * T)
+    ramp = np.sin(np.linspace(0, np.pi / 2, k))
+    e[:k] = ramp; e[-k:] = ramp[::-1]            # sin/cos: potencia constante en el cruce
+    for j, m in enumerate(ch):
+        fr = mtof(m)
+        v = np.zeros(len(tt))
+        for d in (-0.07, 0.0, 0.07):              # leve desafinación = pad ancho
+            ph = rng.uniform(0, 2 * np.pi)
+            v += np.sin(2 * np.pi * fr * (1 + d / 100) * tt + ph) + 0.22 * np.sin(2 * np.pi * 2 * fr * (1 + d / 100) * tt + ph)
+        v *= e * (1.5 if j == 0 else 1.0) / np.sqrt(len(ch))
+        pl = 0.2 + 0.6 * j / (len(ch) - 1)
+        add(L, n0, v * (1 - pl)); add(R, n0, v * pl)
+    # Arpegio muy suave en negras, con cola larga
+    arp = ch[1:] + ch[2:4][::-1]
+    step = D / 8
+    for q in range(8):
+        tn = t(1.8)
+        note = np.sin(2 * np.pi * mtof(arp[q % len(arp)] + 12) * tn) * np.exp(-tn * 2.6) * np.minimum(1, tn / 0.012) * 0.16
+        pl = 0.35 + 0.3 * ((q % 4) / 3)
+        a0 = int(SR * (ci * D + q * step))
+        add(L, a0, note * (1 - pl)); add(R, a0, note * pl)
+
+# Reverb circular y filtro pasa-bajos en frecuencia (ambos periódicos)
+L0, R0 = L.copy(), R.copy()
+for d, g in ((0.113, 0.33), (0.197, 0.26), (0.293, 0.19), (0.417, 0.13), (0.631, 0.08)):
     k = int(SR * d)
-    L[k:] += R[:-k] * g; R[k:] += L[:-k] * g
-L = lowpass(L, 4200); R = lowpass(R, 4200)
-# Fundido cruzado para que el loop no tenga salto
-xf = int(SR * 2.0)
-fade = np.linspace(0, 1, xf)
-L[:xf] = L[:xf] * fade + L[-xf:] * (1 - fade); R[:xf] = R[:xf] * fade + R[-xf:] * (1 - fade)
-L = L[:-xf]; R = R[:-xf]
-save('music', None, np.stack([L, R], axis=1))
+    L += np.roll(R0, k) * g; R += np.roll(L0, k) * g
+freqs = np.fft.rfftfreq(N, 1 / SR)
+Hf = 1 / np.sqrt(1 + (freqs / 3800) ** 4)
+L = np.fft.irfft(np.fft.rfft(L) * Hf, N); R = np.fft.irfft(np.fft.rfft(R) * Hf, N)
+
+# Nivelador: volumen parejo en todo el ciclo
+w = int(SR * 1.2)
+kern = np.hanning(w); kern /= kern.sum()
+p = (L ** 2 + R ** 2) / 2
+pp = np.concatenate([p[-w:], p, p[:w]])
+rms = np.sqrt(np.convolve(pp, kern, mode='same')[w:-w])
+gain = np.clip(np.median(rms) / rms, 0.5, 2.0)
+L *= gain; R *= gain
+
+reps = int(np.ceil(MUSIC_SECONDS * SR / N))
+Lf = np.tile(L, reps)[: int(MUSIC_SECONDS * SR)]; Rf = np.tile(R, reps)[: int(MUSIC_SECONDS * SR)]
+fi = int(SR * 1.5)
+Lf[:fi] *= np.linspace(0, 1, fi) ** 2; Rf[:fi] *= np.linspace(0, 1, fi) ** 2
+st = np.stack([Lf, Rf], axis=1)
+target = 10 ** (-18 / 20)                         # RMS de -18 dBFS
+st *= target / np.sqrt(np.mean(st ** 2))
+st = np.clip(st, -0.98, 0.98)
+with wave.open(os.path.join(OUT, 'music.wav'), 'wb') as wv:
+    wv.setnchannels(2); wv.setsampwidth(2); wv.setframerate(SR); wv.writeframes((st * 32767).astype(np.int16).tobytes())
+
+# Comprobación: variación del nivel en ventanas de 0.4 s
+m = st.mean(1); win = int(SR * 0.4)
+lv = np.array([20 * np.log10(np.sqrt(np.mean(m[i:i + win] ** 2)) + 1e-9) for i in range(int(SR * 2), len(m) - win, win)])
+print('música: %.0f s, nivel %.1f dB, variación %.1f dB (ventanas de 0.4 s), pico %.2f' % (len(m) / SR, lv.mean(), lv.max() - lv.min(), np.abs(st).max()))
 print('OK', sorted(os.listdir(OUT)))

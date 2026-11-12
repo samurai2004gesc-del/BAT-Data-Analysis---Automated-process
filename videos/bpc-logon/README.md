@@ -23,8 +23,14 @@ npm run studio
 ```bash
 npm run render
 ```
+```bash
+npm run master
+```
 - `src/script.ts`: guion por escena. Cada segmento tiene el texto de subtítulos (`t`), la pronunciación (`say`) y un `cue` con el que se sincronizan las animaciones.
 - `scripts/voice.mjs`: genera la voz con timestamps (`src/voice/en.json`, `public/voice/en/*.mp3`). Solo vuelve a llamar a la API si cambió el texto. Necesita la variable `ELEVENLABS_API_KEY` (en Node ≥ 22.21 detrás de proxy: `NODE_USE_ENV_PROXY=1`).
+- `scripts/pace.py`: da el ritmo pausado. Busca el silencio real entre frases en la onda y solo ahí inserta la pausa (corte a nivel de muestra con microfundidos); si la frase sigue de corrido no la toca. Genera `public/voice/en-paced/*.mp3` y `src/voice/en.paced.json`, que es lo que usa el video. Hay que correrlo después de `npm run voice`.
+- `scripts/sfx.py`: efectos y música. La música es una sola pista continua (sin loop) con acordes cruzados a potencia constante y nivelada (variación < 3 dB).
+- `scripts/master.py`: después del render sube el volumen a -16 LUFS con una ganancia fija (no usar `loudnorm` de una pasada: sube y baja la música) y recomprime.
 - `scripts/crops.py`: recorta las capturas de las guías PDF (páginas rasterizadas a 2×) y difumina fotos/OneIDs. Las pantallas con datos personales (IDLookup, formulario de solicitud, User Details, certificado, ruta con OneID) están **recreadas con datos ficticios** (`src/components/Mock.tsx`).
 - `public/shots/` y el logo no se suben al repositorio (material interno). Para regenerarlos:
   `pdftoppm -scale-to-x 2912 -scale-to-y -1 -png <guía>.pdf <prefijo>` (2666 para SAP Access Request) y `npm run crops`.
