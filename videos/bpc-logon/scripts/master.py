@@ -17,7 +17,8 @@ gain = TARGET_I - I
 # Si la ganancia fija pasa del pico permitido, un limitador transparente recorta solo los picos
 af = f'volume={gain:.2f}dB'
 if TP + gain > MAX_TP:
-    af += f',alimiter=limit={10 ** (MAX_TP / 20):.3f}:attack=5:release=80:level=false'
+    # 1.5 dB extra de margen: el códec AAC sube un poco los picos reales
+    af += f',alimiter=limit={10 ** ((MAX_TP - 1.5) / 20):.3f}:attack=5:release=80:level=false'
 print(f'medido: {I:.1f} LUFS, pico {TP:.1f} dBTP -> ganancia fija {gain:+.2f} dB' + (' + limitador de picos' if 'alimiter' in af else ''))
 subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', src, '-c:v', 'libx264', '-preset', 'slow', '-crf', '23', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-af', af, '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', dst], check=True)
 m2 = measure(dst)
