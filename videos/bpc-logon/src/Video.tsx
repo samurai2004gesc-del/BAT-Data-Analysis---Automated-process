@@ -6,7 +6,7 @@ import { slide } from '@remotion/transitions/slide';
 import { wipe } from '@remotion/transitions/wipe';
 import { Background } from './components/Background';
 import { Captions } from './components/ui';
-import { OVERLAP, SceneCtx, TIMELINE, voiceOffset } from './timing';
+import { OVERLAP, SceneCtx, TIMELINE } from './timing';
 import { SceneId } from './script';
 import * as S from './scenes/Scenes';
 import { loadFonts } from './theme';
@@ -78,11 +78,11 @@ export const Video: React.FC<VideoProps> = (props) => {
       <Background />
       <TransitionSeries>{children}</TransitionSeries>
       {/* Voz: fuera de las transiciones para que nunca se recorte */}
-      {TIMELINE.map((t) => (
-        <Sequence key={'v' + t.id} from={t.from + voiceOffset(t.id)} layout="none">
-          <Audio src={staticFile(`voice/en/${t.id}.mp3`)} />
+      {TIMELINE.flatMap((t) => t.pieces.map((p, i) => (
+        <Sequence key={'v' + t.id + i} from={t.from + p.from} durationInFrames={p.trimAfter - p.trimBefore} layout="none">
+          <Audio src={staticFile(`voice/en/${t.id}.mp3`)} trimBefore={p.trimBefore} trimAfter={p.trimAfter} />
         </Sequence>
-      ))}
+      )))}
       <Music />
       {props.captions && <Captions segs={ALL_SEGS} />}
     </AbsoluteFill>

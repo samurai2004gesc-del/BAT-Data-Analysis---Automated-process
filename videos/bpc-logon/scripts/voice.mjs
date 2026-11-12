@@ -14,7 +14,7 @@ const MODEL = 'eleven_multilingual_v2';
 const langs = process.argv[2] ? [process.argv[2]] : ['en'];
 const only = process.argv.slice(3);
 
-const settings = { stability: 0.5, similarity_boost: 0.8, style: 0.15, use_speaker_boost: true, speed: 1.0 };
+const settings = { stability: 0.5, similarity_boost: 0.8, style: 0.15, use_speaker_boost: true, speed: 0.9 };
 
 async function tts(lang, text, prev, next) {
   const url = `https://api.elevenlabs.io/v1/text-to-speech/${VOICES[lang].id}/with-timestamps?output_format=mp3_44100_128`;
