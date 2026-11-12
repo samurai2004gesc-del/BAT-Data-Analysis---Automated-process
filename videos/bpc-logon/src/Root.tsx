@@ -5,7 +5,7 @@ import { TOTAL } from './timing';
 import { FPS, H, W } from './theme';
 
 // Cambia "contact" por tu nombre o correo para que aparezca en la escena final.
-const defaults: VideoProps = { contact: 'HRSS Team', captions: true };
+const defaults: VideoProps = { contact: 'HRSS Team - samuel_gonzalez_external@bat.com', captions: true };
 
 export const Root: React.FC = () => (
   <>
