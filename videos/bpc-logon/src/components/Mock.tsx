@@ -143,17 +143,17 @@ export const UserDetails: React.FC<{ company: number; fn: number }> = ({ company
 
 /** Lista de roles por mercado (de la guía de SAP Access Request). */
 export const ROLES: [string, string, string][] = [
-  ['MX', 'Mexico', 'ZBPC_HDCT_HR_BP_MA_C00MMX_W'],
-  ['CO', 'Colombia', 'ZBPC_HDCT_HR_BP_MA_C00MCO_W'],
-  ['VE', 'Venezuela', 'ZBPC_HDCT_HR_BP_MA_C00MVE_W'],
-  ['TT', 'Trinidad & Tobago', 'ZBPC_HDCT_HR_BP_MA_C00MTT_W'],
-  ['JM', 'Jamaica', 'ZBPC_HDCT_HR_BP_MA_C00MJM_W'],
-  ['GY', 'Guyana', 'ZBPC_HDCT_HR_BP_MA_C00MGY_W'],
-  ['PA', 'Panama', 'ZBPC_HDCT_HR_BP_MA_C00MPA_W'],
-  ['GT', 'Guatemala', 'ZBPC_HDCT_HR_BP_MA_C00MGT_W'],
-  ['HN', 'Honduras', 'ZBPC_HDCT_HR_BP_MA_C00MHN_W'],
-  ['CR', 'Costa Rica', 'ZBPC_HDCT_HR_BP_MA_C00MCR_W'],
-  ['NI', 'Nicaragua', 'ZBPC_HDCT_HR_BP_MA_C00MNI_W'],
+  ['🇲🇽', 'Mexico', 'ZBPC_HDCT_HR_BP_MA_C00MMX_W'],
+  ['🇨🇴', 'Colombia', 'ZBPC_HDCT_HR_BP_MA_C00MCO_W'],
+  ['🇻🇪', 'Venezuela', 'ZBPC_HDCT_HR_BP_MA_C00MVE_W'],
+  ['🇹🇹', 'Trinidad & Tobago', 'ZBPC_HDCT_HR_BP_MA_C00MTT_W'],
+  ['🇯🇲', 'Jamaica', 'ZBPC_HDCT_HR_BP_MA_C00MJM_W'],
+  ['🇬🇾', 'Guyana', 'ZBPC_HDCT_HR_BP_MA_C00MGY_W'],
+  ['🇵🇦', 'Panama', 'ZBPC_HDCT_HR_BP_MA_C00MPA_W'],
+  ['🇬🇹', 'Guatemala', 'ZBPC_HDCT_HR_BP_MA_C00MGT_W'],
+  ['🇭🇳', 'Honduras', 'ZBPC_HDCT_HR_BP_MA_C00MHN_W'],
+  ['🇨🇷', 'Costa Rica', 'ZBPC_HDCT_HR_BP_MA_C00MCR_W'],
+  ['🇳🇮', 'Nicaragua', 'ZBPC_HDCT_HR_BP_MA_C00MNI_W'],
 ];
 const Chev: React.FC = () => <ChevronDown size={20} color="#5b6b7d" style={{ marginLeft: 'auto' }} />;
 
@@ -163,12 +163,12 @@ export const RolesGrid: React.FC<{ at: number }> = ({ at }) => {
   const sel = Math.floor(Math.max(0, f - at - 40) / 9) % ROLES.length;
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 28px', width: 1500, margin: '0 auto' }}>
-      {ROLES.map(([code, name, role], i) => {
+      {ROLES.map(([flag, name, role], i) => {
         const p = spring({ frame: f - at - i * 3, fps, config: { damping: 15 } });
         const on = f > at + 40 && i === sel;
         return (
           <div key={role} style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '12px 20px', borderRadius: 14, background: on ? 'rgba(0,177,235,0.22)' : 'rgba(255,255,255,0.07)', border: `2px solid ${on ? C.cyan : 'rgba(255,255,255,0.12)'}`, opacity: p, transform: `translateY(${(1 - p) * 30}px) scale(${on ? 1.03 : 1})` }}>
-            <span style={{ width: 54, height: 38, borderRadius: 8, display: 'grid', placeItems: 'center', background: on ? C.cyan : 'rgba(255,255,255,0.14)', fontFamily: FONT, fontWeight: 800, fontSize: 18, color: on ? C.navy : '#fff', letterSpacing: 1 }}>{code}</span>
+            <span style={{ fontSize: 38 }}>{flag}</span>
             <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: 24, color: '#fff', width: 240 }}>{name}</span>
             <span style={{ fontFamily: MONO, fontSize: 23, color: on ? '#fff' : C.sky }}>{role}</span>
           </div>
