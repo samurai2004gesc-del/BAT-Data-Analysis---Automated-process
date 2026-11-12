@@ -223,7 +223,7 @@ export const Request: React.FC = () => {
         <Center><Shot name="acc_arc" maxW={1100} maxH={560} title="NEO · My Profile" focus={[{ at: 4, box: sb('acc_arc', 143, 260, 282, 279), click: true, label: 'Access Request Creation', labelSide: 'right', zoom: 1.6 }]} /></Center>
       </Panel>
       <Panel from={fo} to={fi}>
-        <Center><RequestForm desc={0} fields={99999} area={99999} /></Center>
+        <Center><RequestForm desc={0} fields={99999} area={199999} /></Center>
       </Panel>
       <Panel from={fi} to={s.frames}>
         <div style={{ position: 'absolute', left: 140, top: TOP + 40 }}>
@@ -375,14 +375,14 @@ export const Install: React.FC = () => {
           <Pop at={34} from="right"><div style={{ display: 'flex', gap: 20, marginTop: 24 }}><Chip text="64-bit" /><Chip text="32-bit" color={C.yellow} /></div></Pop>
         </div>
       </Panel>
-      <Panel from={ab} to={ab + 48}>
+      <Panel from={ab} to={ab + 36}>
         <Center><Shot name="an_file" maxW={1500} maxH={420} title="Excel" focus={[{ at: 4, box: sb('an_file', 44, 322, 102, 354), click: true, label: 'File', labelSide: 'right', zoom: 1.8 }]} /></Center>
       </Panel>
-      <Panel from={ab + 48} to={rs}>
+      <Panel from={ab + 36} to={rs}>
         <Center><Shot name="an_about" maxW={1300} maxH={700} title="Excel · Account" focus={[
           { at: 4, box: sb('an_about', 138, 668, 202, 692), click: true, label: 'Account', labelSide: 'right', zoom: 1.6 },
-          { at: 26, box: sb('an_about', 692, 574, 762, 642), click: true, label: 'About Excel', labelSide: 'left', zoom: 1.6 },
-          { at: 56, box: sb('an_about', 255, 246, 700, 272), label: '… 64-bit', labelSide: 'bottom', zoom: 1.5 },
+          { at: 20, box: sb('an_about', 692, 574, 762, 642), click: true, label: 'About Excel', labelSide: 'left', zoom: 1.6 },
+          { at: 44, box: sb('an_about', 255, 246, 700, 272), label: '… 64-bit', labelSide: 'bottom', zoom: 1.5 },
         ]} /></Center>
       </Panel>
       <Panel from={rs} to={s.frames} kind="zoom">
