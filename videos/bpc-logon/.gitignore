@@ -1,0 +1,7 @@
+node_modules/
+out/
+# Capturas de las guías internas, logo y voz: se regeneran (ver README); no se suben al repo
+public/shots/
+public/bat-logo-*.png
+# Se regeneran con: npm run sfx
+public/sfx/

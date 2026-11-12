@@ -1,0 +1,32 @@
+{
+  "name": "bpc-logon-video",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Video: cómo hacer Logon a SAP BPC (para Line Managers)",
+  "scripts": {
+    "crops": "python3 -I scripts/crops.py <carpeta-con-paginas-png> public/shots",
+    "voice": "node --experimental-strip-types --no-warnings scripts/voice.mjs en",
+    "sfx": "python3 scripts/sfx.py",
+    "studio": "remotion studio",
+    "render": "remotion render BpcLogon out/BPC-Logon-Setup.mp4",
+    "thumbnail": "remotion still BpcLogon out/thumbnail.png --frame=300"
+  },
+  "dependencies": {
+    "@fontsource/jetbrains-mono": "5.2.8",
+    "@fontsource/montserrat": "5.2.8",
+    "@remotion/bundler": "4.0.543",
+    "@remotion/cli": "4.0.543",
+    "@remotion/fonts": "4.0.543",
+    "@remotion/media-utils": "4.0.543",
+    "@remotion/renderer": "4.0.543",
+    "@remotion/transitions": "4.0.543",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.543"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.2",
+    "typescript": "5.9.3"
+  }
+}
