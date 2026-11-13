@@ -232,3 +232,35 @@ export const DownloadCard: React.FC<{ at: number }> = ({ at }) => {
     </div>
   );
 };
+
+/** Códigos de entidad por mercado (guía "HR Input Report"). */
+const ENTITIES: { title: string; items: [string, string, string?][] }[] = [
+  { title: 'COMMERCIAL', items: [['🇲🇽', 'MXC00L'], ['🇨🇴', 'COC00L'], ['🇻🇪', 'C00MVE'], ['🇹🇹', 'TTC00L'], ['🇯🇲', 'C00MJM'], ['🇵🇦', 'CTC03L_PA13'], ['🇭🇳', 'HNC00L'], ['🇨🇷', 'C00MCR'], ['🇬🇾', 'C00MGY']] },
+  { title: 'OPERATIONS', items: [['🇲🇽', 'MXO02L'], ['🇹🇹', 'TTO02L'], ['🇭🇳', 'HNO02L', 'TAHSA'], ['🇭🇳', 'CTC03L_HN13', 'TISA']] },
+];
+export const EntityGrid: React.FC<{ at: number }> = ({ at }) => {
+  const f = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  let k = 0;
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', gap: 60 }}>
+      {ENTITIES.map((col, ci) => (
+        <div key={col.title} style={{ width: ci === 0 ? 900 : 460 }}>
+          <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 24, letterSpacing: 4, color: C.cyan, marginBottom: 16 }}>{col.title}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: ci === 0 ? '1fr 1fr' : '1fr', gap: '12px 20px' }}>
+            {col.items.map(([flag, code, note]) => {
+              const p = spring({ frame: f - at - (k++) * 3, fps, config: { damping: 15 } });
+              return (
+                <div key={code} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 18px', borderRadius: 14, background: 'rgba(255,255,255,0.07)', border: '2px solid rgba(255,255,255,0.12)', opacity: p, transform: `translateY(${(1 - p) * 30}px)` }}>
+                  <span style={{ fontSize: 36 }}>{flag}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 30, color: '#fff' }}>{code}</span>
+                  {note && <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: 20, color: C.sky }}>({note})</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};

@@ -209,6 +209,62 @@
   "h": 830,
   "scale": 2
  },
+ "hr_open": {
+  "ox": 60,
+  "oy": 270,
+  "w": 2440,
+  "h": 800,
+  "scale": 2
+ },
+ "hr_tracker": {
+  "ox": 105,
+  "oy": 120,
+  "w": 1570,
+  "h": 1100,
+  "scale": 2
+ },
+ "hr_enable": {
+  "ox": 105,
+  "oy": 225,
+  "w": 2020,
+  "h": 920,
+  "scale": 2
+ },
+ "hr_select": {
+  "ox": 105,
+  "oy": 355,
+  "w": 1914,
+  "h": 590,
+  "scale": 2
+ },
+ "hr_view": {
+  "ox": 60,
+  "oy": 150,
+  "w": 2430,
+  "h": 1010,
+  "scale": 2
+ },
+ "sf_home_menu": {
+  "ox": 60,
+  "oy": 0,
+  "w": 940,
+  "h": 470,
+  "scale": 1
+ },
+ "sf_learning": {
+  "ox": 0,
+  "oy": 70,
+  "w": 960,
+  "h": 410,
+  "scale": 1
+ },
+ "sf_course_bpc": {
+  "ox": 20,
+  "oy": 80,
+  "w": 1873,
+  "h": 390,
+  "scale": 1
+ },
  "epm_logon_dialog": {
   "ox": 0,
   "oy": 0,

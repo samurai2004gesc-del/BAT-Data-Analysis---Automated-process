@@ -76,49 +76,43 @@
     ]
   },
   "course": {
-    "duration": 27.149,
+    "duration": 27.392,
     "segs": [
       {
         "t": "Step one: the course.",
         "cue": null,
         "start": 0.0,
-        "end": 1.881
+        "end": 1.8
       },
       {
-        "t": "Go to SuccessFactors and click View My Learning.",
-        "cue": "quick",
-        "start": 2.81,
-        "end": 5.829
+        "t": "In SuccessFactors, open the Home menu and choose Training Catalogue.",
+        "cue": "menu",
+        "start": 2.787,
+        "end": 6.793
       },
       {
-        "t": "Search for BPC HR Online Learning and open the course.",
+        "t": "In Search for Learning, type Business Planning Consolidation.",
         "cue": "search",
-        "start": 6.689,
-        "end": 10.892
+        "start": 7.722,
+        "end": 10.985
       },
       {
-        "t": "It has four modules and can take up to three hours.",
+        "t": "Open the course Solid Training – Global – Human Resources – Business Planning Consolidation (BPC).",
         "cue": "course",
-        "start": 11.879,
-        "end": 15.014
+        "start": 11.972,
+        "end": 18.718
       },
       {
-        "t": "Modules one and four end with a quiz you need to pass.",
-        "cue": "quiz",
-        "start": 16.002,
-        "end": 19.113
+        "t": "Click Start Course. It's an online course of about one hour.",
+        "cue": "start",
+        "start": 19.891,
+        "end": 24.013
       },
       {
-        "t": "When you finish module four, take a screenshot of your certificate",
-        "cue": "cert",
-        "start": 20.101,
-        "end": 23.642
-      },
-      {
-        "t": "and send it to the HRSS team.",
-        "cue": "send",
-        "start": 24.27,
-        "end": 27.149
+        "t": "Complete it before you request access.",
+        "cue": "done",
+        "start": 24.873,
+        "end": 27.392
       }
     ]
   },
@@ -463,31 +457,31 @@
     ]
   },
   "evidence": {
-    "duration": 12.367,
+    "duration": 18.125,
     "segs": [
       {
-        "t": "Done! You're in BPC.",
+        "t": "That's it! You're in BPC.",
         "cue": "done",
         "start": 0.0,
-        "end": 1.312
+        "end": 2.403
       },
       {
-        "t": "Take a screenshot that shows the connection.",
+        "t": "Take a screenshot of the HR Input view, with the EPM Context bar visible at the top.",
         "cue": "snip",
-        "start": 2.125,
-        "end": 4.308
+        "start": 3.368,
+        "end": 9.335
       },
       {
         "t": "Windows + Shift + S makes it quick.",
         "cue": "keys",
-        "start": 5.296,
-        "end": 8.094
+        "start": 10.485,
+        "end": 13.086
       },
       {
         "t": "Send it to HRSS to confirm your access.",
         "cue": "send",
-        "start": 9.023,
-        "end": 12.367
+        "start": 14.236,
+        "end": 18.125
       }
     ]
   },
@@ -505,6 +499,76 @@
         "cue": "thanks",
         "start": 4.482,
         "end": 8.07
+      }
+    ]
+  },
+  "hrinput": {
+    "duration": 21.469,
+    "segs": [
+      {
+        "t": "Now confirm your access by opening the HR Input report.",
+        "cue": "intro",
+        "start": 0.0,
+        "end": 3.646
+      },
+      {
+        "t": "In the EPM tab, click Open, then Open Server Input Form Folder.",
+        "cue": "open",
+        "start": 4.889,
+        "end": 9.765
+      },
+      {
+        "t": "Select 1. Headcount Tracker and click Open.",
+        "cue": "tracker",
+        "start": 10.671,
+        "end": 14.235
+      },
+      {
+        "t": "If Excel shows a security warning, click Enable Content. Without it, BPC won't work.",
+        "cue": "enable",
+        "start": 15.142,
+        "end": 21.47
+      }
+    ]
+  },
+  "selections": {
+    "duration": 19.74,
+    "segs": [
+      {
+        "t": "Now fill in the selections.",
+        "cue": "fields",
+        "start": 0.0,
+        "end": 1.428
+      },
+      {
+        "t": "Category: BHI.",
+        "cue": "cat",
+        "start": 2.253,
+        "end": 4.053
+      },
+      {
+        "t": "Entity: your market code, from this list.",
+        "cue": "entity",
+        "start": 4.076,
+        "end": 7.129
+      },
+      {
+        "t": "Function: POS_TOTAL.",
+        "cue": "fn",
+        "start": 8.349,
+        "end": 11.124
+      },
+      {
+        "t": "Cost Centre Function group: All Functions.",
+        "cue": "ccfg",
+        "start": 12.065,
+        "end": 15.339
+      },
+      {
+        "t": "Then click Select, and your HR Input opens.",
+        "cue": "select",
+        "start": 16.129,
+        "end": 19.74
       }
     ]
   }

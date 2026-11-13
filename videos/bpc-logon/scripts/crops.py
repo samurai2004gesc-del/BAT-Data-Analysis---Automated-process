@@ -38,6 +38,18 @@ C = {
   'epm_analysis':  ('epm-2.png', (605, 188, 1225, 730), [(1148, 255, 1178, 282)]),
   'epm_epm':       ('epm-3.png', (538, 205, 1170, 755), [(1086, 272, 1116, 300)]),
   'epm_ribbon':    ('epm-4.png', (35, 200, 1436, 615), []),
+  # Guía "HR Input Report" (diapositivas de 1333 px de ancho, rasterizadas a 2x)
+  'hr_open':       ('hr-2.png', (60, 270, 1280, 670), []),
+  'hr_tracker':    ('hr-3.png', (105, 120, 890, 670), []),
+  'hr_enable':     ('hr-4.png', (105, 225, 1115, 685), []),
+  'hr_select':     ('hr-5.png', (105, 355, 1062, 650), []),
+  'hr_view':       ('hr-7.png', (60, 150, 1275, 655), []),
+}
+# Capturas nuevas de SuccessFactors (tamaño real, escala 1)
+C1 = {
+  'sf_home_menu':  ('sfnew-8.png', (60, 0, 1000, 470), []),
+  'sf_learning':   ('sfnew-6.png', (0, 70, 960, 480), []),
+  'sf_course_bpc': ('sfnew-7.png', (20, 80, 1893, 470), []),
 }
 manifest = {}
 for name, (f, box, blurs) in C.items():
@@ -57,5 +69,11 @@ for name, (f, box, blurs) in C.items():
     manifest[name] = {'ox': box[0], 'oy': box[1], 'w': crop.size[0], 'h': crop.size[1], 'scale': 2}
     print(name, crop.size)
 import json
+for name, (f, box, blurs) in C1.items():
+    im = Image.open(os.path.join(RAW, f)).convert('RGB')
+    crop = im.crop(box)
+    crop.save(os.path.join(OUT, name + '.png'), optimize=True)
+    manifest[name] = {'ox': box[0], 'oy': box[1], 'w': crop.size[0], 'h': crop.size[1], 'scale': 1}
+    print(name, crop.size)
 manifest['epm_logon_dialog'] = {'ox': 0, 'oy': 0, 'w': 1600, 'h': 541, 'scale': 1}
 with open(os.path.join(os.path.dirname(__file__), '..', 'src', 'shots.json'), 'w') as f: json.dump(manifest, f, indent=1)

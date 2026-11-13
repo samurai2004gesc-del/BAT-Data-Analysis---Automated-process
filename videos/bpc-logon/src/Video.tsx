@@ -28,6 +28,8 @@ const view = (id: SceneId, p: VideoProps): React.ReactNode => {
     case 'connections': return <S.Connections />;
     case 'launch': return <S.Launch />;
     case 'logon': return <S.Logon />;
+    case 'hrinput': return <S.HrInput />;
+    case 'selections': return <S.Selections />;
     case 'evidence': return <S.Evidence contact={p.contact} />;
     case 'outro': return <S.Outro />;
   }

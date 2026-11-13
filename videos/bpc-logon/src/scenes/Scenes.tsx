@@ -4,7 +4,7 @@ import { C, FONT, MONO } from '../theme';
 import { useCue, useScene } from '../timing';
 import { Shot, sb, Sfx } from '../components/Shot';
 import { Big, CheckBurst, Chip, Confetti, Keycap, Logo, Panel, Pop, ProgressRail, StepHeader, STEPS } from '../components/ui';
-import { Certificate, DownloadCard, IdLookup, PathBar, RequestForm, RolesGrid, UserDetails } from '../components/Mock';
+import { DownloadCard, EntityGrid, IdLookup, PathBar, RequestForm, RolesGrid, UserDetails } from '../components/Mock';
 import { BookOpen, Camera, CircleCheck, ClipboardPaste, Clock, FolderCog, GraduationCap, Hash, KeyRound, LogIn, Mail, MonitorDown, Send, Target, Trash2, TriangleAlert, UserCheck, X } from 'lucide-react';
 
 const clamp = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
@@ -59,7 +59,7 @@ export const Intro: React.FC = () => {
       </div>
       <div style={{ position: 'absolute', top: 760, width: '100%', display: 'flex', justifyContent: 'center', gap: 30 }}>
         <Pop at={ask + 4} from="scale" sound><Chip icon={Target} text="Your goal" color={C.yellow} /></Pop>
-        <Pop at={shot} from="scale" sound><Chip icon={Camera} text="1 screenshot of your BPC log on" color={C.green} /></Pop>
+        <Pop at={shot} from="scale" sound><Chip icon={Camera} text="1 screenshot of your HR Input" color={C.green} /></Pop>
       </div>
     </AbsoluteFill>
   );
@@ -71,7 +71,7 @@ const NODES = [
   { x: 640, y: 560, icon: KeyRound, label: 'SAP access', sub: 'NEO request' },
   { x: 1000, y: 650, icon: MonitorDown, label: 'Analysis app', sub: 'Company Portal' },
   { x: 1340, y: 430, icon: FolderCog, label: 'Connections', sub: 'EPMOfficeClient' },
-  { x: 1660, y: 290, icon: LogIn, label: 'Log On', sub: 'EPM · P52 HCT' },
+  { x: 1660, y: 290, icon: LogIn, label: 'Log On', sub: 'EPM · HR Input' },
 ];
 export const Roadmap: React.FC = () => {
   const f = useCurrentFrame();
@@ -120,52 +120,42 @@ export const Roadmap: React.FC = () => {
 export const Course: React.FC = () => {
   const c = useCue();
   const s = useScene();
-  const q = c('quick'), se = c('search'), co = c('course'), ce = c('cert');
+  const me = c('menu'), se = c('search'), co = c('course'), st = c('start'), dn = c('done');
   return (
     <Step n={1} title="Complete the BPC course" sub="SuccessFactors">
       <Panel from={0} to={se}>
-        <Center><Shot name="sf_quick" maxW={1650} title="SuccessFactors" focus={[{ at: q, box: sb('sf_quick', 640, 512, 750, 582), click: true, label: 'View My Learning', labelSide: 'top', zoom: 2.1 }]} /></Center>
-      </Panel>
-      <Panel from={se} to={co}>
-        <Center><Shot name="sf_search" maxH={720} title="SuccessFactors · Learning" focus={[
-          { at: 8, box: sb('sf_search', 130, 262, 566, 294), type: 'BPC HR Online Learning', label: 'Search the course', labelSide: 'bottom' },
-          { at: Math.min(80, co - se - 30), box: sb('sf_search', 138, 552, 335, 592), click: true, label: 'BPC HR Online Learning', labelSide: 'right' },
+        <Center><Shot name="sf_home_menu" maxW={1300} maxH={650} title="SuccessFactors" focus={[
+          { at: me, box: sb('sf_home_menu', 186, 6, 250, 32), click: true, label: 'Home menu', labelSide: 'right', zoom: 1.6 },
+          { at: me + 40, box: sb('sf_home_menu', 194, 390, 332, 414), click: true, label: 'Training Catalogue', labelSide: 'right', zoom: 1.6 },
         ]} /></Center>
       </Panel>
-      <Panel from={co} to={ce}>
-        <div style={{ position: 'absolute', left: 90, top: TOP + 90 }}>
-          <Shot name="sf_course" maxW={1050} maxH={420} title="BPC HR Online Learning" focus={[{ at: 10, box: sb('sf_course', 618, 136, 713, 167), click: true, label: 'Start / Continue Course', labelSide: 'bottom', zoom: 1.6 }]} />
+      <Panel from={se} to={co}>
+        <Center><Shot name="sf_learning" maxW={1400} maxH={600} title="SuccessFactors · Learning" focus={[
+          { at: 8, box: sb('sf_learning', 37, 139, 573, 176), type: 'Business Planning Consolidation', label: 'Search for Learning', labelSide: 'bottom', zoom: 1.5 },
+        ]} /></Center>
+      </Panel>
+      <Panel from={co} to={dn}>
+        <div style={{ position: 'absolute', left: 0, right: 0, top: TOP + 40, display: 'flex', justifyContent: 'center' }}>
+          <Shot name="sf_course_bpc" maxW={1700} maxH={420} title="Training Catalogue" focus={[
+            { at: 6, box: sb('sf_course_bpc', 40, 133, 906, 213), label: 'Solid Training – Global – Human Resources – BPC', labelSide: 'bottom', zoom: 1.3 },
+            { at: st - co, box: sb('sf_course_bpc', 1460, 153, 1566, 193), click: true, label: 'Start Course', labelSide: 'bottom', zoom: 2 },
+          ]} />
         </div>
-        <div style={{ position: 'absolute', left: 1260, top: TOP + 110, display: 'flex', flexDirection: 'column', gap: 26 }}>
-          <Pop at={6} from="right" sound><Chip icon={BookOpen} text="4 modules" /></Pop>
-          <Pop at={26} from="right" sound><Chip icon={Clock} text="Up to 3 hours" color={C.yellow} /></Pop>
-          <Pop at={c('quiz') - co} from="right" sound><Chip icon={CircleCheck} text="Quiz: modules 1 & 4" color={C.green} /></Pop>
+        <div style={{ position: 'absolute', left: 0, right: 0, top: TOP + 560, display: 'flex', justifyContent: 'center', gap: 30 }}>
+          <Pop at={st - co + 20} from="up" sound><Chip icon={BookOpen} text="Online course" /></Pop>
+          <Pop at={st - co + 34} from="up" sound><Chip icon={Clock} text="About 1 hour" color={C.yellow} /></Pop>
         </div>
       </Panel>
-      <Panel from={ce} to={s.frames} kind="zoom">
-        <CertShot sendAt={c('send') - ce} />
+      <Panel from={dn} to={s.frames} kind="zoom">
+        <Center>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 50 }}>
+            <CheckBurst at={4} size={170} />
+            <Pop at={8} from="right"><Big size={64}>Complete it <span style={{ color: C.cyan }}>before</span><br />requesting access</Big></Pop>
+          </div>
+        </Center>
+        <Sfx at={4} src="success" volume={0.3} />
       </Panel>
     </Step>
-  );
-};
-const CertShot: React.FC<{ sendAt: number }> = ({ sendAt }) => {
-  const f = useCurrentFrame();
-  const flash = interpolate(f, [18, 20, 30], [0, 1, 0], clamp);
-  const frame = interpolate(f, [8, 18], [0, 1], clamp);
-  return (
-    <>
-      <Center>
-        <div style={{ position: 'relative', transform: `rotate(${-2 + frame * 2}deg)` }}>
-          <Pop at={0} from="scale"><Certificate /></Pop>
-          <div style={{ position: 'absolute', inset: -24 * frame, border: `4px dashed rgba(255,255,255,${frame})`, borderRadius: 20 }} />
-        </div>
-        <div style={{ marginLeft: 70 }}>
-          <Pop at={sendAt} from="right" sound><Chip icon={Mail} text="Send it to HRSS" color={C.green} size={36} /></Pop>
-        </div>
-      </Center>
-      <AbsoluteFill style={{ background: '#fff', opacity: flash * 0.8 }} />
-      <Sfx at={18} src="shutter" volume={0.5} />
-    </>
   );
 };
 
@@ -535,6 +525,70 @@ export const Logon: React.FC = () => {
   );
 };
 
+// ===================================================================== STEP 5c: OPEN HR INPUT
+export const HrInput: React.FC = () => {
+  const c = useCue();
+  const s = useScene();
+  const op = c('open'), tr = c('tracker'), en = c('enable');
+  return (
+    <Step n={5} title="Open the HR Input report" sub="Confirm your access">
+      <Panel from={0} to={tr}>
+        <Center><Shot name="hr_open" maxW={1650} maxH={640} title="Excel · EPM" focus={[
+          { at: op, box: sb('hr_open', 834, 324, 872, 348), click: true, label: 'EPM', labelSide: 'bottom', zoom: 1.8 },
+          { at: op + 30, box: sb('hr_open', 136, 356, 218, 382), click: true, label: 'Open', labelSide: 'right', zoom: 1.8 },
+          { at: op + 60, box: sb('hr_open', 170, 476, 364, 501), click: true, label: 'Open Server Input Form Folder', labelSide: 'right', zoom: 1.8 },
+        ]} /></Center>
+      </Panel>
+      <Panel from={tr} to={en}>
+        <Center><Shot name="hr_tracker" maxW={1100} maxH={700} title="Open" focus={[
+          { at: 6, box: sb('hr_tracker', 382, 286, 582, 312), click: true, label: '1. Headcount Tracker.xltm', labelSide: 'right', zoom: 1.5 },
+          { at: 44, box: sb('hr_tracker', 660, 623, 762, 661), click: true, label: 'Open', labelSide: 'left', zoom: 1.5 },
+        ]} /></Center>
+      </Panel>
+      <Panel from={en} to={s.frames}>
+        <div style={{ position: 'absolute', left: 0, right: 0, top: TOP + 10, display: 'flex', justifyContent: 'center' }}>
+          <Shot name="hr_enable" maxW={1500} maxH={600} title="Excel · Headcount Tracker" focus={[
+            { at: 6, box: sb('hr_enable', 498, 429, 587, 458), click: true, label: 'Enable Content', labelSide: 'left', zoom: 1.6 },
+          ]} />
+        </div>
+        <div style={{ position: 'absolute', left: 0, right: 0, top: TOP + 690, display: 'flex', justifyContent: 'center' }}>
+          <Pop at={40} from="up" sound><Chip icon={TriangleAlert} text="Required, or BPC won't work" color={C.orange} /></Pop>
+        </div>
+      </Panel>
+    </Step>
+  );
+};
+
+// ===================================================================== STEP 5d: SELECTIONS
+export const Selections: React.FC = () => {
+  const c = useCue();
+  const s = useScene();
+  const ca = c('cat'), ent = c('entity'), fn = c('fn'), cc = c('ccfg'), sel = c('select');
+  return (
+    <Step n={5} title="Fill in the selections" sub="HR Input">
+      <Panel from={0} to={ent}>
+        <Center><Shot name="hr_select" maxW={1600} maxH={560} title="BAT Budgeting & Financial Forecasting (HR Input)" focus={[
+          { at: 6, box: sb('hr_select', 180, 470, 984, 582), label: 'Selections', labelSide: 'top', zoom: 1.1 },
+          { at: ca, box: sb('hr_select', 448, 489, 686, 515), label: 'Category: BHI', labelSide: 'right', zoom: 1.6 },
+        ]} /></Center>
+      </Panel>
+      <Panel from={ent} to={fn}>
+        <div style={{ position: 'absolute', top: TOP + 10, width: '100%', textAlign: 'center' }}>
+          <Pop at={0}><Big size={40}>Entity: your <span style={{ color: C.cyan }}>market code</span></Big></Pop>
+        </div>
+        <div style={{ position: 'absolute', top: TOP + 100, width: '100%' }}><EntityGrid at={6} /></div>
+      </Panel>
+      <Panel from={fn} to={s.frames}>
+        <Center><Shot name="hr_select" maxW={1600} maxH={560} title="BAT Budgeting & Financial Forecasting (HR Input)" focus={[
+          { at: 6, box: sb('hr_select', 448, 533, 686, 559), label: 'Function: POS_TOTAL', labelSide: 'right', zoom: 1.6 },
+          { at: cc - fn, box: sb('hr_select', 448, 555, 686, 581), label: 'All Functions', labelSide: 'right', zoom: 1.6 },
+          { at: sel - fn, box: sb('hr_select', 821, 592, 986, 631), click: true, label: 'Select', labelSide: 'left', zoom: 1.6 },
+        ]} /></Center>
+      </Panel>
+    </Step>
+  );
+};
+
 // ===================================================================== EVIDENCE
 export const Evidence: React.FC<{ contact: string }> = ({ contact }) => {
   const c = useCue();
@@ -556,7 +610,7 @@ export const Evidence: React.FC<{ contact: string }> = ({ contact }) => {
       </Panel>
       <Panel from={sn} to={se}>
         <SnipFrame keysAt={ke - sn} />
-        <div style={{ position: 'absolute', left: 0, right: 0, top: 760, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 26 }}>
+        <div style={{ position: 'absolute', left: 0, right: 0, top: 770, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 26 }}>
           {['Win', 'Shift', 'S'].map((k, i) => (
             <React.Fragment key={k}>
               {i > 0 && <span style={{ fontFamily: FONT, fontSize: 60, color: '#fff', fontWeight: 800 }}>+</span>}
@@ -579,8 +633,8 @@ const SnipFrame: React.FC<{ keysAt: number }> = ({ keysAt }) => {
     <>
       <div style={{ position: 'absolute', left: 0, right: 0, top: 120, display: 'flex', justifyContent: 'center' }}>
         <div style={{ position: 'relative' }}>
-          <Shot name="epm_logon_dialog" maxW={1300} maxH={460} tilt={0.3} />
-          <div style={{ position: 'absolute', left: 10, top: 34, width: 1300 * sel, height: 440 * sel, border: '4px dashed #fff', background: 'rgba(0,177,235,0.12)', boxShadow: sel > 0 ? '0 0 0 4000px rgba(0,0,0,0.35)' : 'none' }} />
+          <Shot name="hr_view" maxW={1300} maxH={540} tilt={0.3} title="HR Input view" focus={[{ at: 6, box: sb('hr_view', 60, 150, 1186, 220), label: 'Keep the EPM Context bar visible', labelSide: 'bottom', zoom: 1, spot: false }]} />
+          <div style={{ position: 'absolute', left: 10, top: 34, width: 1300 * sel, height: 540 * sel, border: '4px dashed #fff', background: 'rgba(0,177,235,0.12)', boxShadow: sel > 0 ? '0 0 0 4000px rgba(0,0,0,0.35)' : 'none' }} />
         </div>
       </div>
       <AbsoluteFill style={{ background: '#fff', opacity: flash * 0.85 }} />

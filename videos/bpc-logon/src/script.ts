@@ -8,11 +8,11 @@ export type Seg = { t: string; say?: string; cue?: string };
 export type Lang = 'en';
 export type SceneId =
   | 'intro' | 'roadmap' | 'course' | 'check' | 'request' | 'sysrole'
-  | 'details' | 'install' | 'connections' | 'launch' | 'logon' | 'evidence' | 'outro';
+  | 'details' | 'install' | 'connections' | 'launch' | 'logon' | 'hrinput' | 'selections' | 'evidence' | 'outro';
 
 export const SCENES: SceneId[] = [
   'intro', 'roadmap', 'course', 'check', 'request', 'sysrole', 'details',
-  'install', 'connections', 'launch', 'logon', 'evidence', 'outro',
+  'install', 'connections', 'launch', 'logon', 'hrinput', 'selections', 'evidence', 'outro',
 ];
 
 export const SCRIPT: Record<Lang, Record<SceneId, Seg[]>> = {
@@ -34,12 +34,11 @@ export const SCRIPT: Record<Lang, Record<SceneId, Seg[]>> = {
     ],
     course: [
       { t: 'Step one: the course.' },
-      { t: 'Go to SuccessFactors and click View My Learning.', cue: 'quick' },
-      { t: 'Search for BPC HR Online Learning and open the course.', cue: 'search' },
-      { t: 'It has four modules and can take up to three hours.', cue: 'course' },
-      { t: 'Modules one and four end with a quiz you need to pass.', cue: 'quiz' },
-      { t: 'When you finish module four, take a screenshot of your certificate', cue: 'cert' },
-      { t: 'and send it to the HRSS team.', cue: 'send' },
+      { t: 'In SuccessFactors, open the Home menu and choose Training Catalogue.', cue: 'menu' },
+      { t: 'In Search for Learning, type Business Planning Consolidation.', cue: 'search' },
+      { t: 'Open the course Solid Training – Global – Human Resources – Business Planning Consolidation (BPC).', say: 'Open the course: Solid Training, Global, Human Resources, Business Planning Consolidation.', cue: 'course' },
+      { t: "Click Start Course. It's an online course of about one hour.", cue: 'start' },
+      { t: 'Complete it before you request access.', cue: 'done' },
     ],
     check: [
       { t: 'Step two: SAP access.' },
@@ -107,9 +106,23 @@ export const SCRIPT: Record<Lang, Record<SceneId, Seg[]>> = {
       { t: 'set it as default and click OK.', cue: 'default' },
       { t: 'And now: Log On.', cue: 'final' },
     ],
+    hrinput: [
+      { t: 'Now confirm your access by opening the HR Input report.', cue: 'intro' },
+      { t: 'In the EPM tab, click Open, then Open Server Input Form Folder.', cue: 'open' },
+      { t: 'Select 1. Headcount Tracker and click Open.', say: 'Select: one, Headcount Tracker, and click Open.', cue: 'tracker' },
+      { t: "If Excel shows a security warning, click Enable Content. Without it, BPC won't work.", cue: 'enable' },
+    ],
+    selections: [
+      { t: 'Now fill in the selections.', cue: 'fields' },
+      { t: 'Category: BHI.', say: 'Category: B H I.', cue: 'cat' },
+      { t: 'Entity: your market code, from this list.', cue: 'entity' },
+      { t: 'Function: POS_TOTAL.', say: 'Function: P O S, total.', cue: 'fn' },
+      { t: 'Cost Centre Function group: All Functions.', cue: 'ccfg' },
+      { t: 'Then click Select, and your HR Input opens.', cue: 'select' },
+    ],
     evidence: [
-      { t: "Done! You're in BPC.", cue: 'done' },
-      { t: 'Take a screenshot that shows the connection.', cue: 'snip' },
+      { t: "That's it! You're in BPC.", cue: 'done' },
+      { t: 'Take a screenshot of the HR Input view, with the EPM Context bar visible at the top.', cue: 'snip' },
       { t: 'Windows + Shift + S makes it quick.', say: 'Windows, Shift, S, makes it quick.', cue: 'keys' },
       { t: 'Send it to HRSS to confirm your access.', cue: 'send' },
     ],
