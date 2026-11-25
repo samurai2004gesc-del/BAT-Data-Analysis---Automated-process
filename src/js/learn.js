@@ -145,21 +145,33 @@
     const K = { date: Core.stamp(), directory: [], providers: {}, exRates: [], sources: { retrieved: 0, supplier: 0, historico: 0 } };
     // Directorio: lo más reciente por persona
     const dir = {};
-    const put = (name, hrbp, func, ceco, order, source) => {
+    const put = (name, hrbp, func, ceco, order, source, ids) => {
       if (!name) return;
       const k = norm(name);
       const cur = dir[k];
-      if (!cur || order >= cur.order) dir[k] = { name, hrbp: hrbp || (cur && cur.hrbp) || '', func: func || (cur && cur.func) || '', ceco: ceco || (cur && cur.ceco) || '', order, source };
-      else { if (!cur.hrbp && hrbp) cur.hrbp = hrbp; if (!cur.func && func) cur.func = func; if (!cur.ceco && ceco) cur.ceco = ceco; }
+      const idl = Array.from(new Set((ids || []).concat(cur && cur.ids ? cur.ids : [])));
+      if (!cur || order >= cur.order) dir[k] = { name, hrbp: hrbp || (cur && cur.hrbp) || '', func: func || (cur && cur.func) || '', ceco: ceco || (cur && cur.ceco) || '', order, source, ids: idl };
+      else { if (!cur.hrbp && hrbp) cur.hrbp = hrbp; if (!cur.func && func) cur.func = func; if (!cur.ceco && ceco) cur.ceco = ceco; cur.ids = idl; }
     };
     const hist = [];
     records.forEach((r) => {
       if (r.type === 'consolidado' && r.data && r.data.hist) { K.sources.historico += r.data.hist.length; r.data.hist.forEach((h) => { hist.push(h); put(h.name, '', h.func, h.ceco, (h.year || 0) * 100 + (h.mes || 0), 'Histórico'); }); }
     });
+    // Sent (lo que se mandó) y Retrieved (lo que confirmaron los HRBPs; pesa más en el mismo mes)
+    const worked = [];
     records.forEach((r) => {
-      if (r.type === 'retrieved' && r.data) { K.sources.retrieved++; r.data.rows.forEach((x) => put(x.name, x.hrbp, x.func, x.ceco, (r.ctx.year || 2026) * 100 + (r.ctx.month || 0) + 0.5, 'Retrieved ' + (r.ctx.month ? Core.MESES[r.ctx.month - 1] : ''))); }
+      if ((r.type === 'retrieved' || r.type === 'sent') && r.data && r.data.rows) {
+        if (r.type === 'retrieved') K.sources.retrieved++;
+        const order = (r.ctx.year || 2026) * 100 + (r.ctx.month || 0) + (r.type === 'retrieved' ? 0.5 : 0.25);
+        r.data.rows.forEach((x) => {
+          put(x.name, x.hrbp, x.func, x.ceco, order, (r.type === 'retrieved' ? 'Retrieved ' : 'Sent ') + (r.ctx.month ? Core.MESES[r.ctx.month - 1] : ''), x.ids);
+          worked.push({ name: x.name, hrbp: x.hrbp, func: x.func, order });
+        });
+      }
     });
     K.directory = Object.values(dir).sort((a, b) => a.name.localeCompare(b.name));
+    // Tabla Función → HRBP (mayoría por función en los archivos ya trabajados)
+    K.functions = RC.learnFunctionHrbp(worked, records.flatMap((r) => (r.data && r.data.fnPairs) || []));
     // Tipos de cambio registrados
     const rates = {};
     hist.forEach((h) => { if (h.exRate > 0 && h.mes) { const k = h.tipo + '|' + h.year + '|' + Math.round(h.mes); (rates[k] = rates[k] || []).push(h.exRate); } });
@@ -222,7 +234,7 @@
   }
   /** Directorio aprendido en el formato que usa la Reclasificación. */
   function directoryRecords(K) {
-    return (K && K.directory ? K.directory : []).map((p, i) => ({ name: p.name, hrbp: p.hrbp, func: p.func, ceco: p.ceco, order: p.order, seq: i, source: 'Aprendido (' + p.source + ')' }));
+    return (K && K.directory ? K.directory : []).map((p, i) => ({ kind: 'people', name: p.name, ids: p.ids || [], hrbp: p.hrbp, func: p.func, ceco: p.ceco, order: p.order, seq: i, source: 'Aprendido (' + p.source + ')' }));
   }
   function rateFor(K, provider, year, month) {
     if (!K || !K.exRates) return null;
@@ -232,7 +244,7 @@
   /** Combina lo aprendido antes con lo nuevo: no se pierde nada si después se analiza un Bulk más pequeño. */
   function merge(oldK, newK) {
     if (!oldK) return newK;
-    const out = { date: newK.date, sources: newK.sources, directory: [], providers: Object.assign({}, oldK.providers || {}), exRates: [] };
+    const out = { date: newK.date, sources: newK.sources, directory: [], providers: Object.assign({}, oldK.providers || {}), exRates: [], functions: Object.assign({}, oldK.functions || {}, newK.functions || {}) };
     const dir = {};
     (oldK.directory || []).concat(newK.directory || []).forEach((d) => {
       const k = norm(d.name), cur = dir[k];

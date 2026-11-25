@@ -101,8 +101,8 @@
 
   // ---------- Nombres y nomenclatura ----------
   const PARTICLES = new Set(['de', 'del', 'la', 'las', 'los', 'y', 'van', 'von', 'da', 'dos', 'das', 'di']);
-  /** "Balboa Ramirez Marco Antonio" -> {apellido:"Balboa", inicial:"M"}  (formato Apellidos Nombre).
-   *  order = 'nombre-apellido' para nombres tipo "Jose Nicolas Rivolta". */
+  /** "Perez Lopez Juan Carlos" -> {apellido:"Perez", inicial:"J"}  (formato Apellidos Nombre).
+   *  order = 'nombre-apellido' para nombres tipo "Juan Carlos Perez". */
   function nameParts(full, order) {
     const t = str(full).split(/\s+/).filter(Boolean);
     if (!t.length) return { apellido: '', inicial: '', nombres: '' };
@@ -167,7 +167,7 @@
     const v = (k) => !isBlank(m[k]) && !/^(n\/?a|na|no|-|pendiente|pending|aprobaci)/.test(norm(m[k]));
     const st = norm(m.estatus);
     if (st === 'cancelado' || st === 'rechazado') return '—';
-    if (v('fbl')) return '✔ Terminado';
+    if (v('fbl')) return 'Terminado';
     if (norm(m.acc) === 'si' && !v('accid')) return 'Crear y cargar Accrual (mismo día)';
     if (!v('rid')) return 'Crear y cargar Webi';
     if (!v('po')) return 'Seguir aprobaciones (RRB PO Dashboard)';
@@ -177,7 +177,7 @@
   }
   function nextStepFormula(r) {
     const L = (k) => Core.colLetter(colIdx(k)) + r;
-    return 'IF(OR(' + L('estatus') + '="Cancelado",' + L('estatus') + '="Rechazado"),"—",IF(' + L('fbl') + '<>"","✔ Terminado",IF(AND(' + L('acc') + '="Sí",' + L('accid') + '=""),"Crear y cargar Accrual (mismo día)",' +
+    return 'IF(OR(' + L('estatus') + '="Cancelado",' + L('estatus') + '="Rechazado"),"—",IF(' + L('fbl') + '<>"","Terminado",IF(AND(' + L('acc') + '="Sí",' + L('accid') + '=""),"Crear y cargar Accrual (mismo día)",' +
       'IF(' + L('rid') + '="","Crear y cargar Webi",IF(' + L('po') + '="","Seguir aprobaciones (RRB PO Dashboard)",IF(AND(' + L('jvu') + '="",' + L('accid') + '=""),"Generar y cargar JVU (mismo día)",' +
       'IF(AND(' + L('jvu') + '<>"",' + L('batch') + '=""),"Esperar BATCH ID","Validar en FBL5N")))))))';
   }
@@ -342,7 +342,7 @@
       ['SAP NEO · Aprobadores', 'Requisition to Pay › Portal Form Initiator › RRB PO Recharges Dashboard › Form Number › Approver List'],
       ['SAP · PO', 'ME23N › Other Purchase Order (descontar Mark Up si aplica)'],
       ['SAP NEO · JVU', 'Request Journal Mass Upload · Function = Finance · Subfunction = FICO (FI - CORA) · Exception = 16'],
-      ['SAP NEO · Accrual', 'Request Journal Mass Upload · Intercompany Accrual ✓ · Partner Entity User ID = OneID del Coder · Exception = 05'],
+      ['SAP NEO · Accrual', 'Request Journal Mass Upload · marcar Intercompany Accrual · Partner Entity User ID = OneID del Coder · Exception = 05'],
       ['SAP NEO · Seguimiento JVU/Accrual', 'Dashboard For Finance Forms (Start/End Date, Company Code, User)'],
       ['SAP · Validación contable', 'FBL5N · Customer Account = IC Code del End Market · Company Code · All Items · Posting Date ±1 semana'],
       ['Roles del Coder (bat-sapRoles-P03)', 'ZMX10EPPR2PC_LINE_MGR_APPRVR · ZMX10ERRRVAC_FINANCE_ALL_DI · ZMX10EPPR2PC_EMPLOYEE'],

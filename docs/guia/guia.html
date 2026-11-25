@@ -107,7 +107,7 @@
 
   <div class="box tip">
     <div class="label">Respaldo</div>
-    Al terminar, pulsa <b>💾 Exportar configuración</b> y guarda el .json en el USB. Si cambias de laptop o se borra el navegador, lo recuperas con <b>Importar configuración</b> (incluye equivalencias de HC y lo aprendido de Bulk).
+    Al terminar, pulsa <b>Exportar configuración</b> y guarda el .json en el USB. Si cambias de laptop o se borra el navegador, lo recuperas con <b>Importar configuración</b> (incluye equivalencias de HC y lo aprendido de Bulk).
   </div>
 
   <figure class="shot"><img src="{{img:config}}"><figcaption>Configuración: carpeta Tracker, correos y lo aprendido.</figcaption></figure>
@@ -123,7 +123,7 @@
     <tr><td><b>Revisar el HC de un mercado</b><br><span class="small">Headcount</span></td><td>HR Input Report de BPC + el archivo maestro del mercado (el .xlsm con el HC aprobado)</td><td>Reporte de variaciones SOP / COPLAN por grado, función y entidad + correo al HRBP</td></tr>
     <tr><td><b>Armar el Tracker del semestre</b><br><span class="small">Recobros → Tracker</span></td><td>Lista de asignaciones (Listado Recharges) + Tracker anterior (opcional)</td><td>Tracker H1/H2 con Note Title, Note Text, mes a marcar y “Siguiente paso”</td></tr>
     <tr><td><b>Sacar Webi / SC / JVU / Accrual</b><br><span class="small">Recobros → Formatos SAP</span></td><td>Estimate Benefits (con el KEY puesto) — o usa la macro para todos los KEY</td><td>Excel + TXT tabulados, sin filas vacías, con nombre y carpeta correctos</td></tr>
-    <tr><td><b>Reclasificar el cargo de K2 / EY / Deloitte / SIRVA</b><br><span class="small">Costos de movilidad</span></td><td>Archivo del proveedor, ConsolidadoCharges, All CeCos, Retrieved, export de KSB1</td><td>Sent to HRBPs, validación MX15, Reclasificación por CeCo, filas para el Histórico, correos, checklist</td></tr>
+    <tr><td><b>Reclasificar el cargo de K2 / EY / Deloitte / SIRVA</b><br><span class="small">Costos de movilidad</span></td><td>Archivo del proveedor, MAE, Sent / Retrieved anteriores, All CeCos, export de KSB1 (el ConsolidadoCharges es opcional)</td><td>Sent to HRBPs, validación MX15, Reclasificación por CeCo, filas para el Histórico, correos, checklist</td></tr>
     <tr><td><b>Ver todo el año</b><br><span class="small">Archivo anual → Bulk</span></td><td>La carpeta <code>2026</code> completa (o “Escanear mi carpeta”)</td><td>Consolidado anual con alertas y gráfica; la app aprende para Reclasificación</td></tr>
     <tr><td><b>Hacer un Power BI</b><br><span class="small">Reportes → Power BI</span></td><td>Lo que ya analizaste o cualquier Excel</td><td>Proyecto .pbip listo para abrir en Power BI Desktop</td></tr>
   </table>
@@ -168,7 +168,7 @@
     <li><b>HR Input Report:</b> arrastra el archivo de BPC.</li>
     <li><b>HC Aprobado:</b> arrastra el maestro del mercado. Si trae las hojas <i>For Filters</i> y <i>Entidades</i>, las equivalencias se cargan solas.</li>
     <li><b>Equivalencias:</b> solo corrige lo que salga en amarillo (función o entidad sin pareja). Se guardan para la próxima vez.</li>
-    <li>Pulsa <b>▶ Generar comparación</b>, revisa las <b>Alertas</b> y descarga el reporte. En “Enviar al HRBP” baja el borrador de correo.</li>
+    <li>Pulsa <b>Generar comparación</b>, revisa las <b>Alertas</b> y descarga el reporte. En “Enviar al HRBP” baja el borrador de correo.</li>
   </ol>
   <div class="box tip"><div class="label">Varios mercados</div>Cuando ya configuraste cada mercado una vez, usa la pestaña <b>“Varios mercados a la vez”</b>: arrastra todos los HR Input y maestros juntos y sale un reporte consolidado, con los cambios contra la corrida anterior.</div>
   <figure class="shot"><img src="{{img:hc}}"><figcaption>Headcount: los pasos 1 a 4 en la misma pantalla.</figcaption></figure>
@@ -216,12 +216,12 @@
   <ol class="steps">
     <li>En Estimate Benefits pon el KEY en <code>Consolidado(#)!A2</code>, el tipo en <code>IDX!B14</code> y <b>guarda</b>.</li>
     <li>Arrástralo a <b>Formatos SAP</b> (puedes soltar varias copias, una por KEY). Llena Host Country si la app lo pide.</li>
-    <li>Revisa el cuadre de montos y pulsa <b>⬇ Descargar</b> (o se guarda directo en tu carpeta).</li>
+    <li>Revisa el cuadre de montos y pulsa <b>Descargar</b> (o se guarda directo en tu carpeta).</li>
   </ol>
 
   <h2>Opción B · Todos los KEY de una vez (macro)</h2>
   <ol class="steps">
-    <li>En <b>Formatos SAP</b> pulsa <b>⬇ Descargar macro (.bas)</b>.</li>
+    <li>En <b>Formatos SAP</b> pulsa <b>Descargar macro (.bas)</b>.</li>
     <li>Abre Estimate Benefits → <b>Alt + F11</b> → <span class="menu">Archivo → Importar archivo…</span> → elige <code>HRSS_FormatosSAP.bas</code>. Solo la primera vez.</li>
     <li>Cierra el editor → <b>Alt + F8</b> → <b>GenerarFormatosSAP</b> → Ejecutar.</li>
     <li>Escribe <code>TODOS</code> o los KEY (<code>1-5, 8, 12</code>), los formatos (<code>1</code> SC+Webi, <code>2</code> JVU, <code>3</code> Accrual) y la carpeta destino (p. ej. <code>Recharges\H2'26</code>).</li>
@@ -244,21 +244,33 @@
 
   <table>
     <tr><th style="width:24%">Archivo</th><th>De dónde lo saco</th></tr>
-    <tr><td><b>Archivo del proveedor</b><br><code>K2 MX15.xlsx</code></td><td>Adjunto del correo de Global (“K2 costs - Non-PO billing MX15…”). Guárdalo en <code>Tracker\Suppliers\06. Junio\K2</code> y guarda también el correo como <b>.msg</b>.</td></tr>
-    <tr><td><b>Histórico</b><br><code>ConsolidadoCharges_SIRVA-K2_2026.xlsx</code></td><td>En la raíz de <code>Tracker</code>. La app usa la hoja “Histórico K2”.</td></tr>
+    <tr><td><b>Archivo del proveedor</b><br><code>Deloitte MX15.xlsx</code> / <code>K2 MX15.xlsx</code></td><td>Adjunto del correo de Global (“K2 costs - Non-PO billing MX15…”). Guárdalo en <code>Tracker\Suppliers\11. Noviembre\Deloitte</code> y guarda también el correo como <b>.msg</b>.</td></tr>
+    <tr><td><b>MAE</b><br><code>dd.mm.aaaa_Sin.xlsx</code></td><td>Reporte de personal de SAP HR. Da el <b>Ceco Oficial</b> (columna Ce.coste) y la unidad organizativa de cada persona. Se busca primero por número de empleado y luego por nombre. De cada persona solo se toman nombre, número, CeCo, unidad y posición; RFC, CURP, cuentas y NSS no se guardan.</td></tr>
+    <tr><td><b>Sent / Retrieved anteriores</b></td><td>Los archivos que ya corregiste o que te regresaron los HRBPs. De ahí salen la <b>función</b>, el <b>CeCo</b> de cada persona y la tabla <b>Función → HRBP</b> (por ejemplo, la hoja con las columnas Homefunction y HRBP). Puedes soltar varios.</td></tr>
+    <tr><td><b>Histórico</b> (opcional)<br><code>ConsolidadoCharges_SIRVA-K2_2026.xlsx</code></td><td>En la raíz de <code>Tracker</code>. La app usa la hoja “Histórico K2”: CeCos de cargos anteriores. Su columna Area2 solo se usa si no hay otro dato de función.</td></tr>
     <tr><td><b>All CeCos - Approvers</b></td><td>En la raíz de <code>Tracker</code>. Es pesado: la primera vez tarda ~10 s y después la app lo recuerda.</td></tr>
-    <tr><td><b>Retrieved From HRBPs</b></td><td>El Excel que te regresan los HRBPs con los CeCos confirmados. Los de meses pasados sirven como directorio.</td></tr>
     <tr><td><b>Export de KSB1</b><br><code>mm-dd-aaaa EXPORT.XLSX</code></td><td>SAP NEO → transacción <b>KSB1</b> → área de control <code>BAT1</code> → Cost Center <code>MXCB7B0016</code>, Posting Date = rango del periodo, Layout <code>/OVERHEADS_</code> → <b>F8</b> → <span class="menu">More → Spreadsheet</span>. Guárdalo en <code>Tracker\Reportes SAP 2026 K2</code> con la fecha de descarga.</td></tr>
   </table>
 
+  <h2>Cómo llena cada columna</h2>
+  <table>
+    <tr><th style="width:24%">Columna</th><th>De dónde sale (en este orden)</th></tr>
+    <tr><td><b>Home Function</b></td><td>Lo que ya trae el archivo → el Sent / Retrieved anterior de esa persona → sugerida por la MAE (unidad organizativa) → descripción del CeCo. Siempre como código: HR, IDT, LEX, CORA, FIN, EXEC, OPS, MKT Office, MKT Field, DBS.</td></tr>
+    <tr><td><b>HRBP</b></td><td>Según la función, con la tabla <b>Función → HRBP</b> (se ve y se corrige en “Funciones y HRBP”). En el Excel es una fórmula contra la hoja “HRBP por funcion”: si cambias la función, cambia el HRBP.</td></tr>
+    <tr><td><b>CeCo</b></td><td>El del archivo → el del historial (Sent / Retrieved / Histórico) → el de la MAE, marcado “Confirmar CeCo”.</td></tr>
+    <tr><td><b>Ceco Oficial</b></td><td>El que tiene la persona en la MAE, como referencia. Si la persona no está en la MAE, queda vacío.</td></tr>
+  </table>
+  <p>Para reconocer a una persona, la app compara apellidos y nombres por separado: “Apellido, Nombre” debe coincidir en al menos un apellido <b>y</b> un nombre. Así no confunde a dos personas que solo comparten nombres de pila. Tolera una letra de más o de menos (“Carrillo” = “Carillo”), pero no letras cambiadas (“Maria” ≠ “Mario”).</p>
+
   <h2>Las 4 pestañas</h2>
   <ol class="steps">
-    <li><b>A · Preparar envío a HRBPs:</b> arrastra el archivo del proveedor, el Histórico y (recomendado) All CeCos y Retrieved anteriores. La app llena HRBP, Home Function y CeCo. Descarga <code>Sent to HRBPs - MX15 K2.xlsx</code> y el borrador de correo.</li>
+    <li><b>A · Preparar envío a HRBPs:</b> arrastra el archivo del proveedor, la MAE y los Sent / Retrieved anteriores (y, si quieres, el Histórico y All CeCos). Revisa la vista previa: pasa el cursor sobre Home Function, HRBP o CeCo para ver de dónde salió cada dato. Descarga <code>Sent to HRBPs - MX15 Deloitte.xlsx</code> y el borrador de correo.</li>
     <li><b>B · Validar respuesta:</b> arrastra el <i>Retrieved From HRBPs</i>. Cada CeCo se valida contra All CeCos: debe ser <b>MX15</b>. Si alguno no, baja el correo para pedir la corrección.</li>
     <li><b>C · Reclasificación:</b> arrastra el export de KSB1 y marca el cargo del proveedor del periodo. La app calcula el tipo de cambio (MXN ÷ GBP), te dice si cuadra y genera <code>Reclasificacion por CeCo.xlsx</code>, las filas para pegar en el Histórico y el correo para Planning.</li>
     <li><b>D · Checklist:</b> arrastra los archivos de la carpeta del mes y ve cuál de los 6 documentos de evidencia falta.</li>
   </ol>
-  <div class="box tip"><div class="label">Si ya corriste Bulk</div>La app ya conoce a las personas (HRBP / función / CeCo), cómo registras a cada proveedor en el Histórico y el tipo de cambio de meses anteriores. Lo verás como <b>“🧠 Apliqué lo aprendido”</b>; si una regla no aplica ese mes, desmarca la casilla “usar esta regla”.</div>
+  <div class="box warn"><div class="label">Qué queda en amarillo</div>Solo lo que hay que confirmar con el HRBP: CeCo tomado de la MAE o sin dato, función o HRBP faltante y CeCos de otra sociedad. Cada celda amarilla lleva una nota con el motivo. Las sugerencias de función de la MAE y las coincidencias por nombre parecido se avisan solo en la app (columna “Por confirmar”). El archivo sale ordenado por HRBP, periodo y nombre, sin filas de leyenda.</div>
+  <div class="box tip"><div class="label">Si ya corriste Bulk</div>La app ya conoce a las personas (función / CeCo), la tabla Función → HRBP, cómo registras a cada proveedor en el Histórico y el tipo de cambio de meses anteriores. Lo verás como <b>“Apliqué lo aprendido en Bulk”</b>; si una regla no aplica ese mes, desmarca la casilla “usar esta regla”.</div>
   <figure class="shot"><img src="{{img:reclass}}"><figcaption>Reclasificación: proveedor y mes arriba, pestañas A–D.</figcaption></figure>
 </section>
 
@@ -268,19 +280,20 @@
   <h1>Bulk: todo el año (y lo que la app aprende)</h1>
   <p class="lead">Mete cientos de archivos mezclados. La app reconoce cada uno por su nombre, carpeta y contenido.</p>
   <div class="io">
-    <div class="in"><div class="label">Pones</div><ul><li>La carpeta <code>2026</code> completa (Recharges, Suppliers, Reportes SAP, Trackers, correos .msg…)</li><li>Tres formas: <b>🔎 Escanear mi carpeta</b> (usa la carpeta de Configuración), <b>📁 Elegir una carpeta</b> o arrastrar</li></ul></div>
+    <div class="in"><div class="label">Pones</div><ul><li>La carpeta <code>2026</code> completa (Recharges, Suppliers, Reportes SAP, Trackers, correos .msg…)</li><li>Tres formas: <b>Escanear mi carpeta</b> (usa la carpeta de Configuración), <b>Elegir una carpeta</b> o arrastrar</li></ul></div>
     <div class="out"><div class="label">Te da</div><ul><li>Consolidado anual en Excel con gráfica de cargos por mes</li><li>Alertas: lo que falta o no cuadra</li><li><b>Lo que aprendí</b>, que después usa Reclasificación</li></ul></div>
   </div>
   <h2>En la app</h2>
   <ol class="steps">
     <li>Elige el año y agrega los archivos.</li>
-    <li>Pulsa <b>▶ Analizar archivos</b>. Con ~800 archivos tarda unos minutos; puedes detenerlo.</li>
-    <li>Revisa las alertas y pulsa <b>⬇ Descargar consolidado anual</b>.</li>
+    <li>Pulsa <b>Analizar archivos</b>. Con ~800 archivos tarda unos minutos; puedes detenerlo.</li>
+    <li>Revisa las alertas y pulsa <b>Descargar consolidado anual</b>.</li>
   </ol>
   <h2>Qué aprende</h2>
   <table>
     <tr><th style="width:32%">Aprende</th><th>Para qué lo usa</th></tr>
-    <tr><td>Directorio de personas</td><td>Llenar HRBP, Home Function y CeCo en la pestaña A de Reclasificación, aunque la persona no esté en el Histórico.</td></tr>
+    <tr><td>Directorio de personas</td><td>Llenar Home Function y CeCo en la pestaña A de Reclasificación, aunque la persona no esté en el Histórico.</td></tr>
+    <tr><td>HRBP por función</td><td>La tabla Función → HRBP de Reclasificación (de la hoja Homefunction / HRBP de los Sent, o de lo que más se repite).</td></tr>
     <tr><td>Regla de cada proveedor</td><td>Cómo pasas el archivo del proveedor al Histórico: qué columna es el monto, si una línea se divide en dos o se suman columnas, y qué texto va en “Servicio”.</td></tr>
     <tr><td>Tipos de cambio</td><td>Referencia del tipo de cambio de meses anteriores por proveedor.</td></tr>
   </table>
@@ -300,7 +313,7 @@
   </div>
   <ol class="steps">
     <li>Elige la fuente, revisa la vista previa de las páginas y ponle nombre.</li>
-    <li>Pulsa <b>⬇ Generar proyecto Power BI</b>.</li>
+    <li>Pulsa <b>Generar proyecto Power BI</b>.</li>
     <li>Abre el <code>.pbip</code> con doble clic en <b>Power BI Desktop</b> (2024 o más reciente) y pulsa <b>Actualizar</b>.</li>
     <li>Para entregar un solo archivo: <span class="menu">Archivo → Guardar como → .pbix</span>.</li>
   </ol>
@@ -320,6 +333,8 @@
     <tr><td>Un archivo no se reemplaza</td><td>Ciérralo en Excel; un archivo abierto está bloqueado.</td></tr>
     <tr><td>Cambié de laptop o se borró todo</td><td>Configuración → <b>Importar configuración</b> con el .json que guardaste en el USB.</td></tr>
     <tr><td>El HC no coincide con el dashboard de Excel</td><td>Revisa que el filtro de Entidad/Función sea el mismo. La app usa uno solo para SOP y COPLAN; el Excel podía tener dos distintos.</td></tr>
+    <tr><td>En Reclasificación el HRBP sale vacío</td><td>Falta esa función en la tabla Función → HRBP: captúrala en “Funciones y HRBP” o carga un Sent anterior que traiga la hoja Homefunction / HRBP.</td></tr>
+    <tr><td>Una persona no aparece en la MAE</td><td>Puede ser que no esté en la plantilla de México (por ejemplo, un expatriado de otro mercado). La app deja “Ceco Oficial” vacío y, si no hay historial, marca el CeCo en amarillo para confirmarlo con el HRBP.</td></tr>
     <tr><td>Un CeCo sale “no es MX15”</td><td>Está dado de alta en otra sociedad o no existe en All CeCos. Usa el correo de la pestaña B para pedir el correcto. No reclasifiques sin corregir.</td></tr>
     <tr><td>La macro dice “no se puede ejecutar”</td><td>Habilita macros en Estimate Benefits (barra amarilla → Habilitar contenido) y guarda como .xlsm.</td></tr>
     <tr><td>El total de SAP no cuadra con el proveedor</td><td>Revisa en la pestaña C qué cargos marcaste en KSB1 y si hay renglones excluidos en la hoja “Excluidos”.</td></tr>

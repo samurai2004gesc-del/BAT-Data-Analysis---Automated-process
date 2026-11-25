@@ -16,7 +16,7 @@ App portátil para automatizar los procesos repetitivos del puesto de **HR Data 
 
 ## Qué hace cada módulo
 
-### 📊 HC in BPC vs HC Approved
+### HC in BPC vs HC Approved
 Sustituye a los 6 archivos con macros (Venezuela, CAR, Colombia, México Comercial, México Operaciones, CAM).
 
 | Entrada | Salida |
@@ -41,16 +41,16 @@ Además:
 - **Qué cambió desde la corrida anterior.** Cada corrida guarda una foto por mercado y ejercicio. La siguiente muestra qué grados se corrigieron y cuáles empeoraron, y el reporte trae la hoja *Cambios vs anterior*.
 - **Borrador de correo al HRBP** con las diferencias del filtro actual y el reporte adjunto.
 
-### 🗂️ Tracker de Recobros
+### Tracker de Recobros
 Lee la lista de asignaciones (una hoja por área, como en la presentación, o la hoja `People` de Estimate Benefits) y genera el Tracker H1/H2 con:
-- SE Company Code, Note Title (`Recharge H2'26 Balboa M.`) y Note Text.
+- SE Company Code, Note Title (`Recharge H2'26 Perez J.`) y Note Text.
 - Nombres de archivo (`{KEY}. Webi {Nombre}`), carpeta del empleado y rutas.
 - Columnas de seguimiento: estatus, Recharge ID, aprobadores 1–3, RRB WBS/PO, JVU, BATCH ID, Accrual y FBL5N.
 - Las hojas *Resumen por área* y *Datos faltantes* (IC code, Coder, etc.).
 - La columna **Siguiente paso**, que se recalcula sola en Excel conforme capturas (crear Webi → seguir aprobaciones → JVU → BATCH ID → FBL5N).
 - **Actualización sin perder lo capturado.** Si arrastras el Tracker anterior junto con la lista nueva, se conservan IDs, aprobadores, PO, JVU, estatus y comentarios. Las asignaciones nuevas se resaltan y las que ya no vienen quedan en gris. Cada persona conserva su KEY.
 
-### 📤 Formatos SAP (SC / Webi / JVU / Accrual)
+### Formatos SAP (SC / Webi / JVU / Accrual)
 En Estimate Benefits elige el KEY y el tipo, guarda el archivo y arrástralo a la app. Para cada formato, la app:
 - Copia la hoja como valores + formatos, elimina las filas vacías y genera el **TXT delimitado por tabulaciones** que acepta SAP.
 - Aplica la nomenclatura y las carpetas `Webis/`, `JVUs/` y `Accruals/`. Los guarda directo en la carpeta de cada empleado o, si no elegiste carpeta, en un ZIP.
@@ -60,14 +60,21 @@ En Estimate Benefits elige el KEY y el tipo, guarda el archivo y arrástralo a l
 
 **Todos los KEY de una vez (macro).** En la misma pantalla está el botón **Descargar macro (.bas)** (`tools/macros/HRSS_FormatosSAP.bas`). Se importa en Estimate Benefits (Alt+F11 → Archivo → Importar archivo) y se ejecuta con Alt+F8 → `GenerarFormatosSAP`. Pide los KEY (`TODOS`, `1-5, 8`…), los formatos (1 = SC + Webi, 2 = JVU, 3 = Accrual) y la carpeta. Para cada KEY cambia `Consolidado(#)!A2` e `IDX!B14`, recalcula y guarda el .xlsx y el .txt con la misma nomenclatura y carpetas que la app: valores + formatos, sin filas vacías. El JVU solo se genera para los KEY con RRBPO en *People*. Al final crea un resumen con el monto de cada formato. Deja `A2` y `B14` como estaban y no toca las macros que ya tiene el archivo. Se descarga en Windows-1252 con CRLF, porque el editor de VBA no importa UTF-8. *No se pudo ejecutar aquí (no hay Excel), así que conviene probarla primero con 2 o 3 KEY.*
 
-### 💱 Reclasificación de costos de movilidad (K2 / EY / Deloitte)
-- **A.** Completa HRBP / Home Function / CeCo desde la hoja *Histórico K2*. Reconoce el nombre aunque venga como "Nombre Apellido" o como "Apellido, Nombre". Luego genera `Sent to HRBPs - MX15 K2.xlsx` y el texto del correo.
-- **B.** Valida cada CeCo del archivo *Retrieved* contra *All CeCos - Approvers*: debe pertenecer a MX15. Arma un correo por HRBP con los CeCos a corregir.
+### Reclasificación de costos de movilidad (K2 / EY / Deloitte)
+- **A. Preparar envío a HRBPs.** Entradas: archivo del proveedor, **MAE** (`dd.mm.aaaa_Sin.xlsx`, reporte de personal de SAP HR), **Sent / Retrieved de meses anteriores** y, opcionales, el *Histórico K2* y *All CeCos - Approvers*. Genera `Sent to HRBPs - MX15 Deloitte.xlsx` con el mismo formato que se envía a mano:
+  - Columnas nuevas después del nombre: **Home Function**, **HRBP**, **CeCo** y **Ceco Oficial**.
+  - **Home Function** como código (HR, IDT, LEX, CORA, FIN, EXEC, OPS, MKT Office, MKT Field, DBS). Orden de búsqueda: lo que trae el archivo → Sent / Retrieved anterior de la persona → sugerida por la unidad organizativa en la MAE → descripción del CeCo. La columna *Area2* del Histórico solo se usa como último recurso.
+  - **HRBP** según la función, con la tabla **Función → HRBP**. La tabla se aprende de la hoja *Homefunction / HRBP* de un Sent anterior o, si no hay, de lo que más se repite. Se puede corregir en pantalla y se guarda en la configuración. En el Excel es una fórmula contra la hoja *HRBP por funcion*, así que si cambias la función cambia el HRBP.
+  - **CeCo**: archivo → historial → MAE (marcado “Confirmar CeCo”). **Ceco Oficial** = CeCo de la persona en la MAE.
+  - Amarillo y nota **solo** en lo que hay que confirmar. Las sugerencias de la MAE se revisan en la app y no se pintan. Sin filas de leyenda. Ordenado por HRBP, periodo y nombre.
+  - **Búsqueda de personas:** primero por número de empleado (*Success Factors ID* / *Host Success Factor ID* contra *Nº pers.*), y solo si el nombre también coincide en algo. Después por nombre, separando apellidos y nombres: con “Apellidos, Nombres” debe coincidir al menos un apellido **y** un nombre. Tolera una letra de más o de menos, pero no letras cambiadas.
+  - **Privacidad de la MAE:** de cada persona solo se toman nombre, número de personal, CeCo, unidad organizativa y posición. RFC, CURP, cuentas y NSS se descartan al leer: no se guardan ni se exportan. La MAE solo vive en la sesión.
+- **B.** Valida cada CeCo del archivo *Retrieved* contra *All CeCos - Approvers*: debe pertenecer a MX15. Lee la columna **CeCo**, no *Ceco Oficial*. Arma un correo por HRBP con los CeCos a corregir.
 - **C.** Calcula el tipo de cambio con el export de KSB1 y compara el cargo de SAP contra el total del proveedor. Genera `Reclasificacion por CeCo.xlsx` y las filas para pegar en *Histórico K2*.
 - **D.** Checklist de las 6 evidencias. Si elegiste la carpeta Tracker, revisa directo `Suppliers\06. Junio\K2`.
-- Borradores de correo con el archivo adjunto: a los HRBPs (A), a cada HRBP con CeCos por corregir (B) y a Planning con la reclasificación (C).
+- Borradores de correo con el archivo adjunto: a los HRBPs (A), a cada HRBP con CeCos por corregir (B) y a Planning con la reclasificación (C). Si no capturas la fecha límite, el correo usa una sugerida (5 días hábiles).
 
-### 📚 Bulk: archivo anual
+### Bulk: archivo anual
 Aquí metes **todo lo del año de una vez**, aunque sean cientos de archivos mezclados. Hay tres formas de cargarlos, y se pueden combinar:
 - arrastrar archivos o carpetas completas;
 - elegir una carpeta;
@@ -115,15 +122,16 @@ Con eso arma el **Consolidado anual**, con estas hojas:
 
 Con 800 archivos de prueba tardó 2 segundos. Con archivos reales, que pesan más, calcula de 1 a 3 minutos. Los archivos de más de 40 MB solo se registran en el inventario.
 
-#### 🧠 La app aprende de Bulk
-Al analizar los archivos del año, la app aprende tres cosas y las guarda en la configuración (se exportan con ella; se ven y se borran en *Configuración*):
-- **Directorio de personas**: HRBP, Home Function y CeCo, de los *Sent* / *Retrieved* y del *Histórico K2*. La pestaña A de Reclasificación lo usa aunque no arrastres el histórico.
+#### La app aprende de Bulk
+Al analizar los archivos del año, la app aprende cuatro cosas y las guarda en la configuración (se exportan con ella; se ven y se borran en *Configuración*):
+- **Directorio de personas**: Home Function, CeCo y número de empleado, de los *Sent* / *Retrieved* y del *Histórico K2*. La pestaña A de Reclasificación lo usa aunque no arrastres el histórico.
+- **HRBP por función**: la tabla Función → HRBP de Reclasificación (de la hoja *Homefunction / HRBP* de los Sent o, si no hay, de lo que más se repite).
 - **Regla de cada proveedor**: compara el archivo original del proveedor (carpeta `Suppliers\MM. Mes\Proveedor`) contra lo que quedó registrado en el *Histórico K2* para ese mes y proveedor, y deduce qué columna es el monto. Detecta si el monto sale de una sola columna, si se suman dos columnas o si cada línea se divide en dos renglones (p. ej. servicio + *Disbursements*). También deduce de dónde sale el texto de “Servicio”. Al cargar ese proveedor en Reclasificación se aplica sola (se puede desactivar).
 - **Tipos de cambio** por proveedor y mes, como referencia en la pestaña C.
 
 Solo aprende una regla si encuentra el archivo del proveedor **y** el mismo mes registrado en el Histórico, y si cuadra en la mayoría de las personas. Si no, lo dice en lugar de adivinar.
 
-### 📈 Power BI
+### Power BI
 Convierte información en un **proyecto de Power BI** (`.pbip`) que abre directo en Power BI Desktop. Puedes partir de dos fuentes:
 - **Lo que ya analizaste en la app** (Bulk y Headcount). Genera cinco páginas diseñadas: *Resumen*, *Recobros*, *CeCos y SAP*, *Calidad de datos* y *Headcount*.
 - **Cualquier Excel o CSV.** Cada hoja con encabezados se vuelve una tabla. La app detecta el tipo de cada columna (y puedes corregirlo), relaciona las tablas que comparten una columna clave, arma el calendario si hay fechas y crea una página por tabla.
@@ -156,7 +164,7 @@ Desde ahí, cada archivo se guarda en su lugar:
 Si un archivo ya existe, la app pregunta antes de reemplazarlo. El navegador puede pedirte permiso una vez por sesión. Esto funciona en Edge y Chrome. Si TI bloquea esta función, sigue disponible la descarga normal.
 
 ## Borradores de correo (.eml)
-Los botones "✉ Borrador" descargan un archivo `.eml`. Al abrirlo con doble clic, Outlook lo muestra como un correo nuevo con destinatarios, asunto, texto y el archivo ya adjunto: solo revisas y envías.
+Los botones "Borrador" descargan un archivo `.eml`. Al abrirlo con doble clic, Outlook lo muestra como un correo nuevo con destinatarios, asunto, texto y el archivo ya adjunto: solo revisas y envías.
 
 Para llenar "Para" a partir de los nombres de HRBP, captura en **Configuración › Correos** un directorio con una persona por renglón (`Nombre; correo`) y los correos de Planning y de copia. Si Windows abre el `.eml` con otra app, usa clic derecho → *Abrir con* → Outlook.
 
@@ -171,7 +179,9 @@ La app se probó con archivos reales del área. Esos archivos **no** se guardan 
 | TXT de Webi, JVU y Accrual | **Idénticos byte por byte** a los que SAP aceptó (incluido el entrecomillado de textos con coma, por ejemplo `"Account(GL, AP, AR)"`). |
 | HC in BPC vs HC Approved (CAR) | En las **407 posiciones** coinciden con las macros el valor de cada posición, el conteo SOP/COPLAN, la función y la entidad (324 = 324). El HC aprobado por grado también coincide. Además detecta 2 grados con diferencias que se compensan, que el semáforo de Excel no mostraba. |
 | Estimate Benefits | Lee KEY, tipo, IC code y los cuatro formatos. El Webi y el JVU cuadran (partidas 40 y 50). |
-| K2 / Retrieved / Deloitte | Columnas reconocidas. Para Deloitte el monto es “Total Amount (inc. VAT) in GBP” y el servicio “Fee Type as per rate card”, y se pueden cambiar en pantalla. |
+| K2 / Retrieved / Deloitte | Columnas reconocidas. Para Deloitte el monto es “Total Amount (inc. VAT) in GBP”, igual que en el Histórico K2, y el servicio es “Fee Type as per rate card”. Ambos se pueden cambiar en pantalla. |
+| Sent to HRBPs Deloitte MX15 (105 cargos, 29 personas) | Contra la versión corregida a mano, sin usarla como historial: función 26/29, CeCo 25/29 y HRBP 17/29. Las diferencias de HRBP vienen de funciones que no estaban en la tabla y del nombre corto con el que se captura al HRBP. Al cargar esa versión como “Sent anterior” para el mes siguiente: función 29/29, HRBP 29/29 y CeCo 28/29 (el que falta se dejó vacío a propósito). El “Ceco Oficial” sale de la MAE. Si la persona no está en la MAE, queda vacío. |
+| MAE (2,513 personas, 41 columnas) | Se lee en menos de 0.5 s. Solo se conservan las 9 columnas que se usan. |
 | All CeCos - Approvers | ~380 mil filas leídas en ~11 s en el navegador. Se guarda resumido (39 mil CeCos) para no volver a cargarlo. Acepta CeCos dados de alta en más de una sociedad. |
 | Listado de Recharges y Tracker propio | Distingue el listado de los Trackers (incluso ocultos) y de las tablas dinámicas. Importa el Tracker propio como “Tracker anterior” (Webi, SE/RE Approver, PO, JVU, Status JVU, Registered in SAP). |
 
@@ -194,5 +204,5 @@ npm test
 - `npm run build` genera `dist/HRSS-Automatizador.html`, que lleva todo incrustado.
 - `npm run guide` regenera `docs/Guia-HRSS-Automatizador.pdf` desde `docs/guia/guia.html`, con capturas de la app (Playwright). Después corre `npm run build` otra vez para meter el PDF en la app.
 - `npm test` corre las pruebas de lógica. `tests/e2e.js` prueba la app completa en Chromium con Playwright.
-- Librerías incluidas: SheetJS 0.18.5 (lectura), ExcelJS 4.4.0 (escritura con formato) y JSZip 3.10.1. También el tema base de Power BI `CY24SU06` (de microsoft/semantic-link-labs, licencia MIT).
+- Librerías incluidas: SheetJS 0.18.5 (lectura), ExcelJS 4.4.0 (escritura con formato) y JSZip 3.10.1. Los íconos son trazos de Lucide (licencia ISC) copiados en `src/js/icons.js` con `node tools/iconos/generar-iconos.js`, para que la app siga sin depender de internet. También el tema base de Power BI `CY24SU06` (de microsoft/semantic-link-labs, licencia MIT).
 - `tests/pbir-schemas`: esquemas oficiales de Power BI (de microsoft/json-schemas y microsoft/powerbi-desktop-samples, licencia MIT), usados solo en las pruebas.

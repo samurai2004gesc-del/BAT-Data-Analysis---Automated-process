@@ -13,21 +13,21 @@
 </header>
 <div class="layout">
   <nav class="sidebar" id="nav">
-    <a data-page="home" class="active">🏠 Inicio</a>
+    <a data-page="home" class="active"><i data-i="home"></i>Inicio</a>
     <div class="nav-title">Headcount</div>
-    <a data-page="hc">📊 HC BPC vs Aprobado</a>
+    <a data-page="hc"><i data-i="headcount"></i>HC BPC vs Aprobado</a>
     <div class="nav-title">Recobros intercompañía</div>
-    <a data-page="tracker">🗂️ Tracker del periodo</a>
-    <a data-page="sap">📤 Formatos SAP (SC / Webi / JVU / Accrual)</a>
+    <a data-page="tracker"><i data-i="tracker"></i>Tracker del periodo</a>
+    <a data-page="sap"><i data-i="sap"></i>Formatos SAP (SC / Webi / JVU / Accrual)</a>
     <div class="nav-title">Costos de movilidad</div>
-    <a data-page="reclass">💱 Reclasificación K2 / EY / Deloitte</a>
+    <a data-page="reclass"><i data-i="reclass"></i>Reclasificación K2 / EY / Deloitte</a>
     <div class="nav-title">Archivo anual</div>
-    <a data-page="bulk">📚 Bulk: todo el año</a>
+    <a data-page="bulk"><i data-i="bulk"></i>Bulk: todo el año</a>
     <div class="nav-title">Reportes</div>
-    <a data-page="pbi">📈 Power BI</a>
+    <a data-page="pbi"><i data-i="pbi"></i>Power BI</a>
     <div class="nav-title">General</div>
-    <a data-page="config">⚙️ Configuración</a>
-    <a data-page="help">❓ Ayuda</a>
+    <a data-page="config"><i data-i="settings"></i>Configuración</a>
+    <a data-page="help"><i data-i="help"></i>Ayuda</a>
   </nav>
 
   <main id="main">
@@ -36,15 +36,15 @@
       <h1>¿Qué quieres hacer hoy?</h1>
       <p class="lead">Arrastra los archivos tal como los descargas (SAP BPC, SAP NEO, correos de Global, Estimate Benefits) y la app hace el trabajo repetitivo. Siempre revisa el resultado antes de enviarlo o cargarlo a SAP.</p>
       <div class="cards">
-        <a class="card link" data-goto="hc"><h3>📊 HC BPC vs Aprobado</h3><p>Reemplaza los 6 archivos con macros: lee el HR Input Report de BPC, aplica la regla de conteo SOP / COPLAN y compara contra el HC aprobado por grado, función y entidad.</p><span class="tag">HR Input + Catálogo aprobado → Reporte de variaciones</span></a>
-        <a class="card link" data-goto="tracker"><h3>🗂️ Tracker de Recobros</h3><p>Arma el Tracker del semestre con Note Title / Note Text para SAP, nombres de archivo, rutas, datos faltantes y columnas de seguimiento de aprobaciones.</p><span class="tag">Lista de asignaciones → Tracker H1/H2</span></a>
-        <a class="card link" data-goto="sap"><h3>📤 Formatos SAP</h3><p>De Estimate Benefits saca el Shopping Cart, Webi, JVU y Accrual en Excel y TXT (tabulado), sin filas vacías, con la nomenclatura <code>{KEY}. Webi {Nombre}</code> y en sus carpetas.</p><span class="tag">Estimate Benefits → ZIP listo para SAP NEO</span></a>
-        <a class="card link" data-goto="bulk"><h3>📚 Bulk: todo el año</h3><p>Mete cientos de archivos mezclados del año (Webis, JVUs, proveedores, KSB1, correos .msg…). La app reconoce cada uno y arma un consolidado anual con alertas de lo que falta o no cuadra.</p><span class="tag">Carpeta del año → Consolidado + alertas</span></a>
-        <a class="card link" data-goto="pbi"><h3>📈 Power BI</h3><p>Convierte lo que analizaste (o cualquier Excel) en un proyecto de Power BI con páginas diseñadas, modelo, medidas DAX y tema.</p><span class="tag">Datos → proyecto .pbip listo para abrir</span></a>
-        <a class="card link" data-goto="reclass"><h3>💱 Reclasificación de movilidad</h3><p>Completa HRBP / función / CeCo desde el histórico, valida que los CeCos sean de MX15, calcula el tipo de cambio con KSB1 y genera la Reclasificación por CeCo.</p><span class="tag">Archivo del proveedor → Sent to HRBPs → Reclasificación</span></a>
+        <a class="card link" data-goto="hc"><h3><i data-i="headcount"></i>HC BPC vs Aprobado</h3><p>Reemplaza los 6 archivos con macros: lee el HR Input Report de BPC, aplica la regla de conteo SOP / COPLAN y compara contra el HC aprobado por grado, función y entidad.</p><span class="tag">HR Input + Catálogo aprobado → Reporte de variaciones</span></a>
+        <a class="card link" data-goto="tracker"><h3><i data-i="tracker"></i>Tracker de Recobros</h3><p>Arma el Tracker del semestre con Note Title / Note Text para SAP, nombres de archivo, rutas, datos faltantes y columnas de seguimiento de aprobaciones.</p><span class="tag">Lista de asignaciones → Tracker H1/H2</span></a>
+        <a class="card link" data-goto="sap"><h3><i data-i="sap"></i>Formatos SAP</h3><p>De Estimate Benefits saca el Shopping Cart, Webi, JVU y Accrual en Excel y TXT (tabulado), sin filas vacías, con la nomenclatura <code>{KEY}. Webi {Nombre}</code> y en sus carpetas.</p><span class="tag">Estimate Benefits → ZIP listo para SAP NEO</span></a>
+        <a class="card link" data-goto="bulk"><h3><i data-i="bulk"></i>Bulk: todo el año</h3><p>Mete cientos de archivos mezclados del año (Webis, JVUs, proveedores, KSB1, correos .msg…). La app reconoce cada uno y arma un consolidado anual con alertas de lo que falta o no cuadra.</p><span class="tag">Carpeta del año → Consolidado + alertas</span></a>
+        <a class="card link" data-goto="pbi"><h3><i data-i="pbi"></i>Power BI</h3><p>Convierte lo que analizaste (o cualquier Excel) en un proyecto de Power BI con páginas diseñadas, modelo, medidas DAX y tema.</p><span class="tag">Datos → proyecto .pbip listo para abrir</span></a>
+        <a class="card link" data-goto="reclass"><h3><i data-i="reclass"></i>Reclasificación de movilidad</h3><p>Completa función, HRBP y CeCo con la MAE y los Sent / Retrieved anteriores, marca en amarillo lo que falta confirmar, valida que los CeCos sean de MX15, calcula el tipo de cambio con KSB1 y genera la Reclasificación por CeCo.</p><span class="tag">Archivo del proveedor → Sent to HRBPs → Reclasificación</span></a>
       </div>
-      <div class="note guide-note"><strong>📘 ¿Primera vez?</strong> Lee la guía paso a paso: qué archivo poner en cada sección y de dónde sacarlo. <button class="mini primary" data-guide="open">Abrir guía (PDF)</button> <button class="mini" data-guide="download">Descargar</button></div>
-      <div class="note"><strong>Primera vez:</strong> ve a <a data-goto="config">Configuración</a>, captura tu OneID y guarda la configuración en el USB (botón “Exportar configuración”) para no perder las equivalencias si cambias de computadora.</div>
+      <div class="note guide-note"><strong><i data-i="guide"></i>¿Primera vez?</strong> Lee la guía paso a paso: qué archivo poner en cada sección y de dónde sacarlo. <button class="mini primary" data-guide="open">Abrir guía (PDF)</button> <button class="mini" data-guide="download">Descargar</button></div>
+      <div class="note"><strong>Antes de empezar:</strong> ve a <a data-goto="config">Configuración</a>, captura tu OneID y guarda la configuración en el USB (botón “Exportar configuración”) para no perder las equivalencias si cambias de computadora.</div>
     </section>
 
     <!-- ================= HEADCOUNT ================= -->
@@ -56,7 +56,7 @@
         <p class="muted">Arrastra juntos los HR Input y los archivos maestros de todos los mercados. La app reconoce de qué mercado es cada uno y usa las equivalencias y columnas que guardaste al configurar cada mercado en “Un mercado” (hazlo una vez por mercado). Usa el año y las etiquetas SOP / COPLAN de la pestaña “Un mercado”.</p>
         <div class="drop" id="hcb-drop"><b>Arrastra aquí todos los archivos</b><span>HR Input Reports + maestros (.xlsm / .xlsx), de uno o varios mercados</span></div>
         <div id="hcb-files"></div>
-        <div class="actions"><button class="primary" id="hcb-run" disabled>▶ Comparar todos</button><button id="hcb-download" disabled>⬇ Descargar reporte consolidado</button></div>
+        <div class="actions"><button class="primary" id="hcb-run" disabled><i data-i="play"></i>Comparar todos</button><button id="hcb-download" disabled><i data-i="download"></i>Descargar reporte consolidado</button></div>
         <div id="hcb-results"></div>
       </div>
       <div class="tab active" id="hc-tab-one">
@@ -119,8 +119,8 @@
       </div>
 
       <div class="actions">
-        <button class="primary" id="hc-run">▶ Generar comparación</button>
-        <button id="hc-download" disabled>⬇ Descargar reporte Excel</button>
+        <button class="primary" id="hc-run"><i data-i="play"></i>Generar comparación</button>
+        <button id="hc-download" disabled><i data-i="download"></i>Descargar reporte Excel</button>
       </div>
 
       <div id="hc-results" class="hidden">
@@ -138,7 +138,7 @@
         <div class="grid g3">
           <label>Para (correos o nombres del directorio; se guarda por mercado)<input id="hc-mail-to" placeholder="hrbp@empresa.com; otro@empresa.com"></label>
           <label>CC<input id="hc-mail-cc"></label>
-          <div class="actions" style="margin:auto 0 0"><button id="hc-mail">✉ Borrador con el reporte (.eml)</button></div>
+          <div class="actions" style="margin:auto 0 0"><button id="hc-mail"><i data-i="mail"></i>Borrador con el reporte (.eml)</button></div>
         </div>
         <p class="muted small">El borrador incluye las diferencias del filtro actual (entidad / función) y el reporte de Excel adjunto. Ábrelo con doble clic: Outlook lo muestra listo para enviar.</p>
       </div>
@@ -155,7 +155,7 @@
           <label>Semestre<select id="tr-half"><option>H1</option><option selected>H2</option></select></label>
           <label>Año<input id="tr-year" type="number"></label>
           <label>OneID (para rutas)<input id="tr-oneid"></label>
-          <label>Formato de nombres<select id="tr-order"><option value="apellido-nombre">Apellidos Nombre (Balboa Ramirez Marco)</option><option value="nombre-apellido">Nombre Apellidos (Marco Balboa Ramirez)</option></select></label>
+          <label>Formato de nombres<select id="tr-order"><option value="apellido-nombre">Apellidos Nombre (Perez Lopez Juan)</option><option value="nombre-apellido">Nombre Apellidos (Juan Perez Lopez)</option></select></label>
         </div>
       </div>
       <div class="step">
@@ -170,7 +170,7 @@
         <div id="tr-prev-info" class="info"></div>
       </div>
       <div id="tr-preview" class="scroll"></div>
-      <div class="actions"><button class="primary" id="tr-download" disabled>⬇ Descargar Tracker</button><span class="muted small save-where" id="tr-where"></span></div>
+      <div class="actions"><button class="primary" id="tr-download" disabled><i data-i="download"></i>Descargar Tracker</button><span class="muted small save-where" id="tr-where"></span></div>
     </section>
 
     <!-- ================= FORMATOS SAP ================= -->
@@ -186,14 +186,14 @@
       <div class="drop" id="sap-drop"><b>Arrastra aquí Estimate Benefits (uno o varios)</b><span>.xlsx / .xlsm — puedes soltar varios archivos a la vez (uno por KEY)</span></div>
       <div id="sap-list"></div>
       <div class="actions">
-        <button class="primary" id="sap-zip" disabled>⬇ Descargar ZIP con carpetas</button>
+        <button class="primary" id="sap-zip" disabled><i data-i="download"></i>Descargar ZIP con carpetas</button>
         <button id="sap-clear">Limpiar lista</button>
         <span class="muted small save-where" id="sap-where"></span>
       </div>
       <div id="sap-log" class="info"></div>
 
       <div class="card" style="margin-top:22px">
-        <h2>⚡ Todos los KEY de una vez (macro para Estimate Benefits)</h2>
+        <h2>Todos los KEY de una vez (macro para Estimate Benefits)</h2>
         <p>En vez de cambiar el KEY a mano, esta macro recorre <b>todos los KEY</b> (o los que elijas) dentro de Estimate Benefits y guarda los formatos (SC + Webi, JVU y Accrual) en .xlsx y .txt, con las mismas carpetas y nombres que usa la app. Al final crea un resumen con el monto de cada formato.</p>
         <ol class="steps-list">
           <li>Descarga la macro con el botón de abajo (archivo <code>HRSS_FormatosSAP.bas</code>).</li>
@@ -202,7 +202,7 @@
           <li>Escribe <code>TODOS</code> o los KEY (ej. <code>1-5, 8, 12</code>), elige los formatos (1 = SC+Webi, 2 = JVU, 3 = Accrual) y la carpeta destino (por ejemplo tu carpeta <i>Recharges\H2'26</i>).</li>
         </ol>
         <div class="msg warn">La primera vez pruébala con 2 o 3 KEY y compara contra tus archivos de siempre. Tus macros actuales (GuardarSC, GuardarWebi…) no se tocan.</div>
-        <div class="actions"><button class="primary" id="sap-macro">⬇ Descargar macro (.bas)</button></div>
+        <div class="actions"><button class="primary" id="sap-macro"><i data-i="download"></i>Descargar macro (.bas)</button></div>
       </div>
     </section>
 
@@ -215,7 +215,7 @@
         <label>Sociedad<input id="rc-soc" value="MX15"></label>
         <label>Mes<select id="rc-month"></select></label>
         <label>Año<input id="rc-year" type="number"></label>
-        <label>Fecha límite HRBPs<input id="rc-deadline" placeholder="Lunes 27 de Julio"></label>
+        <label>Fecha límite HRBPs<input id="rc-deadline" title="Si la dejas vacía, el correo usa la fecha sugerida (5 días hábiles a partir de hoy)."></label>
       </div>
       <div class="muted small" id="rc-folder"></div>
       <div class="tabs" id="rc-tabs">
@@ -227,16 +227,20 @@
 
       <div class="tab active" id="rc-tab-a">
         <div class="grid g2">
-          <div><h3>Archivo del proveedor <span class="req">obligatorio</span></h3><div class="drop small" id="rc-drop-sup"><b>K2 MX15.xlsx</b><span>El adjunto del correo de Global</span></div><div id="rc-sup-info" class="info"></div></div>
-          <div><h3>Histórico</h3><div class="drop small" id="rc-drop-hist"><b>ConsolidadoCharges_SIRVA-K2_AAAA.xlsx</b><span>Se usa la hoja “Histórico K2” para llenar HRBP / Función / CeCo</span></div><div id="rc-hist-info" class="info"></div></div>
-          <div><h3>Directorio adicional <span class="muted">(recomendado)</span></h3><div class="drop small" id="rc-drop-dir"><b>Retrieved de meses anteriores, MAE u otra lista</b><span>El Histórico K2 no trae HRBP ni Home Function: arrastra aquí los “Retrieved From HRBPs” de meses pasados (puedes soltar varios). Tiene prioridad sobre el histórico.</span></div><div id="rc-dir-info" class="info"></div></div>
-          <div><h3>All CeCos - Approvers <span class="muted">(recomendado)</span></h3><div class="drop small" id="rc-drop-cecos"><b>All CeCos - Approvers.xlsx</b><span>Para validar la sociedad de cada CeCo</span></div><div id="rc-cecos-info" class="info"></div></div>
+          <div><h3>Archivo del proveedor <span class="req">obligatorio</span></h3><div class="drop small" id="rc-drop-sup"><b>Deloitte MX15.xlsx / K2 MX15.xlsx</b><span>El adjunto del correo de Global, tal como llega</span></div><div id="rc-sup-info" class="info"></div></div>
+          <div><h3>MAE <span class="muted">(recomendado)</span></h3><div class="drop small" id="rc-drop-mae"><b>dd.mm.aaaa_Sin.xlsx</b><span>Reporte de personal de SAP HR. Da el CeCo oficial (columna Ce.coste) y la unidad organizativa de cada persona. De cada persona solo se toman nombre, número de personal, CeCo, unidad organizativa y posición; el resto (RFC, CURP, cuentas, NSS) no se guarda ni se exporta, y la MAE no queda guardada en la configuración.</span></div><div id="rc-mae-info" class="info"></div></div>
+          <div><h3>Sent / Retrieved de meses anteriores <span class="muted">(recomendado)</span></h3><div class="drop small" id="rc-drop-dir"><b>Sent to HRBPs / Retrieved From HRBPs ya corregidos</b><span>Puedes soltar varios. De aquí salen la función y el CeCo de cada persona, y la tabla Función → HRBP (por ejemplo, la hoja con las columnas Homefunction y HRBP).</span></div><div id="rc-dir-info" class="info"></div></div>
+          <div><h3>Histórico <span class="muted">(opcional)</span></h3><div class="drop small" id="rc-drop-hist"><b>ConsolidadoCharges_SIRVA-K2_AAAA.xlsx</b><span>Hoja “Histórico K2”: CeCos de cargos anteriores. Su columna Area2 solo se usa si no hay otro dato de función.</span></div><div id="rc-hist-info" class="info"></div></div>
+          <div><h3>All CeCos - Approvers <span class="muted">(recomendado)</span></h3><div class="drop small" id="rc-drop-cecos"><b>All CeCos - Approvers.xlsx</b><span>Para validar que cada CeCo pertenezca a la sociedad</span></div><div id="rc-cecos-info" class="info"></div></div>
+          <div><h3>Funciones y HRBP</h3><p class="muted small">El HRBP se asigna según la función de la persona. La tabla se llena sola con los archivos que cargas y puedes corregirla aquí; se guarda en este navegador y en “Exportar configuración”.</p><details id="rc-fn-box"><summary>Ver / editar la tabla Función → HRBP</summary><div id="rc-fn-table"></div></details></div>
         </div>
+        <div id="rc-a-summary"></div>
         <div id="rc-a-preview" class="scroll"></div>
         <div class="actions">
-          <button class="primary" id="rc-a-download" disabled>⬇ Descargar “Sent to HRBPs”</button>
-          <button id="rc-a-eml" disabled>✉ Borrador con adjunto (.eml)</button>
+          <button class="primary" id="rc-a-download" disabled><i data-i="download"></i>Descargar “Sent to HRBPs”</button>
+          <button id="rc-a-eml" disabled><i data-i="mail"></i>Borrador con adjunto (.eml)</button>
           <button id="rc-a-email" disabled>Ver texto del correo</button>
+          <label class="check"><input type="checkbox" id="rc-sort" checked> Ordenar por HRBP, periodo y nombre</label>
           <span class="muted small save-where rc-where"></span>
         </div>
         <div id="rc-a-mailinfo"></div>
@@ -248,7 +252,7 @@
         <div class="drop" id="rc-drop-ret"><b>Retrieved From HRBPs - MX15 …xlsx</b><span>El archivo con los CeCos confirmados</span></div>
         <div id="rc-b-info" class="info"></div>
         <div id="rc-b-preview" class="scroll"></div>
-        <div class="actions"><button class="primary" id="rc-b-download" disabled>⬇ Descargar validación</button><span class="muted small save-where rc-where"></span></div>
+        <div class="actions"><button class="primary" id="rc-b-download" disabled><i data-i="download"></i>Descargar validación</button><span class="muted small save-where rc-where"></span></div>
         <div id="rc-b-emails"></div>
       </div>
 
@@ -265,9 +269,9 @@
         <div id="rc-ksb1-lines" class="scroll"></div>
         <div id="rc-c-summary"></div>
         <div class="actions">
-          <button class="primary" id="rc-c-download" disabled>⬇ Descargar “Reclasificacion por CeCo”</button>
-          <button id="rc-c-hist" disabled>⬇ Filas para “Histórico K2”</button>
-          <button id="rc-c-eml" disabled>✉ Borrador para Planning (.eml)</button>
+          <button class="primary" id="rc-c-download" disabled><i data-i="download"></i>Descargar “Reclasificacion por CeCo”</button>
+          <button id="rc-c-hist" disabled><i data-i="download"></i>Filas para “Histórico K2”</button>
+          <button id="rc-c-eml" disabled><i data-i="mail"></i>Borrador para Planning (.eml)</button>
           <span class="muted small save-where rc-where"></span>
         </div>
         <div id="rc-c-mailinfo"></div>
@@ -277,7 +281,7 @@
         <p class="muted">Selecciona la carpeta del mes y proveedor (p. ej. <code>Suppliers\06. Junio\K2</code>) o arrastra sus archivos para verificar que estén las 6 evidencias.</p>
         <div class="grid g2">
           <div class="drop" id="rc-drop-ev"><b>Arrastra aquí los archivos de la carpeta</b><span>.msg / .xlsx</span></div>
-          <div class="actions" style="margin:0;align-items:start"><button class="primary" id="rc-ev-check">📁 Revisar la carpeta del periodo</button><label class="btnlike">Elegir otra carpeta…<input type="file" id="rc-ev-folder" webkitdirectory multiple hidden></label></div>
+          <div class="actions" style="margin:0;align-items:start"><button class="primary" id="rc-ev-check"><i data-i="folder"></i>Revisar la carpeta del periodo</button><label class="btnlike">Elegir otra carpeta…<input type="file" id="rc-ev-folder" webkitdirectory multiple hidden></label></div>
         </div>
         <div id="rc-ev-result"></div>
       </div>
@@ -293,21 +297,21 @@
         <div class="grid g2">
           <div class="drop" id="bk-drop"><b>Arrastra aquí archivos o carpetas completas</b><span>Se respetan las subcarpetas (Suppliers\06. Junio\K2, Recharges\H2'26\Webis…) para saber mes, proveedor y empleado</span></div>
           <div class="actions" style="margin:0;flex-direction:column;align-items:stretch">
-            <button id="bk-scan">🔎 Escanear mi carpeta</button>
-            <label class="btnlike" style="justify-content:center">📁 Elegir una carpeta…<input type="file" id="bk-folder" webkitdirectory multiple hidden></label>
+            <button id="bk-scan"><i data-i="search"></i>Escanear mi carpeta</button>
+            <label class="btnlike" style="justify-content:center"><i data-i="folder"></i>Elegir una carpeta…<input type="file" id="bk-folder" webkitdirectory multiple hidden></label>
           </div>
         </div>
         <div class="info" id="bk-queue"></div>
       </div>
       <div class="actions">
-        <button class="primary" id="bk-run" disabled>▶ Analizar archivos</button>
-        <button id="bk-cancel" class="hidden danger">■ Detener</button>
+        <button class="primary" id="bk-run" disabled><i data-i="play"></i>Analizar archivos</button>
+        <button id="bk-cancel" class="hidden danger"><i data-i="stop"></i>Detener</button>
         <button id="bk-clear" disabled>Vaciar lista</button>
         <button id="bk-reset">Empezar de nuevo</button>
       </div>
       <div id="bk-progress" class="hidden"><div class="progress"><div id="bk-bar"></div></div><div id="bk-progress-text" class="muted small"></div></div>
       <div id="bk-results"></div>
-      <div class="actions"><button class="primary" id="bk-download" disabled>⬇ Descargar consolidado anual</button><span class="muted small" id="bk-where"></span></div>
+      <div class="actions"><button class="primary" id="bk-download" disabled><i data-i="download"></i>Descargar consolidado anual</button><span class="muted small" id="bk-where"></span></div>
       <p class="muted small">El consolidado trae: Resumen, Recobros por asignación, Documentos de recobro, Cargos de proveedores (detalle y por mes), CeCos asignados validados, Reclasificaciones, Movimientos SAP sin duplicados, Evidencia por mes, Headcount, Trackers, Correos, Alertas e Inventario de todos los archivos. Los archivos de más de 40 MB solo se inventarían.</p>
     </section>
 
@@ -331,7 +335,7 @@
         <div class="grid g4"><label>Nombre del reporte<input id="pbi-name" placeholder="HRSS 2026"></label><label>Año<input id="pbi-year" type="number"></label></div>
         <div id="pbi-preview"></div>
       </div>
-      <div class="actions"><button class="primary" id="pbi-generate" disabled>⬇ Generar proyecto Power BI</button><span class="muted small" id="pbi-where"></span></div>
+      <div class="actions"><button class="primary" id="pbi-generate" disabled><i data-i="download"></i>Generar proyecto Power BI</button><span class="muted small" id="pbi-where"></span></div>
       <div id="pbi-done"></div>
       <details><summary>Requisitos y cómo abrirlo</summary>
         <ul class="small">
@@ -355,7 +359,7 @@
       <div class="filecard">
         <label class="check"><input type="radio" name="cfg-save" value="download"> En la carpeta de <b>Descargas</b> (los Webis/JVUs salen en un ZIP)</label>
         <label class="check"><input type="radio" name="cfg-save" value="folder"> Directo en mi carpeta <b>Tracker</b> de OneDrive / SharePoint, cada archivo en su subcarpeta</label>
-        <div class="actions"><button id="cfg-folder-pick">📁 Elegir carpeta Tracker…</button><button id="cfg-folder-forget" class="mini">Olvidar carpeta</button><span id="cfg-folder-name" class="muted"></span></div>
+        <div class="actions"><button id="cfg-folder-pick"><i data-i="folder"></i>Elegir carpeta Tracker…</button><button id="cfg-folder-forget" class="mini">Olvidar carpeta</button><span id="cfg-folder-name" class="muted"></span></div>
         <p class="muted small">Elige la carpeta <code>…\Gerencia HRSS-Organización - General\2026\Tracker</code> (también sirve la carpeta “General”: la app entra sola a <code>{Año}\Tracker</code>). Los archivos se guardan en <code>Recharges\H2'26\Webis|JVUs|Accruals\{KEY}. {Nombre}</code> y <code>Suppliers\06. Junio\K2</code>. Si un archivo ya existe, la app pregunta antes de reemplazarlo. El navegador puede pedirte permiso una vez por sesión.</p>
       </div>
       <h3>Correos</h3>
@@ -371,8 +375,8 @@
       <h3>Equivalencias guardadas por mercado (Headcount)</h3>
       <div id="cfg-profiles"></div>
       <div class="actions">
-        <button class="primary" id="cfg-export">💾 Exportar configuración (.json)</button>
-        <label class="btnlike">📂 Importar configuración<input type="file" id="cfg-import" accept=".json" hidden></label>
+        <button class="primary" id="cfg-export"><i data-i="save"></i>Exportar configuración (.json)</button>
+        <label class="btnlike"><i data-i="upload"></i>Importar configuración<input type="file" id="cfg-import" accept=".json" hidden></label>
         <button id="cfg-reset" class="danger">Restablecer todo</button>
       </div>
       <p class="muted small">La configuración se guarda en este navegador. Expórtala al USB para llevarla a otra computadora.</p>
@@ -381,7 +385,7 @@
     <!-- ================= AYUDA ================= -->
     <section class="page" id="page-help">
       <h1>Ayuda</h1>
-      <div class="note guide-note"><strong>📘 Guía paso a paso (PDF)</strong> — qué poner en cada sección, de dónde sacar cada archivo y qué te entrega la app. <button class="mini primary" data-guide="open">Abrir guía</button> <button class="mini" data-guide="download">Descargar PDF</button></div>
+      <div class="note guide-note"><strong><i data-i="guide"></i>Guía paso a paso (PDF)</strong> — qué poner en cada sección, de dónde sacar cada archivo y qué te entrega la app. <button class="mini primary" data-guide="open">Abrir guía</button> <button class="mini" data-guide="download">Descargar PDF</button></div>
       <div class="help">
         <h3>Cómo se usa</h3>
         <ol>
@@ -394,7 +398,7 @@
           <tr><th>Proceso</th><th>La app hace</th><th>Sigue siendo manual</th></tr>
           <tr><td>HC BPC vs Aprobado</td><td>Lectura del HR Input sin pegar, regla de conteo SOP/COPLAN, comparación por grado/función/entidad, alertas, reporte.</td><td>Descargar el HR Input de BPC (EPM), capturar el HC aprobado de los HRBP, corregir en BPC.</td></tr>
           <tr><td>Recobros</td><td>Tracker, Note Title/Text, mes a marcar, nombres y carpetas, SC/Webi/JVU/Accrual en Excel + TXT sin filas vacías, cuadre de montos, aviso de fecha del JVU/Accrual.</td><td>Elegir el KEY en Estimate Benefits, cargar en SAP NEO, seguir aprobaciones, poner Exception 16/05.</td></tr>
-          <tr><td>Reclasificación</td><td>HRBP/Función/CeCo desde histórico, archivo para HRBPs y correo, validación MX15, tipo de cambio, Reclasificación por CeCo, filas para el Histórico, checklist.</td><td>Descargar el adjunto y el KSB1, enviar correos, guardar .msg.</td></tr>
+          <tr><td>Reclasificación</td><td>Función, HRBP y CeCo con la MAE y los Sent / Retrieved anteriores, Ceco Oficial, pendientes en amarillo, archivo para HRBPs y correo, validación MX15, tipo de cambio, Reclasificación por CeCo, filas para el Histórico, checklist.</td><td>Descargar el adjunto y el KSB1, enviar correos, guardar .msg.</td></tr>
         </table>
         <h3>Mejoras respecto a las macros</h3>
         <ul>
@@ -406,6 +410,7 @@
         </ul>
         <h3>Lo más nuevo</h3>
         <ul>
+          <li><b>Reclasificación con la MAE:</b> el “Sent to HRBPs” sale con el formato que se envía: Home Function como código, HRBP según la tabla Función → HRBP, CeCo y Ceco Oficial (de la MAE), amarillo con nota solo en lo que falta confirmar y ordenado por HRBP. Busca a cada persona por número de empleado y por apellidos + nombres, sin confundir a quienes solo comparten nombres de pila.</li>
           <li><b>Guardar directo en OneDrive:</b> en Configuración elige tu carpeta Tracker y cada archivo se guarda en su subcarpeta (Webis, JVUs, Accruals, Suppliers), sin ZIP.</li>
           <li><b>Borradores de correo (.eml):</b> se abren en Outlook con destinatarios, asunto, texto y adjunto listos.</li>
           <li><b>Tracker que se actualiza:</b> arrastra el Tracker anterior y se conserva lo capturado; la columna “Siguiente paso” dice qué falta.</li>

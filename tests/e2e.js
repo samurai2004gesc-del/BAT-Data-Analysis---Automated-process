@@ -40,7 +40,7 @@ const shots = process.argv[2];
   const shot = async (name) => { if (shots) await page.screenshot({ path: path.join(shots, name + '.png'), fullPage: true }); };
   const upload = (zone, files) => page.setInputFiles(zone + ' input[type=file]', files);
   const download = async (btn) => { const [d] = await Promise.all([page.waitForEvent('download'), page.click(btn)]); const p = await d.path(); console.log('  descarga:', d.suggestedFilename(), d.url().slice(0, 60)); return { name: d.suggestedFilename(), path: p }; };
-  const check = (cond, msg) => { if (!cond) throw new Error('FALLÓ: ' + msg); console.log('✔', msg); };
+  const check = (cond, msg) => { if (!cond) throw new Error('FALLÓ: ' + msg); console.log('OK ', msg); };
 
   await shot('01-inicio');
 
@@ -165,6 +165,31 @@ const shots = process.argv[2];
   await page.setInputFiles('#rc-drop-ev input[type=file]', [EX('05 K2 MX15 (ejemplo).xlsx'), sent.path, rcl.path]);
   await page.waitForSelector('#rc-ev-result .checklist');
   await shot('08-reclas-d');
+  // A con Deloitte + MAE + Sent del mes anterior: función como código, HRBP por función, Ceco Oficial
+  await page.click('#rc-tabs button[data-tab=a]');
+  await upload('#rc-drop-dir', EX('12 Sent to HRBPs mes anterior (ejemplo).xlsx'));
+  await page.waitForFunction(() => /Función → HRBP/.test(document.querySelector('#rc-dir-info').textContent));
+  await upload('#rc-drop-mae', EX('11 MAE dd.mm.aaaa_Sin (ejemplo).xlsx'));
+  await page.waitForFunction(() => /personas/.test(document.querySelector('#rc-mae-info').textContent));
+  await upload('#rc-drop-sup', EX('10 Deloitte MX15 (ejemplo).xlsx'));
+  await page.waitForFunction(() => document.querySelector('#rc-provider').value === 'Deloitte' && /en la MAE/.test(document.querySelector('#rc-a-summary').textContent));
+  const fnHrbp = await page.$$eval('#rc-fn-table input[data-fn="hrbp"]', (xs) => xs.map((x) => x.value));
+  check(fnHrbp.includes('Elena Torres Vega') && fnHrbp.includes('Laura Mendez Ruiz'), 'Reclas A: tabla Función → HRBP aprendida del Sent anterior');
+  await shot('05b-reclas-a-deloitte');
+  const dSent = await download('#rc-a-download');
+  const dWb = XLSX.readFile(dSent.path);
+  const dRows = XLSX.utils.sheet_to_json(dWb.Sheets.MX15, { header: 1, defval: null });
+  const dHdr = dRows[0];
+  const hi = (h) => dHdr.indexOf(h);
+  const nueva = dRows.find((r) => r[hi('Assignee Name\n(Surname, first name)')] === 'Sin Historico, Persona Nueva');
+  check(dWb.SheetNames.join('|') === 'MX15|HRBP por funcion' && hi('Ceco Oficial') === hi('CeCo') + 1 && hi('HRBP') === hi('Home Function') + 1 &&
+    nueva[hi('Home Function')] === 'HR' && nueva[hi('HRBP')] === 'Elena Torres Vega' && nueva[hi('Ceco Oficial')] === 'MXCB2J0001' && dRows.length === 6,
+  'Reclas A (Deloitte): columnas, HRBP por función, Ceco Oficial de la MAE y sin leyenda');
+  // Regresa al K2 para el resto del recorrido
+  await page.fill('#rc-provider', 'K2');
+  await page.dispatchEvent('#rc-provider', 'change');
+  await upload('#rc-drop-sup', EX('05 K2 MX15 (ejemplo).xlsx'));
+  await page.waitForFunction(() => document.querySelector('#rc-provider').value === 'K2');
 
   // ---- Bulk: todo el año ----
   await page.click('#nav a[data-page=bulk]');

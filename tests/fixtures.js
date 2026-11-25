@@ -176,6 +176,52 @@ function ksb1() {
   ]);
 }
 
+/** Archivo de Deloitte (formato real: "Apellidos, Nombres", Success Factors ID, periodo) con personas ficticias. */
+function supplierDeloitte() {
+  return XLSX.utils.aoa_to_sheet([
+    ['Billing Country', 'Deloitte Number', 'Success Factors ID', 'Assignee Name\n(Surname, first name)', 'Relationship', 'HOST SUCCES FACTOR ID', 'Fee Type as per rate card', 'Total Amount(inc.VAT) in GBP', 'Invoice Perioud'],
+    ['Mexico', 'B886.1.1.1.C', 90000001, 'Perez Lopez, Juan Carlos', 'PRINCIPAL', 10000001, 'Tax return', 437.25, 'Sept'],
+    ['Mexico', 'B886.2.1.1.C', 90000002, 'Garcia Ruiz, Ana', 'PRINCIPAL', 'N/A', 'Assessment - CREDIT', -120.5, 'August'],
+    ['Mexico', 'B886.3.1.1.C', 90000003, 'Sin Historico, Persona Nueva', 'PRINCIPAL', 10000004, 'Permanent Residence', 1564.46, 'August'],
+    ['Mexico', 'B886.4.1.1.C', 90000004, 'Romero Diaz, Pedro', 'PRINCIPAL', 'TBC', 'Work Permit', 300, 'August'],
+    ['Mexico', 'B886.1.2.1.C', 90000001, 'Perez Lopez, Juan Carlos', 'PRINCIPAL', 10000001, 'Disbursements', 130.99, 'August']
+  ]);
+}
+/** MAE ficticia con las mismas columnas que el reporte de SAP HR. Los datos sensibles llevan valores falsos (la app no los debe leer). */
+function mae() {
+  const H = ['Nº pers.', 'Número de personal', 'Grado', 'Posición', 'Posición', 'Función', 'Función', 'Grupo de personal', 'Clase de contrato', 'Ce.coste', 'Centro de coste', 'Un.org.', 'Unidad organizativa',
+    'Á.liq.', 'Área de nómina', 'Soc.', 'Sociedad', 'División de personal', 'Área de personal', 'Número ID', 'NIF', 'Cuenta bancaria', 'Registro Patronal', 'NIMSS', 'Subdivisión de persona', 'Nombre del superior',
+    'Nombre Posicion Report', 'Reporta a', 'Nombre Persona Reporta', 'Reporta a', 'Clave banco', 'Clave de banco', 'Nombre', 'Apellido Pat', 'Segundo apellido', 'Sexo', 'Clave para el estado c', 'Clase de identificació',
+    'Fecha nac.', 'Edad del empleado', 'Alta'];
+  const p = (id, ap1, ap2, nom, ceco, desc, uo, sub) => {
+    const r = H.map(() => '');
+    Object.assign(r, { 0: id, 1: [ap1, ap2, nom].filter(Boolean).join(' '), 2: '34', 3: '70000000', 4: 'Puesto ficticio', 5: '00000000', 9: ceco, 10: desc, 11: '70000001', 12: uo, 15: 'MX05', 16: 'BAT Servicios (ejemplo)',
+      19: 'XAXX010101000', 20: 'XEXX010101HNEXXXA4', 21: '000000000000000000', 24: sub, 32: nom, 33: ap1, 34: ap2 });
+    return r;
+  };
+  return XLSX.utils.aoa_to_sheet([H,
+    p('10000001', 'Perez', 'Lopez', 'Juan Carlos', 'MXCB2H2011', 'MKT Fin BP', 'MARKETING FINANCE', 'Administración'),
+    p('10000002', 'Garcia', 'Ruiz', 'Ana', 'MXCB8D0045', '', 'MEXICO DIRECTORY', 'Administración'),
+    p('10000003', 'Robles', 'Garcia', 'Ana', 'MXCC2E4001', 'DSS Centro', 'LEON 73_X35', 'TM&D-BAT'), // homónima parcial: no debe confundirse con "Garcia Ruiz, Ana"
+    p('10000004', 'Sin', 'Historico', 'Persona Nueva', 'MXCB2J0001', 'MKT Human Resources', 'TM&D HUMAN RESOURCES', 'Administración'),
+    p('10000005', 'Lopez', 'Diaz', 'Maria Fernanda', 'MXCB2E4070', 'RTM', 'TM&D', 'Administración')
+  ]);
+}
+/** "Sent to HRBPs" ya corregido de un mes anterior: función/HRBP/CeCo por persona y la tabla Función → HRBP en otra hoja. */
+function sentAnterior() {
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    ['Assignee Name', 'Home Function', 'HRBP', 'CeCo', 'Ceco Oficial', 'K2 Number', 'Service', 'Gross Amount (GBP)', 'Success Factors ID'],
+    ['Perez Lopez, Juan Carlos', 'FIN', 'Laura Mendez Ruiz', 'MXCB2H2011', 'MXCB2H2011', 'K2-090001', 'Tax return', 410, '90000001'],
+    ['Garcia Ruiz, Ana', 'EXEC', 'Carlos Ortega Paz', 'MXCB8D0045', 'MXCB8D0045', 'K2-090002', 'Disbursements', 120, '']
+  ]), 'MX15');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    [null, 'Homefunction', 'HRBP'], [null, 'HR', 'Elena Torres Vega'], [null, 'FIN', 'Laura Mendez Ruiz'], [null, 'EXEC', 'Carlos Ortega Paz'],
+    [null, 'OPS', 'Mario Diaz Soto'], [null, 'MKT Office', 'Sofia Navarro Gil']
+  ]), 'Sheet1');
+  return wb;
+}
+
 function writeAll(dir, dateStr) {
   fs.mkdirSync(dir, { recursive: true });
   const save = (wb, name) => XLSX.writeFile(wb, path.join(dir, name));
@@ -188,10 +234,13 @@ function writeAll(dir, dateStr) {
   save(consolidado(), '06 ConsolidadoCharges (ejemplo).xlsx');
   save(one(allCecos(), 'Sheet1'), '07 All CeCos - Approvers (ejemplo).xlsx');
   save(one(ksb1(), 'Sheet1'), '08 KSB1 EXPORT (ejemplo).xlsx');
+  save(one(supplierDeloitte(), 'MX15'), '10 Deloitte MX15 (ejemplo).xlsx');
+  save(one(mae(), 'Sheet1'), '11 MAE dd.mm.aaaa_Sin (ejemplo).xlsx');
+  save(sentAnterior(), '12 Sent to HRBPs mes anterior (ejemplo).xlsx');
   fs.writeFileSync(path.join(dir, '09 K2 costs - Non-PO billing MX15 (ejemplo).msg'), msgFile('K2 costs - Non-PO billing MX15 — June 2026', 'Global Mobility (ejemplo)', Date.UTC(2026, 5, 24, 13), ['K2 MX15.xlsx']));
 }
 
-module.exports = { hrInput, masterWorkbook, assignmentsWorkbook, estimateBenefits, supplierK2, consolidado, allCecos, ksb1, writeAll, d };
+module.exports = { hrInput, masterWorkbook, assignmentsWorkbook, estimateBenefits, supplierK2, consolidado, allCecos, ksb1, supplierDeloitte, mae, sentAnterior, writeAll, d };
 
 if (require.main === module) {
   const t = new Date();

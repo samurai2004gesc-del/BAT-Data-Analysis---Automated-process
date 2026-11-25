@@ -91,7 +91,8 @@ table.t tr.total td { font-weight: 700; background: #eaf3fb; }
 td.pos { background: var(--badbg); color: var(--bad); font-weight: 700; }
 td.neg { background: var(--badbg); color: var(--bad); font-weight: 700; }
 td.zero { background: var(--okbg); color: var(--ok); }
-td.found { background: #fdebd9; }
+td.found { background: #eaf3fb; }
+td.warnc { background: var(--warnbg); color: var(--warn); }
 td.empty { background: var(--warnbg); }
 td.okc { background: var(--okbg); color: var(--ok); font-weight: 600; }
 td.badc { background: var(--badbg); color: var(--bad); font-weight: 600; }
@@ -119,6 +120,7 @@ table.t input { padding: 4px 6px; width: 100%; }
 .pill { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 12px; font-weight: 600; background: #eef2f6; margin: 2px 4px 2px 0; }
 .pill.ok { background: var(--okbg); color: var(--ok); }
 .pill.bad { background: var(--badbg); color: var(--bad); }
+.pill.warn { background: var(--warnbg); color: var(--warn); }
 
 .checklist { list-style: none; padding: 0; }
 .checklist li { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 6px 0; display: flex; gap: 10px; }
@@ -155,3 +157,23 @@ table.t tr.gone td { color: #8a949e; font-style: italic; }
 .guide-note { margin: 14px 0; }
 .guide-note button { margin-left: 6px; }
 .steps-list li { margin: 4px 0; }
+
+/* Íconos de línea (Lucide) */
+.ic { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -3px; }
+.sidebar a { display: flex; align-items: center; gap: 10px; }
+.sidebar a .ic { width: 17px; height: 17px; color: var(--blue); opacity: .85; }
+.sidebar a.active .ic { color: #fff; opacity: 1; }
+.card h3 { display: flex; align-items: center; gap: 8px; }
+.card h3 .ic { width: 19px; height: 19px; color: var(--accent); }
+.guide-note strong .ic { margin-right: 6px; color: var(--accent); }
+button.mini .ic { width: 13px; height: 13px; }
+.status { display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; }
+.status small { flex-basis: 100%; }
+.checklist li .ic.state { width: 18px; height: 18px; margin-top: 1px; }
+.checklist li.ok .ic.state { color: var(--ok); }
+.checklist li.bad .ic.state { color: var(--muted); }
+.folder-ind { display: inline-flex; align-items: center; gap: 6px; }
+.drop b .ic { margin-right: 4px; color: var(--ok); }
+.ic.spin { animation: ic-spin 1s linear infinite; }
+@keyframes ic-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ic.spin { animation: none; } }

@@ -3,11 +3,12 @@
 const fs = require('fs');
 const path = require('path');
 const pkg = require('./package.json');
+const Icons = require('./src/js/icons.js');
 
 const src = (p) => fs.readFileSync(path.join(__dirname, 'src', p), 'utf8');
 const scripts = [
   'vendor/xlsx.full.min.js', 'vendor/exceljs.min.js', 'vendor/jszip.min.js',
-  'js/core.js', 'js/hc.js', 'js/recharges.js', 'js/reclass.js', 'js/chart.js', 'js/bulk.js', 'js/learn.js', 'vendor/pbi-base-theme.js', 'js/powerbi.js', 'js/ui.js', 'js/ui-hc.js', 'js/ui-recharges.js', 'js/ui-reclass.js', 'js/ui-bulk.js', 'js/ui-pbi.js', 'js/app.js'
+  'js/icons.js', 'js/core.js', 'js/hc.js', 'js/recharges.js', 'js/reclass.js', 'js/chart.js', 'js/bulk.js', 'js/learn.js', 'vendor/pbi-base-theme.js', 'js/powerbi.js', 'js/ui.js', 'js/ui-hc.js', 'js/ui-recharges.js', 'js/ui-reclass.js', 'js/ui-bulk.js', 'js/ui-pbi.js', 'js/app.js'
 ];
 // Archivos que la app ofrece para descargar: macro de Excel y guía PDF
 const root = (p) => path.join(__dirname, p);
@@ -19,7 +20,7 @@ const assets = 'self.HRSS_ASSETS = ' + JSON.stringify({
 if (!fs.existsSync(guide)) console.warn('Aviso: falta docs/Guia-HRSS-Automatizador.pdf (npm run guide)');
 // Evita que un "</script>" dentro de una librería cierre la etiqueta antes de tiempo
 const safe = (code) => code.replace(/<\/script/gi, '<\\/script');
-let html = src('index.html')
+let html = Icons.inline(src('index.html'))
   .replace('/*@@CSS@@*/', () => src('styles.css'))
   .replace('v__VERSION__', 'v' + pkg.version)
   .replace('<script>/*@@SCRIPTS@@*/</script>', () => scripts.map((s) => '<script>/* ' + s + ' */\n' + safe(src(s)) + '\n</script>').join('\n') + '\n<script>/* assets */\n' + safe(assets) + '\n</script>');

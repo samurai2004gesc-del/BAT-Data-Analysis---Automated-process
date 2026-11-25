@@ -37,7 +37,8 @@
         let v = c.f ? c.f(r) : r[c.k];
         const cls = [c.num ? 'num' : '', c.cls ? c.cls(r) : ''].filter(Boolean).join(' ');
         const out = c.raw ? v : (c.num ? num(v, c.d) : esc(v));
-        return '<td' + (cls ? ' class="' + cls + '"' : '') + '>' + out + '</td>';
+        const tip = c.title ? c.title(r) : '';
+        return '<td' + (cls ? ' class="' + cls + '"' : '') + (tip ? ' title="' + esc(tip) + '"' : '') + '>' + out + '</td>';
       }).join('') + '</tr>';
     });
     if (opts.total) html += '<tr class="total">' + cols.map((c, i) => '<td' + (c.num ? ' class="num"' : '') + '>' + (i === 0 ? esc(opts.totalLabel || 'Total') : (c.num && c.sum !== false ? num(rows.reduce((a, r) => a + (Number(c.f ? c.f(r) : r[c.k]) || 0), 0), c.d) : '')) + '</td>').join('') + '</tr>';
@@ -63,7 +64,7 @@
         await opts.onFiles(Array.from(files));
         el.classList.add('loaded');
         const b = el.querySelector('b');
-        if (b && !opts.keepLabel) b.textContent = '✔ ' + Array.from(files).map((f) => f.name).join(', ');
+        if (b && !opts.keepLabel) b.innerHTML = root.Icons.svg('check') + esc(Array.from(files).map((f) => f.name).join(', '));
       } catch (e) {
         console.error(e);
         toast(e.message || String(e), 'bad', 8000);
@@ -83,7 +84,7 @@
   async function withBusy(btn, fn) {
     const old = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '⏳ Procesando…';
+    btn.innerHTML = root.Icons.svg('loader', 'spin') + 'Procesando…';
     try { return await fn(); } catch (e) { console.error(e); toast(e.message || String(e), 'bad', 8000); } finally { btn.disabled = false; btn.innerHTML = old; }
   }
   function copy(text) {
@@ -95,7 +96,7 @@
   function copyable(text) {
     const id = 'c' + Math.random().toString(36).slice(2);
     setTimeout(() => { const b = document.getElementById(id); if (b) b.onclick = () => copy(text); });
-    return '<button class="mini" id="' + id + '" title="Copiar">📋 Copiar</button>';
+    return '<button class="mini" id="' + id + '" title="Copiar">' + root.Icons.svg('copy') + 'Copiar</button>';
   }
   function options(sel, list, value, blank) {
     if (typeof sel === 'string') sel = $(sel);
@@ -284,7 +285,7 @@
   }
   /** Texto corto que indica dónde se guardará (junto a los botones). */
   function whereText(rel) {
-    return saveMode() === 'folder' ? '📁 Se guarda en ' + folder.name + '\\' + String(rel || '').replace(/\//g, '\\') : '⬇ Se guarda en Descargas';
+    return saveMode() === 'folder' ? 'Se guarda en ' + folder.name + '\\' + String(rel || '').replace(/\//g, '\\') : 'Se guarda en Descargas';
   }
   async function wbFile(path, wb) { return { path, data: new Uint8Array(await wb.xlsx.writeBuffer()), type: Core.XLSX_MIME }; }
 

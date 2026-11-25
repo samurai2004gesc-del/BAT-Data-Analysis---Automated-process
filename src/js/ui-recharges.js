@@ -62,10 +62,10 @@
   function updateWhere() {
     const p = trParams();
     $('#tr-where').textContent = UI.whereText(trackerPath(p));
-    $('#tr-download').innerHTML = UI.saveMode() === 'folder' ? '💾 Guardar Tracker' : '⬇ Descargar Tracker';
+    $('#tr-download').innerHTML = UI.saveMode() === 'folder' ? root.Icons.svg('save') + 'Guardar Tracker' : root.Icons.svg('download') + 'Descargar Tracker';
     const sp = sapParams();
     $('#sap-where').textContent = UI.whereText('Recharges/' + R.periodShort(sp.half, sp.year) + '/Webis|JVUs|Accruals');
-    $('#sap-zip').innerHTML = UI.saveMode() === 'folder' ? '💾 Guardar en las carpetas de cada empleado' : '⬇ Descargar ZIP con carpetas';
+    $('#sap-zip').innerHTML = UI.saveMode() === 'folder' ? root.Icons.svg('save') + 'Guardar en las carpetas de cada empleado' : root.Icons.svg('download') + 'Descargar ZIP con carpetas';
   }
   async function downloadTracker() {
     const p = trParams();
@@ -105,7 +105,7 @@
         '<label>KEY<input data-f="key" value="' + esc(ctx.key) + '" style="width:80px"></label>' +
         '<label style="flex:1">Nombre (Apellidos Nombre)<input data-f="nombre" value="' + esc(ctx.nombre) + '"></label>' +
         '<label>Host Country<input data-f="host" value="' + esc(pr.host || '') + '"></label>' +
-        '<button class="mini danger" data-del>✕ Quitar</button></div>' +
+        '<button class="mini danger" data-del>' + root.Icons.svg('x') + 'Quitar</button></div>' +
         '<div class="muted small">' + esc(pr.file) + (ctx.tipo ? ' · Tipo en IDX: <b>' + esc(ctx.tipo) + '</b>' : '') + (ctx.ic ? ' · ' + esc(ctx.ic) : '') + (ctx.area ? ' · Área: ' + esc(ctx.area) : '') + '</div>' +
         '<div style="margin-top:8px">' + pr.items.map((i, j) => '<label class="check" style="display:inline-flex;margin-right:14px"><input type="checkbox" data-inc="' + j + '"' + (i.include === false ? '' : ' checked') + '> <span class="pill ' + (i.analysis.warnings.length ? 'bad' : 'ok') + '">' + esc(R.kindInfo(i.kind).label) + '</span> <span class="muted small">' + i.grid.length + ' filas' + (i.analysis.total !== null ? ' · total ' + UI.num(R.amountForCompare(i.kind, i.analysis), 2) : '') + '</span> <button class="mini" data-txt="' + j + '"' + (R.kindInfo(i.kind).txt ? '' : ' hidden') + '>TXT</button></label>').join('') + '</div>' +
         '<div class="kv">' +
@@ -114,7 +114,7 @@
         '<span class="k">SE Company Code</span><span>' + esc(ctx.ic || 'IC-00-MX15 (sociedad desde la que se recobra)') + '</span><span></span>' +
         '<span class="k">Mes a marcar “X”</span><span>' + R.monthToMark(Core.todaySerial()) + ' (si el Recharge se crea hoy) · Recharge Frequency: Single</span><span></span>' +
         (jvu ? '<span class="k">JVU</span><span>Exception = <b>16</b> · Function: Finance · Subfunction: FICO (FI - CORA)</span><span></span>' : '') +
-        (acc ? '<span class="k">Accrual</span><span>✓ Intercompany Accrual · Partner Entity User ID = OneID del Coder · Exception = <b>05</b></span><span></span>' : '') +
+        (acc ? '<span class="k">Accrual</span><span>Marcar Intercompany Accrual · Partner Entity User ID = OneID del Coder · Exception = <b>05</b></span><span></span>' : '') +
         '</div>' + warn.map((w) => '<div class="msg warn">' + esc(w) + '</div>').join('');
       el.appendChild(div);
       UI.$$('input[data-f]', div).forEach((inp) => inp.addEventListener('change', () => {
@@ -143,7 +143,7 @@
     const head = saved[0].saved
       ? '<div class="msg ok"><b>Guardado en las carpetas de cada empleado</b> (' + saved.length + ' archivos).</div>'
       : '<div class="msg ok"><b>ZIP generado.</b> Descomprímelo dentro de la carpeta <code>' + esc(R.paths(UI.config().oneId, p.year, p.half).webis.replace(/\\Recharges\\.*$/, '')) + '</code> (trae la estructura Recharges\\' + esc(R.periodShort(p.half, p.year)) + '\\…).</div>';
-    el.innerHTML = head + log.map((l) => '<div class="small ' + (l.ok ? '' : 'msg bad') + '">' + (l.ok ? '✔ ' : '✖ ') + esc(l.msg) + '</div>').join('');
+    el.innerHTML = head + log.map((l) => '<div class="small ' + (l.ok ? '' : 'msg bad') + '">' + root.Icons.svg(l.ok ? 'check' : 'x') + esc(l.msg) + '</div>').join('');
   }
 
   function init() {

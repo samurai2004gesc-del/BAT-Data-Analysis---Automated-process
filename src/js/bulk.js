@@ -160,7 +160,7 @@
       name: d.name, amount: c.amount >= 0 ? parseNum(d.raw[c.amount]) : null,
       currency: (c.currency >= 0 ? str(d.raw[c.currency]).toUpperCase() : '') || hdrCur,
       service: c.service >= 0 ? str(d.raw[c.service]) : '', hrbp: c.hrbp >= 0 ? str(d.raw[c.hrbp]) : '',
-      func: c.func >= 0 ? str(d.raw[c.func]) : '', ceco: c.ceco >= 0 ? str(d.raw[c.ceco]).toUpperCase() : ''
+      func: c.func >= 0 ? str(d.raw[c.func]) : '', ceco: c.ceco >= 0 ? str(d.raw[c.ceco]).toUpperCase() : '', ids: RC.rowIds(d.raw, c.ids)
     }));
   }
   /** Renglones del Histórico K2 (lo registrado): nombre, GBP, CeCo, proveedor, servicio, tipo de cambio, mes y año. */
@@ -250,7 +250,17 @@
       rec.sheets = wb.SheetNames.length;
       switch (type) {
         case 'webi': case 'jvu': case 'accrual': case 'sc': rec.data = docInfo(type, wb); break;
-        case 'supplier': case 'sent': case 'retrieved': { const k = {}; rec.data = { rows: supplierRows(wb, type === 'supplier' ? k : null) }; if (k.raw) rec.data.raw = k.raw; break; }
+        case 'supplier': case 'sent': case 'retrieved': {
+          const k = {};
+          rec.data = { rows: supplierRows(wb, type === 'supplier' ? k : null) };
+          if (k.raw) rec.data.raw = k.raw;
+          // Tabla Función → HRBP en otra hoja del Sent/Retrieved (p. ej. "Sheet1" o "HRBP por funcion")
+          if (type !== 'supplier') {
+            const pairs = wb.SheetNames.slice(1).flatMap((sn) => { const x = RC.readSources(Core.sheetRows(wb.Sheets[sn]), ctx.name); return x.kind === 'map' ? x.pairs : []; });
+            if (pairs.length) rec.data.fnPairs = pairs;
+          }
+          break;
+        }
         case 'reclass': rec.data = { rows: reclassRows(wb, ctx) }; break;
         case 'ksb1': rec.data = { lines: RC.readKSB1(Core.sheetRows(wb.Sheets[wb.SheetNames[0]])) }; break;
         case 'cecos': rec.data = RC.readCecos(Core.sheetRows(wb.Sheets[wb.SheetNames[0]])); break;
@@ -479,9 +489,9 @@
     ], A.sap.map((l) => [l.doc, l.date ? Core.serialToJSDate(l.date) : null, l.text, l.tran, l.tcur, l.obj, l.ceco, l.file]));
     sheet('Evidencia por mes', 'Checklist de evidencia por mes y proveedor', [
       { header: 'Mes', width: 13 }, { header: 'Proveedor', width: 10 }, { header: 'Completas', width: 11 }].concat(['Correo Global', 'Reporte proveedor', 'Sent to HRBPs', 'Retrieved', 'Correo HRBP', 'Reclasificación'].map((h) => ({
-      header: h, width: 14, style: (c) => { c.fill = Core.fill(c.value === '✔' ? C.green : C.red); c.alignment = { horizontal: 'center' }; }
+      header: h, width: 14, style: (c) => { c.fill = Core.fill(c.value === 'Sí' ? C.green : C.red); c.alignment = { horizontal: 'center' }; }
     }))).concat([{ header: 'Carpeta', width: 50 }]),
-    A.evidence.map((e) => [mes(e.month), e.provider, e.ok + ' de 6'].concat(e.items.map((i) => (i.ok ? '✔' : '✖'))).concat([e.folder])));
+    A.evidence.map((e) => [mes(e.month), e.provider, e.ok + ' de 6'].concat(e.items.map((i) => (i.ok ? 'Sí' : 'No'))).concat([e.folder])));
     if (A.hc.length) sheet('Headcount', 'HR Input Reports encontrados (conteo con las fechas de corte del año ' + year + ')', [
       { header: 'Archivo', width: 40 }, { header: 'Mercado', width: 20 }, { header: 'Posiciones', width: 11 }, { header: 'Cuenta SOP', width: 11 }, { header: 'Cuenta COPLAN', width: 13 }, { header: 'Modificado', width: 14, numFmt: 'dd/mm/yyyy' }, { header: 'Ruta', width: 60 }
     ], A.hc.map((h) => [h.file, h.market, h.positions, h.sop, h.coplan, h.modified ? new Date(h.modified) : null, h.path]));

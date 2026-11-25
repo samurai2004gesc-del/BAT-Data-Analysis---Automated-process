@@ -16,7 +16,7 @@
   }
   function renderApp() {
     const { bulk, hc } = appSources();
-    const row = (ok, title, detail, go) => '<li class="' + (ok ? 'ok' : 'bad') + '"><span>' + (ok ? '✅' : '➖') + '</span><div><b>' + title + '</b><br><span class="muted small">' + detail + '</span>' + (go && !ok ? ' <a data-goto="' + go + '">Ir a esa sección</a>' : '') + '</div></li>';
+    const row = (ok, title, detail, go) => '<li class="' + (ok ? 'ok' : 'bad') + '">' + root.Icons.svg(ok ? 'ok' : 'minus', 'state') + '<div><b>' + title + '</b><br><span class="muted small">' + detail + '</span>' + (go && !ok ? ' <a data-goto="' + go + '">Ir a esa sección</a>' : '') + '</div></li>';
     $('#pbi-app-status').innerHTML = '<ul class="checklist">' +
       row(!!bulk, 'Bulk: archivos del año', bulk ? bulk.records.length + ' archivos analizados · ' + bulk.charges.length + ' cargos · ' + bulk.recharges.length + ' asignaciones · ' + bulk.alerts.length + ' alertas → páginas Resumen, Recobros, CeCos y SAP, Calidad de datos' : 'Aún no analizas archivos en Bulk.', 'bulk') +
       row(!!hc.length, 'Headcount: HC BPC vs Aprobado', hc.length ? hc.map((h) => esc(h.market)).join(', ') + ' → página Headcount' : 'Aún no corres la comparación de Headcount (uno o varios mercados).', 'hc') +
@@ -40,7 +40,7 @@
       S.profiles.map((p, i) => '<tr><td><input type="checkbox" data-inc="' + i + '"' + (p.include !== false ? ' checked' : '') + '></td>' +
         '<td><input data-name="' + i + '" value="' + esc(p.name) + '"></td><td class="small">' + esc(p.file) + ' › ' + esc(p.sheet) + ' (encabezado fila ' + p.headerRow + ')</td><td class="num">' + UI.num(p.rows.length) + '</td>' +
         '<td class="small">' + p.columns.map((c, j) => '<span class="pill">' + esc(c.name) + ' <select data-type="' + i + ':' + j + '">' + Object.keys(TYPE_LABEL).map((t) => '<option value="' + t + '"' + (t === c.type ? ' selected' : '') + '>' + TYPE_LABEL[t] + '</option>').join('') + '</select></span>').join(' ') + '</td>' +
-        '<td><button class="mini danger" data-del="' + i + '">✕</button></td></tr>').join('') + '</tbody></table>';
+        '<td><button class="mini danger" data-del="' + i + '" title="Quitar">' + root.Icons.svg('x') + '</button></td></tr>').join('') + '</tbody></table>';
     UI.$$('[data-inc]', el).forEach((x) => x.addEventListener('change', () => { S.profiles[+x.dataset.inc].include = x.checked; preview(); }));
     UI.$$('[data-name]', el).forEach((x) => x.addEventListener('change', () => { S.profiles[+x.dataset.name].name = x.value.trim() || S.profiles[+x.dataset.name].name; preview(); }));
     UI.$$('[data-type]', el).forEach((x) => x.addEventListener('change', () => { const [i, j] = x.dataset.type.split(':').map(Number); S.profiles[i].columns[j].type = x.value; preview(); }));

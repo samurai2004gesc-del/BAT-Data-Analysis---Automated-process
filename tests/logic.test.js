@@ -202,7 +202,7 @@ test('Reclasificación: completa desde histórico, valida MX15 y arma la reclasi
   const en = RC.enrich(sup, hist, []);
   assert.strictEqual(en[0].ceco, 'MXCB2H2011'); // el más reciente (mes 5)
   assert.strictEqual(en[0].hrbp, 'Laura Mendez Ruiz');
-  assert.strictEqual(en[1].func, 'Exec & Corp Services');
+  assert.strictEqual(en[1].func, 'EXEC'); // "Exec & Corp Services" se guarda como código
   assert.strictEqual(en[3].ceco, ''); // sin histórico
   const cecos = RC.readCecos(Core.sheetRows(one(F.allCecos()).Sheets.S));
   assert.strictEqual(cecos.map.MXCB2H2011, 'MX15');
@@ -211,7 +211,7 @@ test('Reclasificación: completa desde histórico, valida MX15 y arma la reclasi
   const sent = await RC.buildSentToHRBP(sup, en, { sociedad: 'MX15' });
   const sb = XLSX.read(await sent.xlsx.writeBuffer(), { type: 'buffer' });
   const sr = Core.sheetRows(sb.Sheets.MX15);
-  assert.deepStrictEqual(sr[0].slice(0, 5), ['Assignee Name', 'HRBP', 'Home Function', 'CeCo', 'K2 Number']);
+  assert.deepStrictEqual(sr[0].slice(0, 6), ['Assignee Name', 'Home Function', 'HRBP', 'CeCo', 'Ceco Oficial', 'K2 Number']);
   const ks = RC.readKSB1(Core.sheetRows(one(F.ksb1()).Sheets.S));
   assert.strictEqual(ks.length, 3);
   const rate = RC.exRateFrom([ks[0]]);
@@ -270,7 +270,7 @@ test('Tracker: conserva lo capturado, agrega nuevos y marca los que ya no vienen
   assert.strictEqual(R.nextStep({ rid: '1' }), 'Seguir aprobaciones (RRB PO Dashboard)');
   assert.strictEqual(R.nextStep({ rid: '1', po: 'x' }), 'Generar y cargar JVU (mismo día)');
   assert.strictEqual(R.nextStep({ rid: '1', po: 'x', jvu: 'j', batch: 'b' }), 'Validar en FBL5N');
-  assert.strictEqual(R.nextStep({ fbl: 'OK' }), '✔ Terminado');
+  assert.strictEqual(R.nextStep({ fbl: 'OK' }), 'Terminado');
   // Regenerar no duplica la marca "[No viene…]"
   const again = R.readPreviousTracker(XLSX.read(await (await R.buildTracker(m.assignments, { half: 'H2', year: 2026 })).xlsx.writeBuffer(), { type: 'buffer' }));
   const ida2 = again.rows.find((r) => r.nombre === 'Garcia Ruiz Ana');
@@ -302,7 +302,7 @@ test('HC: detecta el mercado, toma columnas solas y compara contra la corrida an
   const res2 = HC.run(rows2, app2, cfg);
   const ch = HC.changes(res2, snap);
   const g31 = ch.rows.find((r) => r.grade === 'Grade 31');
-  assert.strictEqual(g31.chSOP, '✔ Corregido');
+  assert.strictEqual(g31.chSOP, 'Corregido');
   assert.strictEqual(ch.fixed, 1);
   const wb = await HC.buildReport(res2, cfg, {}, ch);
   assert.ok(wb.worksheets.some((w) => w.name === 'Cambios vs anterior'));

@@ -118,7 +118,7 @@ test('Listado de Recharges real: ignora Trackers (incluido uno oculto) y tablas 
   assert.strictEqual(prev.sheet, 'Tracker');
   assert.strictEqual(prev.rows.length, 2);
   assert.deepStrictEqual([prev.rows[0].rid, prev.rows[0].ap1, prev.rows[0].ap3, prev.rows[0].batch, prev.rows[0].fbl], ['50001', 'SE Ficticio', 'RE Ficticio', 'Approved', 'Done']);
-  assert.strictEqual(R.nextStep(prev.rows[0]), '✔ Terminado');
+  assert.strictEqual(R.nextStep(prev.rows[0]), 'Terminado');
   assert.strictEqual(R.nextStep(prev.rows[1]), 'Generar y cargar JVU (mismo día)'); // "NA" / "N/A" no cuentan como hecho
   const m = R.mergeTracker(res.assignments, prev.rows);
   assert.deepStrictEqual(m.stats, { kept: 1, nuevos: 1, soloAnterior: 1 });

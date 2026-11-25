@@ -214,7 +214,7 @@
     const r = S.result, cfg = S.cfg;
     const cmp = HC.compare(r.positions, r.approved, filter());
     const dcls = (v) => (v > 0 ? 'pos' : v < 0 ? 'neg' : 'zero');
-    const block = (label, key, st) => '<div class="block"><h3>' + esc(label) + '</h3><div class="status ' + (st.ok ? 'ok' : 'bad') + '">' + (st.ok ? '✅ ' : '⚠️ ') + esc(st.text) + '<small>' + esc(st.detail) + '</small></div>' +
+    const block = (label, key, st) => '<div class="block"><h3>' + esc(label) + '</h3><div class="status ' + (st.ok ? 'ok' : 'bad') + '">' + root.Icons.svg(st.ok ? 'ok' : 'warn') + esc(st.text) + '<small>' + esc(st.detail) + '</small></div>' +
       UI.table([
         { h: 'Pay Grade', k: 'grade' }, { h: 'HC BPC', k: 'bpc' + key, num: true }, { h: 'HC Approved', k: 'app' + key, num: true },
         { h: 'Differences', k: 'diff' + key, num: true, cls: (x) => dcls(x['diff' + key]) }, { h: 'Action Required', k: 'action' + key }
@@ -298,7 +298,7 @@
     const el = $('#hcb-files');
     el.innerHTML = B.files.length ? '<table class="t"><thead><tr><th>Archivo</th><th>Tipo</th><th>Mercado</th><th>Detalle</th><th></th></tr></thead><tbody>' + B.files.map((it, i) =>
       '<tr><td>' + esc(it.name) + '</td><td>' + (it.kind === 'input' ? 'HR Input' : 'Maestro / HC Aprobado') + '</td><td><select data-bm="' + i + '"><option value="">— elige —</option>' + markets.map((m) => '<option' + (m === it.market ? ' selected' : '') + '>' + esc(m) + '</option>').join('') + '</select></td>' +
-      '<td class="small">' + (it.kind === 'input' ? it.parsed.positions.length + ' posiciones' : it.wb.SheetNames.length + ' hojas') + '</td><td><button class="mini danger" data-bx="' + i + '">✕</button></td></tr>').join('') + '</tbody></table>' : '';
+      '<td class="small">' + (it.kind === 'input' ? it.parsed.positions.length + ' posiciones' : it.wb.SheetNames.length + ' hojas') + '</td><td><button class="mini danger" data-bx="' + i + '" title="Quitar">' + root.Icons.svg('x') + '</button></td></tr>').join('') + '</tbody></table>' : '';
     UI.$$('[data-bm]', el).forEach((s) => s.addEventListener('change', () => { B.files[Number(s.dataset.bm)].market = s.value || null; renderBatchFiles(); }));
     UI.$$('[data-bx]', el).forEach((b) => b.addEventListener('click', () => { B.files.splice(Number(b.dataset.bx), 1); renderBatchFiles(); }));
     $('#hcb-run').disabled = !B.files.some((f) => f.kind === 'input' && f.market);

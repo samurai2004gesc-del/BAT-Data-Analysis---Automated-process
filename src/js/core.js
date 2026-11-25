@@ -197,19 +197,63 @@
   function rowIsEmpty(r) { return !r || r.every(isBlank); }
 
   // ---------- Nombres de personas ----------
+  // Partículas que no distinguen a una persona ("Quintana De Souza", "Del Valle")
+  const NAME_PARTICLES = new Set(['de', 'del', 'la', 'las', 'los', 'da', 'das', 'do', 'dos', 'van', 'von', 'der', 'den', 'di', 'du', 'le', 'y']);
   function nameTokens(s) {
-    return norm(s).replace(/[,.;]/g, ' ').split(' ').filter((t) => t && t.length > 1);
+    return norm(s).replace(/[,.;:'’\-_/()]/g, ' ').split(' ').filter((t) => t && t.length > 1 && !NAME_PARTICLES.has(t));
   }
-  /** Compara dos nombres sin importar el orden (Nombre Apellido vs Apellido, Nombre). 0..1 */
+  /** "Apellidos, Nombres": con coma se sabe qué parte es apellido; sin coma no. */
+  function nameParts(s) {
+    const txt = String(s === null || s === undefined ? '' : s);
+    const i = txt.indexOf(',');
+    if (i > 0) {
+      const sur = nameTokens(txt.slice(0, i)), given = nameTokens(txt.slice(i + 1));
+      if (sur.length && given.length) return { all: sur.concat(given), sur, given, split: true };
+    }
+    return { all: nameTokens(txt), sur: [], given: [], split: false };
+  }
+  /**
+   * Compara dos nombres sin importar el orden (Nombre Apellido vs Apellido, Nombre). 0..1
+   * Si alguno viene como "Apellidos, Nombres", debe coincidir al menos un apellido y un nombre:
+   * "Navarro, Luis Fernando" NO es "Robles Vega Luis Fernando" aunque compartan dos nombres.
+   * Sin coma, dos coincidencias solo cuentan si cubren el nombre más corto.
+   */
+  /**
+   * Mismo nombre con una letra de más o de menos: "Carrillo" = "Carillo", "Alonso" = "Alfonso" (palabras de 5+ letras).
+   * No se aceptan letras cambiadas: "Maria" ≠ "Mario".
+   */
+  function sameToken(a, b) {
+    if (a === b) return true;
+    const x = a.replace(/(.)\1+/g, '$1'), y = b.replace(/(.)\1+/g, '$1');
+    if (x === y) return true;
+    if (Math.min(x.length, y.length) < 5 || Math.abs(x.length - y.length) !== 1) return false;
+    const [s, l] = x.length < y.length ? [x, y] : [y, x];
+    for (let k = 0; k < l.length; k++) if (l.slice(0, k) + l.slice(k + 1) === s) return true;
+    return false;
+  }
   function nameScore(a, b) {
-    const A = nameTokens(a), B = nameTokens(b);
+    const pa = nameParts(a), pb = nameParts(b);
+    const A = Array.from(new Set(pa.all)), B = Array.from(new Set(pb.all));
     if (!A.length || !B.length) return 0;
-    const setB = new Set(B);
-    const common = A.filter((t) => setB.has(t)).length;
+    // Pares de palabras equivalentes (cada palabra se usa una sola vez)
+    const usedB = new Set();
+    const pairOf = {};
+    A.forEach((t) => {
+      let k = B.findIndex((u, i) => !usedB.has(i) && u === t);
+      if (k < 0) k = B.findIndex((u, i) => !usedB.has(i) && sameToken(t, u));
+      if (k >= 0) { usedB.add(k); pairOf[t] = B[k]; }
+    });
+    const common = new Set(Object.keys(pairOf).concat(Object.values(pairOf)));
+    const n = Object.keys(pairOf).length;
+    const split = [pa, pb].filter((p) => p.split);
+    for (const p of split) {
+      if (!p.sur.some((t) => common.has(t)) || !p.given.some((t) => common.has(t))) return 0;
+    }
     const small = Math.min(A.length, B.length);
-    if (common === A.length && common === B.length) return 1;
-    if (common >= 2 && common === small) return 0.9;
-    if (common >= 2) return 0.6 + 0.1 * (common / Math.max(A.length, B.length));
+    if (n === A.length && n === B.length) return 1;
+    if (n >= 2 && n === small) return 0.9;
+    if (!split.length && n < 3) return 0;
+    if (n >= 2) return 0.6 + 0.1 * (n / Math.max(A.length, B.length));
     return 0;
   }
 
@@ -396,7 +440,7 @@
     parseDate, ymdToSerial, serialToYMD, fmtDate, serialToJSDate, todaySerial, stamp, pad, MESES, MONTHS_EN,
     readWorkbook, sheetRows, sheetText, getSheet,
     findHeaderRow, findCol, headerLabels, colLetter, rowIsEmpty,
-    nameTokens, nameScore,
+    nameTokens, nameParts, nameScore,
     encodeCP1252, toTabText, cleanGrid,
     bytesToBase64, textToHtml, buildEml, XLSX_MIME,
     COLORS, BORDER, fill, newWorkbook, styleHeader, writeTable, title, workbookToBuffer,

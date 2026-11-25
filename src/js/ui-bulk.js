@@ -81,6 +81,8 @@
       c.knowledge = Learn.merge(c.knowledge, Learn.learn(S.records));
       UI.saveConfig();
       S.learned = c.knowledge;
+      // La tabla Función → HRBP de la Reclasificación también se alimenta de lo aprendido
+      if (root.PageReclass && c.knowledge.functions) { S.fnChanged = root.PageReclass.applyLearned(c.knowledge.functions); root.PageReclass.renderFnTable(); }
     } catch (e) { console.error(e); }
     renderResults();
   }
@@ -123,11 +125,13 @@
     if (!K) return '';
     const provs = Object.entries(K.providers || {});
     const last = (K.exRates || []).slice(-8);
-    return '<div class="block learned"><h3>🧠 Lo que aprendí de tus archivos</h3>' +
+    const fns = Object.entries(K.functions || {});
+    return '<div class="block learned"><h3>Lo que aprendí de tus archivos</h3>' +
       '<p class="muted small">Guardado en esta computadora (y en “Exportar configuración”). La Reclasificación ya lo usa: llena HRBP / función / CeCo, aplica la regla de cada proveedor y sugiere el tipo de cambio.</p>' +
       '<ul class="small">' +
       '<li><b>' + UI.num((K.directory || []).length) + '</b> personas en el directorio · ' + (K.directory || []).filter((d) => d.hrbp).length + ' con HRBP · ' + (K.directory || []).filter((d) => d.ceco).length + ' con CeCo</li>' +
-      provs.map(([pv, r]) => '<li>' + (r.found ? '✅ ' : '➖ ') + esc(Learn.explain(pv, r)) + '</li>').join('') +
+      (fns.length ? '<li>HRBP por función (para la Reclasificación): ' + fns.map(([code, v]) => esc(code) + ' = ' + esc(v.hrbp)).join(' · ') + '</li>' : '') +
+      provs.map(([pv, r]) => '<li>' + (r.found ? '<span class="pill ok">Regla encontrada</span> ' : '<span class="pill">Sin regla</span> ') + esc(Learn.explain(pv, r)) + '</li>').join('') +
       (last.length ? '<li>Tipos de cambio registrados: ' + last.map((r) => esc(r.provider) + ' ' + Core.MESES[r.month - 1].slice(0, 3) + ' ' + r.year + ' = ' + UI.num(r.rate, 4)).join(' · ') + '</li>' : '') +
       '</ul>' + (provs.some(([, r]) => !r.found) ? '<p class="muted small">Para aprender la regla de un proveedor necesito, del mismo mes, su archivo original (carpeta Suppliers\\MM. Mes\\Proveedor) y el ConsolidadoCharges con lo registrado en el Histórico.</p>' : '') + '</div>';
   }
@@ -217,7 +221,7 @@
   function updateFolderBtn() {
     const on = UI.saveMode() === 'folder';
     $('#bk-scan').disabled = !on;
-    $('#bk-scan').textContent = on ? '🔎 Escanear mi carpeta ' + year() + ' (' + UI.folderName() + ')' : '🔎 Escanear mi carpeta (elígela en Configuración)';
+    $('#bk-scan').innerHTML = root.Icons.svg('search') + UI.esc(on ? 'Escanear mi carpeta ' + year() + ' (' + UI.folderName() + ')' : 'Escanear mi carpeta (elígela en Configuración)');
     $('#bk-where').textContent = UI.whereText('Consolidado anual HRSS ' + year() + '.xlsx');
   }
 

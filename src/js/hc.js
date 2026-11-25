@@ -534,8 +534,8 @@
     res.overall.rows.forEach((r) => { cur[r.grade] = r; });
     const label = (a, b) => {
       if (a === b) return a === 0 ? '' : 'Sin cambio';
-      if (b === 0) return '✔ Corregido';
-      if (a === 0) return '⚠ Nueva diferencia';
+      if (b === 0) return 'Corregido';
+      if (a === 0) return 'Nueva diferencia';
       return Math.abs(b) < Math.abs(a) ? '↓ Mejoró' : '↑ Empeoró';
     };
     const rows = grades.map((g) => {
@@ -545,7 +545,7 @@
         prevDiffCOPLAN: p.diffCOPLAN, diffCOPLAN: c.diffCOPLAN, prevBpcCOPLAN: p.bpcCOPLAN, bpcCOPLAN: c.bpcCOPLAN, chCOPLAN: label(p.diffCOPLAN, c.diffCOPLAN)
       };
     }).filter((r) => r.chSOP || r.chCOPLAN);
-    const fixed = rows.filter((r) => r.chSOP === '✔ Corregido' || r.chCOPLAN === '✔ Corregido').length;
+    const fixed = rows.filter((r) => r.chSOP === 'Corregido' || r.chCOPLAN === 'Corregido').length;
     const worse = rows.filter((r) => /Nueva|Empeor/.test(r.chSOP + r.chCOPLAN)).length;
     return { date: snap.date, source: snap.source, rows, fixed, worse, prevPositions: snap.positions, positions: res.positions.length };
   }

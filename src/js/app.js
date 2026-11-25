@@ -1,7 +1,7 @@
 /* Navegación, configuración e inicio de la app. */
 (function (root) {
   'use strict';
-  const { UI } = root;
+  const { UI, Icons } = root;
   const { $, $$, esc } = UI;
 
   function go(page) {
@@ -17,9 +17,9 @@
     const name = UI.folderName();
     const mode = UI.saveMode();
     const ind = $('#folder-ind');
-    ind.textContent = mode === 'folder' ? '📁 Guardando en: ' + name : '⬇ Guardando en: Descargas';
+    ind.innerHTML = mode === 'folder' ? Icons.svg('folder') + esc('Guardando en: ' + name) : Icons.svg('download') + 'Guardando en: Descargas';
     ind.classList.toggle('on', mode === 'folder');
-    if (c.saveMode === 'folder' && !name) ind.textContent = '⚠ Elige la carpeta Tracker';
+    if (c.saveMode === 'folder' && !name) ind.innerHTML = Icons.svg('warn') + 'Elige la carpeta Tracker';
     const fn = $('#cfg-folder-name');
     fn.textContent = name ? 'Carpeta elegida: ' + name : (UI.folderSupported() ? 'Sin carpeta elegida' : 'Este navegador no permite guardar en carpetas; usa Edge o Chrome.');
     $$('input[name=cfg-save]').forEach((r) => { r.checked = r.value === (c.saveMode || 'download'); });
@@ -33,7 +33,7 @@
     $('#cfg-contacts').value = c.contacts || '';
     renderFolder();
     const K = c.knowledge;
-    $('#cfg-learned').innerHTML = K ? '<div class="msg info">🧠 Aprendido el ' + esc(K.date) + ': ' + (K.directory || []).length + ' personas · ' + Object.values(K.providers || {}).filter((r) => r.found).length + ' regla(s) de proveedor · ' + (K.exRates || []).length + ' tipos de cambio. <button class="mini danger" id="cfg-forget-learned">Olvidar lo aprendido</button></div>' : '<p class="muted small">Aún no hay aprendizaje. Se genera al analizar tus archivos en Bulk.</p>';
+    $('#cfg-learned').innerHTML = K ? '<div class="msg info">Aprendido el ' + esc(K.date) + ': ' + (K.directory || []).length + ' personas · ' + Object.values(K.providers || {}).filter((r) => r.found).length + ' regla(s) de proveedor · ' + (K.exRates || []).length + ' tipos de cambio. <button class="mini danger" id="cfg-forget-learned">Olvidar lo aprendido</button></div>' : '<p class="muted small">Aún no hay aprendizaje. Se genera al analizar tus archivos en Bulk.</p>';
     const fb = $('#cfg-forget-learned');
     if (fb) fb.addEventListener('click', () => { if (confirm('¿Olvidar todo lo aprendido de Bulk?')) { delete c.knowledge; UI.saveConfig(); renderConfig(); } });
     $('#cfg-oneid').value = c.oneId || '';
